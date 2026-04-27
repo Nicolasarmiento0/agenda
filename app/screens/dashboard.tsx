@@ -49,27 +49,29 @@ export default function DashboardScreen() {
             <Text style={localStyles.badgeText}>SESIÓN ACTIVA</Text>
           </View>
 
-          <Text style={[appStyles.title, { paddingVertical: 10 }]}>
-            YA ESTÁS{'\n'}DENTRO!
-          </Text>
+          {/* Textos principales */}
+<Text style={[appStyles.title, { paddingVertical: 10, color: colors.textPrimary }]}>
+  YA ESTÁS{'\n'}DENTRO!
+</Text>
 
-          <Text style={appStyles.subtitle}>
-            Bienvenido, {profile?.nickname ?? 'Usuario'}.
-          </Text>
+<Text style={[appStyles.subtitle, { color: colors.textSecondary }]}>
+  Bienvenido, {profile?.nickname ?? 'Usuario'}.
+</Text>
 
-          <View style={localStyles.divider} />
+<View style={[localStyles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={localStyles.card}>
-            <Text style={localStyles.cardLabel}>ROL</Text>
-            <Text style={localStyles.cardValue}>
-              {profile?.role === 'admin' ? 'Administrador' : 'Cliente'}
-            </Text>
-          </View>
+<View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+  <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ROL</Text>
+  <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>
+    {profile?.role === 'admin' ? 'Administrador' : 'Cliente'}
+  </Text>
+</View>
 
-          <View style={localStyles.card}>
-            <Text style={localStyles.cardLabel}>ESTADO</Text>
-            <Text style={localStyles.cardValue}>Autenticado</Text>
-          </View>
+<View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+  <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ESTADO</Text>
+  <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>Autenticado</Text>
+</View>
+
 
         </Animated.View>
       </View>

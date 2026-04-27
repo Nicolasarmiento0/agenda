@@ -21,12 +21,12 @@ const darkColors = {
 const lightColors = {
   white: '#FFFFFF',
   black: '#000000',
-  background: '#F5F5F5',
-  surface: '#FFFFFF',
+  background: '#FFFFFF',
+  surface: '#F5F5F5',
   border: '#E0E0E0',
   primary: '#E31937',
-  textPrimary: '#0A0A0A',
-  textSecondary: '#888888',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#666666',
   error: '#FF3B30',
 };
 
