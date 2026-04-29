@@ -10,11 +10,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase'; // ajusta el path
-import { appColors, appStyles } from '../../styles/appStyles'; // ajusta el path 
+import { supabase } from '../../lib/supabase';
+import { appColors, useAppStyles } from '../../styles/appStyles'; // ajusta el path 
+import { useTheme } from '../../context/ThemeContext';
 
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
+  const appStyles = useAppStyles();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -69,7 +73,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: appColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -85,7 +89,7 @@ export default function LoginScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Text style={{ color: appColors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
               ← VOLVER
             </Text>
           </TouchableOpacity>
@@ -105,10 +109,10 @@ export default function LoginScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  emailError ? { borderColor: appColors.error } : null,
+                  emailError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Correo electrónico"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -128,10 +132,10 @@ export default function LoginScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  passwordError ? { borderColor: appColors.error } : null,
+                  passwordError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Contraseña"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={password}
                 onChangeText={(text) => {
@@ -160,7 +164,7 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={appColors.white} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Ingresar</Text>
               )}
@@ -168,9 +172,9 @@ export default function LoginScreen() {
 
             {/* Divisor */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: appColors.border }} />
-              <Text style={{ color: appColors.textSecondary, fontSize: 12, letterSpacing: 1 }}>O</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: appColors.border }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 12, letterSpacing: 1 }}>O</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </View>
 
             {/* Botón secundario */}

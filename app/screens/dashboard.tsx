@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext'; // agrega import
@@ -14,7 +15,7 @@ import { appColors, appStyles } from '../../styles/appStyles';
 
 export default function DashboardScreen() {
   const { profile } = useAuth();
-  const { colors } = useTheme(); // agrega esto
+  const { colors, isDarkMode, toggleTheme } = useTheme(); // agrega esto
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -33,11 +34,13 @@ export default function DashboardScreen() {
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
     <View style={localStyles.header}>
-      <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7}>
+      <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
         <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
       </TouchableOpacity>
       <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>DASHBOARD</Text>
-      <View style={{ width: 24 }} />
+      <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
+        <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
     </View>
 
       {/* Contenido principal */}

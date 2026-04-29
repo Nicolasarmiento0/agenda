@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -18,7 +19,7 @@ import { appStyles } from '../../styles/appStyles';
 
 export default function ProfileScreen() {
   const { profile, user, signOut, updateProfileState } = useAuth();
-  const { colors, isDarkMode } = useTheme();
+  const { colors, isDarkMode, toggleTheme } = useTheme();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [nickname, setNickname] = useState(profile?.nickname || '');
@@ -183,12 +184,18 @@ export default function ProfileScreen() {
       >
         <View style={[appStyles.screen, { backgroundColor: 'transparent' }]}>
 
-          <TouchableOpacity
-            onPress={() => setIsSidebarOpen(true)}
-            style={localStyles.menuButton}
-          >
-            <Text style={{ fontSize: 24, color: colors.textPrimary }}>☰</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 40, marginBottom: 10 }}>
+            <TouchableOpacity
+              onPress={() => setIsSidebarOpen(true)}
+              style={{ width: 40 }}
+            >
+              <Text style={{ fontSize: 24, color: colors.textPrimary }}>☰</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
+              <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
 
           <Text style={[appStyles.title, { color: colors.textPrimary, paddingVertical: 10 }]}>
             MI PERFIL
@@ -295,8 +302,6 @@ export default function ProfileScreen() {
 
 const localStyles = StyleSheet.create({
   menuButton: {
-    marginTop: 40,
-    marginBottom: 10,
     width: 40,
   },
   card: {

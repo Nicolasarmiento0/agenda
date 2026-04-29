@@ -7,12 +7,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { appColors, appStyles } from '../../styles/appStyles'; // ajusta el path
+import { useAppStyles } from '../../styles/appStyles'; // ajusta el path
+import { useTheme } from '../../context/ThemeContext';
 
 export default function EmailConfirmationScreen() {
+  const { colors } = useTheme();
+  const appStyles = useAppStyles();
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: appColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={appStyles.screen}>

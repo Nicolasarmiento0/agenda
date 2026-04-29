@@ -10,12 +10,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase'; // ajusta el path
-import { appColors, appStyles } from '../../styles/appStyles'; // ajusta el path
+import { supabase } from '../../lib/supabase';
+import { appColors, useAppStyles } from '../../styles/appStyles'; // ajusta el path
+import { useTheme } from '../../context/ThemeContext';
 
 type Step = 'email' | 'success';
 
 export default function ForgotPasswordScreen() {
+  const { colors } = useTheme();
+  const appStyles = useAppStyles();
+
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -69,11 +73,11 @@ export default function ForgotPasswordScreen() {
 
         <Text style={appStyles.subtitleCentered}>
           Revisa tu bandeja de entrada en{'\n'}
-          <Text style={{ color: appColors.textPrimary }}>{email}</Text>
+          <Text style={{ color: colors.textPrimary }}>{email}</Text>
           {'\n'}y sigue las instrucciones para restablecer tu contraseña.
         </Text>
 
-        <View style={{ height: 1, width: '100%', backgroundColor: appColors.border, marginVertical: 16 }} />
+        <View style={{ height: 1, width: '100%', backgroundColor: colors.border, marginVertical: 16 }} />
 
         <Text style={[appStyles.subtitleCentered, { fontSize: 12 }]}>
           ¿No recibiste nada? Revisa tu carpeta de spam o vuelve a intentarlo.
@@ -102,7 +106,7 @@ export default function ForgotPasswordScreen() {
   // ─── Vista de email ───────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: appColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -118,7 +122,7 @@ export default function ForgotPasswordScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Text style={{ color: appColors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
               ← VOLVER
             </Text>
           </TouchableOpacity>
@@ -138,10 +142,10 @@ export default function ForgotPasswordScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  emailError ? { borderColor: appColors.error } : null,
+                  emailError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Correo electrónico"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -164,7 +168,7 @@ export default function ForgotPasswordScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={appColors.white} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Enviar enlace</Text>
               )}

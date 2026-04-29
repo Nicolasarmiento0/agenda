@@ -10,10 +10,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase'; // ajusta el path
-import { appColors, appStyles } from '../../styles/appStyles'; // ajusta el path
+import { supabase } from '../../lib/supabase';
+import { useAppStyles } from '../../styles/appStyles'; // ajusta el path
+import { useTheme } from '../../context/ThemeContext';
 
 export default function SignupScreen() {
+  const { colors } = useTheme();
+  const appStyles = useAppStyles();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,7 +102,7 @@ export default function SignupScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: appColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -114,7 +118,7 @@ export default function SignupScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Text style={{ color: appColors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
               ← VOLVER
             </Text>
           </TouchableOpacity>
@@ -134,10 +138,10 @@ export default function SignupScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  nameError ? { borderColor: appColors.error } : null,
+                  nameError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Nombre completo"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 autoCapitalize="words"
                 autoCorrect={false}
                 value={name}
@@ -154,10 +158,10 @@ export default function SignupScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  emailError ? { borderColor: appColors.error } : null,
+                  emailError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Correo electrónico"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -175,10 +179,10 @@ export default function SignupScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  passwordError ? { borderColor: appColors.error } : null,
+                  passwordError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Contraseña"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={password}
                 onChangeText={(text) => {
@@ -195,10 +199,10 @@ export default function SignupScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  confirmPasswordError ? { borderColor: appColors.error } : null,
+                  confirmPasswordError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Confirmar contraseña"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={(text) => {
@@ -219,7 +223,7 @@ export default function SignupScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={appColors.white} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Crear cuenta</Text>
               )}
@@ -227,9 +231,9 @@ export default function SignupScreen() {
 
             {/* Divisor */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: appColors.border }} />
-              <Text style={{ color: appColors.textSecondary, fontSize: 12, letterSpacing: 1 }}>O</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: appColors.border }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 12, letterSpacing: 1 }}>O</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </View>
 
             {/* Ya tengo cuenta */}

@@ -8,7 +8,6 @@ import {
   Image,
   Modal,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -130,26 +129,6 @@ export default function Sidebar({ visible, onClose }: Props) {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Toggle tema con Sol y Luna */}
-          <View style={styles.menuItem}>
-            <Feather 
-              name={isDarkMode ? "moon" : "sun"} 
-              size={20} 
-              color={colors.textSecondary} 
-              style={styles.iconWidth} 
-            />
-            <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-              {isDarkMode ? 'MODO NOCHE' : 'MODO DÍA'}
-            </Text>
-            <Switch
-              value={isDarkMode}
-              onValueChange={toggleTheme}
-              trackColor={{ false: '#ccc', true: appColors.primary }}
-              thumbColor={appColors.white}
-              style={{ marginLeft: 'auto', transform: [{ scale: 0.8 }]}}
-              
-            />
-          </View>
 
           {/* Cerrar sesión */}
           <TouchableOpacity style={[styles.menuItem, { marginTop: 'auto' }]} onPress={handleLogout}>

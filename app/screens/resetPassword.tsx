@@ -10,12 +10,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase'; // ajusta el path
-import { appColors, appStyles } from '../../styles/appStyles'; // ajusta el path
+import { supabase } from '../../lib/supabase';
+import { appColors, useAppStyles } from '../../styles/appStyles'; // ajusta el path
+import { useTheme } from '../../context/ThemeContext';
 
 type Step = 'form' | 'success';
 
 export default function ResetPasswordScreen() {
+  const { colors } = useTheme();
+  const appStyles = useAppStyles();
+
   const [step, setStep] = useState<Step>('form');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,7 +114,7 @@ export default function ResetPasswordScreen() {
   // ─── Formulario ───────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: appColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -134,10 +138,10 @@ export default function ResetPasswordScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  passwordError ? { borderColor: appColors.error } : null,
+                  passwordError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Nueva contraseña"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={password}
                 onChangeText={(text) => {
@@ -156,10 +160,10 @@ export default function ResetPasswordScreen() {
               <TextInput
                 style={[
                   appStyles.input,
-                  confirmPasswordError ? { borderColor: appColors.error } : null,
+                  confirmPasswordError ? { borderColor: colors.error } : null,
                 ]}
                 placeholder="Confirmar contraseña"
-                placeholderTextColor={appColors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={(text) => {
@@ -180,7 +184,7 @@ export default function ResetPasswordScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={appColors.white} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Restablecer contraseña</Text>
               )}
