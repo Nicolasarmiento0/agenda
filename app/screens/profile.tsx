@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -290,7 +291,10 @@ export default function ProfileScreen() {
 
           {/* ── Cerrar sesión ── */}
           <View style={localStyles.logoutButton}>
-            <TouchableOpacity onPress={signOut}>
+            <TouchableOpacity onPress={async () => {
+              await signOut();
+              router.replace('/screens/loginscreen');
+            }}>
               <Text style={localStyles.logoutText}>CERRAR SESIÓN</Text>
             </TouchableOpacity>
           </View>

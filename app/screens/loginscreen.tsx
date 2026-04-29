@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { appColors, useAppStyles } from '../../styles/appStyles'; // ajusta el path 
 import { useTheme } from '../../context/ThemeContext';
+import { supabase } from '../../lib/supabase';
+import { useAppStyles } from '../../styles/appStyles'; // ajusta el path 
 
 
 export default function LoginScreen() {
@@ -53,21 +53,21 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validate()) return;
-  
+
     setLoading(true);
-  
+
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
-  
+
     setLoading(false);
-  
+
     if (error) {
       setPasswordError('Correo o contraseña incorrectos.');
       return;
     }
-  
+
     router.replace('/screens/dashboard');
   };
 
@@ -86,7 +86,7 @@ export default function LoginScreen() {
           {/* Back button */}
           <TouchableOpacity
             style={appStyles.back}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/screens/home')}
             activeOpacity={0.7}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
