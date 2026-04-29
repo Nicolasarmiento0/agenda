@@ -1,5 +1,5 @@
-import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -60,7 +60,7 @@ export default function ProfileScreen() {
   const uploadAvatar = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
@@ -71,24 +71,25 @@ export default function ProfileScreen() {
       setUploadingAvatar(true);
       const image = result.assets[0];
 
-      const response = await fetch(image.uri);
-      const blob = await response.blob();
-
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
+      // ✅ Usamos ArrayBuffer en vez de blob (compatible con React Native)
+      const response = await fetch(image.uri);
+      const arrayBuffer = await response.arrayBuffer();
+
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, blob, {
+        .upload(fileName, arrayBuffer, {
           contentType: `image/${fileExt}`,
           upsert: true,
         });
 
       if (storageError) throw storageError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
 
       const { error: updateError } = await supabase
         .from('profiles')
