@@ -65,9 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Solo actualiza el perfil en el estado, sin redirigir.
+  // Usar esto cuando el usuario ya está autenticado y solo queremos refrescar datos (ej: tras cambiar avatar).
   const refreshProfile = async () => {
     const { data } = await supabase.auth.getUser();
-    if (data?.user?.id) await fetchProfile(data.user.id);
+    if (!data?.user?.id) return;
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (profileData) {
+      setProfile(profileData);
+    }
   };
 
   const updateProfileState = (updates: Partial<Profile>) => {

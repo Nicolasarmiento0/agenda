@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { appStyles } from '../../styles/appStyles';
 
 export default function ProfileScreen() {
-  const { profile, user, signOut, updateProfileState } = useAuth();
+  const { profile, user, signOut, refreshProfile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,6 +32,13 @@ export default function ProfileScreen() {
       setNickname(profile.nickname);
     }
   }, [profile]);
+
+  // Refresca el perfil desde Supabase cada vez que el usuario entra a esta pantalla
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   // ─── Actualizar nickname ───────────────────────────────────────────────────
   const handleUpdateProfile = async () => {
@@ -48,7 +55,7 @@ export default function ProfileScreen() {
         .single();
 
       if (error) throw error;
-      if (data) updateProfileState({ nickname: data.nickname });
+      if (data) await refreshProfile();
 
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
       setIsEditing(false);
@@ -73,9 +80,9 @@ export default function ProfileScreen() {
       const image = result.assets[0];
 
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      // Siempre sobreescribimos el mismo archivo por usuario para no acumular archivos huérfanos
+      const fileName = `${user?.id}/avatar.${fileExt}`;
 
-      // ✅ Usamos ArrayBuffer en vez de blob (compatible con React Native)
       const response = await fetch(image.uri);
       const arrayBuffer = await response.arrayBuffer();
 
@@ -92,14 +99,20 @@ export default function ProfileScreen() {
         .from('avatars')
         .getPublicUrl(fileName);
 
+      // Añadimos un timestamp como query param para romper el caché en todos los dispositivos
+      // Esto fuerza a React Native (y navegadores) a descargar la imagen nueva en lugar de usar la cacheada
+      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: cacheBustedUrl })
         .eq('id', user?.id);
 
       if (updateError) throw updateError;
 
-      updateProfileState({ avatar_url: publicUrl });
+      // Refrescamos el perfil completo desde Supabase para que todos los estados
+      // queden sincronizados con lo que realmente está guardado en la base de datos
+      await refreshProfile();
       Alert.alert('Éxito', 'Foto de perfil actualizada correctamente.');
     } catch (error: any) {
       console.error('Error al subir avatar:', error);
@@ -146,7 +159,7 @@ export default function ProfileScreen() {
 
               if (updateError) throw updateError;
 
-              updateProfileState({ avatar_url: null });
+              await refreshProfile();
               Alert.alert('Listo', 'Foto de perfil eliminada.');
             } catch (error: any) {
               console.error('Error al borrar avatar:', error);
