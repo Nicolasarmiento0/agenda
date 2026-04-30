@@ -90,7 +90,7 @@ export default function LoginScreen() {
             activeOpacity={0.7}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
-              ← VOLVER
+              ← HOME
             </Text>
           </TouchableOpacity>
 
