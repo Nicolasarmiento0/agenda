@@ -306,7 +306,7 @@ export default function ProfileScreen() {
           <View style={localStyles.logoutButton}>
             <TouchableOpacity onPress={async () => {
               await signOut();
-              router.replace('/screens/loginscreen');
+              router.replace('/screens/home');
             }}>
               <Text style={localStyles.logoutText}>CERRAR SESIÓN</Text>
             </TouchableOpacity>
