@@ -56,7 +56,7 @@ export default function LoginScreen() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -68,9 +68,21 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace('/screens/dashboard');
-  };
+    // ✅ Navegar con el perfil real desde el login
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
 
+    if (!profileData?.role) {
+      router.replace('/screens/role-select');
+    } else if (profileData.role === 'company') {
+      router.replace('/screens/dashboard-company');
+    } else {
+      router.replace('/screens/dashboard');
+    }
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}

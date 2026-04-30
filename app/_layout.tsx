@@ -41,6 +41,8 @@ export default function RootLayout() {
           <Stack.Screen name="screens/forgotPassword" />
           <Stack.Screen name="screens/emailConfirmation" />
           <Stack.Screen name="screens/resetPassword" />
+          <Stack.Screen name="screens/role-select" />
+          <Stack.Screen name="screens/dashboard-company" />
           <Stack.Screen name="screens/dashboard" />
           <Stack.Screen name="screens/profile" />
         </Stack>

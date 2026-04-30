@@ -7,7 +7,7 @@ type Profile = {
   id: string;
   nickname: string | null;
   avatar_url: string | null;
-  role: 'client' | 'admin';
+  role: 'client' | 'company' | 'admin' | null;
 };
 
 type AuthContextType = {
@@ -15,8 +15,9 @@ type AuthContextType = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  profileLoaded: boolean;
   refreshProfile: () => Promise<void>;
-  updateProfileState: (updates: Partial<Profile>) => void; // <-- Nueva función
+  updateProfileState: (updates: Partial<Profile>) => void;
   signOut: () => Promise<void>;
 };
 
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  profileLoaded: false,
   refreshProfile: async () => { },
   updateProfileState: () => { },
   signOut: async () => { },
@@ -34,14 +36,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  const navigateByRole = (role: string | null) => {
+    if (!role) {
+      router.replace('/screens/role-select');
+    } else if (role === 'company') {
+      router.replace('/screens/dashboard-company');
+    } else {
+      router.replace('/screens/dashboard');
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (data) setProfile(data);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (data) {
+        setProfile(data);
+        navigateByRole(data.role);
+      }
+    } finally {
+      setProfileLoaded(true);
+    }
   };
 
   const refreshProfile = async () => {
@@ -49,27 +70,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data?.user?.id) await fetchProfile(data.user.id);
   };
 
-  // Función para inyectar cambios instantáneos al contexto global
   const updateProfileState = (updates: Partial<Profile>) => {
     setProfile((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setProfile(null);
+    setProfileLoaded(false);
     router.replace('/screens/loginscreen');
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfileLoaded(true);
+        router.replace('/screens/home');
+      }
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (!session) {
+        setProfile(null);
+        setProfileLoaded(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -81,9 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       profile,
       loading,
+      profileLoaded,
       refreshProfile,
-      updateProfileState, // <-- La exportamos para usarla en el ProfileScreen
-      signOut
+      updateProfileState,
+      signOut,
     }}>
       {children}
     </AuthContext.Provider>

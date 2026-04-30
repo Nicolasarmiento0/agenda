@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { useAppStyles } from '../../styles/appStyles'; // ajusta el path
-import { useTheme } from '../../context/ThemeContext';
 
 export default function SignupScreen() {
   const { colors } = useTheme();
@@ -75,9 +75,9 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!validate()) return;
-  
+
     setLoading(true);
-  
+
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -87,17 +87,17 @@ export default function SignupScreen() {
         },
       },
     });
-  
+
     setLoading(false);
-  
+
     if (error) {
       setEmailError(error.message);
       return;
     }
-  
+
     // Si tienes confirmación de email activa en Supabase,
     // avisa al usuario que revise su correo
-    router.push('/screens/emailConfirmation' as any);
+    router.push('/screens/role-select' as any);
   };
 
   return (

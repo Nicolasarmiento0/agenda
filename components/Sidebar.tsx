@@ -27,14 +27,14 @@ type Props = {
 
 export default function Sidebar({ visible, onClose }: Props) {
   const { profile } = useAuth();
-  const { isDarkMode, toggleTheme, colors } = useTheme(); 
-  
+  const { isDarkMode, toggleTheme, colors } = useTheme();
+
   // 1. Estado para mantener el Modal renderizado durante la animación
   const [showModal, setShowModal] = useState(visible);
-  
+
   // 2. Animación de posición (izquierda a derecha) y opacidad (fondo oscuro)
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current; 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -89,7 +89,7 @@ export default function Sidebar({ visible, onClose }: Props) {
       </TouchableWithoutFeedback>
 
       <Animated.View style={[styles.drawerContainer, { transform: [{ translateX: slideAnim }] }]}>
-        
+
         <BlurView
           intensity={40}
           tint={isDarkMode ? 'dark' : 'light'}
@@ -109,7 +109,11 @@ export default function Sidebar({ visible, onClose }: Props) {
             <Text style={[styles.nickname, { color: colors.textPrimary }]}>{profile?.nickname ?? 'Usuario'}</Text>
             <View style={[styles.roleBadge, { borderColor: colors.border }]}>
               <Text style={[styles.roleText, { color: colors.textSecondary }]}>
-                {profile?.role === 'admin' ? 'ADMINISTRADOR' : 'CLIENTE'}
+                {profile?.role === 'admin'
+                  ? 'ADMINISTRADOR'
+                  : profile?.role === 'company'
+                    ? 'EMPRESA'
+                    : 'CLIENTE'}
               </Text>
             </View>
           </View>
@@ -117,7 +121,12 @@ export default function Sidebar({ visible, onClose }: Props) {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Navegación con iconos Feather */}
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => {
+            const homeRoute = profile?.role === 'company'
+              ? '/screens/dashboard-company'
+              : '/screens/dashboard';
+            handleNavigate(homeRoute);
+          }}>
             <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
             <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
           </TouchableOpacity>

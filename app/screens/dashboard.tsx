@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -6,7 +7,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext'; // agrega import
@@ -33,15 +33,15 @@ export default function DashboardScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-    <View style={localStyles.header}>
-      <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-        <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
-      </TouchableOpacity>
-      <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>DASHBOARD</Text>
-      <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-        <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
-    </View>
+      <View style={localStyles.header}>
+        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
+          <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
+        </TouchableOpacity>
+        <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>DASHBOARD</Text>
+        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
+          <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
 
       {/* Contenido principal */}
       <View style={localStyles.content}>
@@ -53,27 +53,28 @@ export default function DashboardScreen() {
           </View>
 
           {/* Textos principales */}
-<Text style={[appStyles.title, { paddingVertical: 10, color: colors.textPrimary }]}>
-  YA ESTÁS{'\n'}DENTRO!
-</Text>
+          <Text style={[appStyles.title, { paddingVertical: 10, color: colors.textPrimary }]}>
+            YA ESTÁS{'\n'}DENTRO!
+          </Text>
 
-<Text style={[appStyles.subtitle, { color: colors.textSecondary }]}>
-  Bienvenido, {profile?.nickname ?? 'Usuario'}.
-</Text>
+          <Text style={[appStyles.subtitle, { color: colors.textSecondary }]}>
+            Bienvenido, {profile?.nickname ?? 'Usuario'}.
+          </Text>
 
-<View style={[localStyles.divider, { backgroundColor: colors.border }]} />
+          <View style={[localStyles.divider, { backgroundColor: colors.border }]} />
 
-<View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-  <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ROL</Text>
-  <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>
-    {profile?.role === 'admin' ? 'Administrador' : 'Cliente'}
-  </Text>
-</View>
+          <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ROL</Text>
+            <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>
+              {profile?.role === 'admin' ? 'Administrador' :
+                profile?.role === 'company' ? 'Empresa' : 'Cliente'}
+            </Text>
+          </View>
 
-<View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-  <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ESTADO</Text>
-  <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>Autenticado</Text>
-</View>
+          <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ESTADO</Text>
+            <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>Autenticado</Text>
+          </View>
 
 
         </Animated.View>
