@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  // Ref para evitar doble llamada a fetchProfile entre getSession y onAuthStateChange
+  const fetchedRef = React.useRef(false);
 
   const navigateByRole = useCallback((role: string | null, businessData?: Business | null) => {
     if (!role) {
@@ -143,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
+        fetchedRef.current = true;
         fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
@@ -153,15 +156,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (!session) {
+
+      if (_event === 'SIGNED_OUT') {
+        // Solo reseteamos el estado cuando el usuario cierra sesión explícitamente
         setProfile(null);
         setBusiness(null);
         setProfileLoaded(false);
+        fetchedRef.current = false;
+      } else if (session && !fetchedRef.current) {
+        // Sesión activa pero fetchProfile aún no corrió (ej: INITIAL_SESSION tardío)
+        fetchedRef.current = true;
+        fetchProfile(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile]);
 
   const contextValue = useMemo(() => ({
     session,

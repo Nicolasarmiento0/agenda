@@ -3,7 +3,6 @@ import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -26,7 +25,7 @@ type Props = {
 };
 
 export default function Sidebar({ visible, onClose }: Props) {
-  const { profile, profileLoaded, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
 
   // 1. Estado para mantener el Modal renderizado durante la animación
@@ -120,16 +119,10 @@ export default function Sidebar({ visible, onClose }: Props) {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Navegación Dinámica según Rol */}
-          {!profileLoaded ? (
-            // Mientras el perfil carga, mostrar skeleton para evitar el bug del menú vacío
-            <View style={styles.loadingMenu}>
-              <ActivityIndicator size="small" color={appColors.primary} />
-            </View>
-          ) : (
-            <>
-              {/* ---- MENU CLIENTE ---- */}
-              {profile?.role === 'client' && (
-                <>
+          <>
+            {/* ---- MENU CLIENTE ---- */}
+            {profile?.role === 'client' && (
+              <>
                   <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard')}>
                     <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                     <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
@@ -190,8 +183,8 @@ export default function Sidebar({ visible, onClose }: Props) {
                 <Feather name="user" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                 <Text style={[styles.menuText, { color: colors.textPrimary }]}>PERFIL</Text>
               </TouchableOpacity>
-            </>
-          )}
+          </>
+
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -272,10 +265,7 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 16,
   },
-  loadingMenu: {
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
