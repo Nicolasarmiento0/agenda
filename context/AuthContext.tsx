@@ -10,10 +10,17 @@ type Profile = {
   role: 'client' | 'company' | 'admin' | null;
 };
 
+export type Business = {
+  id: string;
+  name: string;
+  status: 'pending' | 'approved' | 'rejected' | 'suspended';
+};
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  business: Business | null;
   loading: boolean;
   profileLoaded: boolean;
   refreshProfile: () => Promise<void>;
@@ -25,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
+  business: null,
   loading: true,
   profileLoaded: false,
   refreshProfile: async () => { },
@@ -35,16 +43,25 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const navigateByRole = (role: string | null) => {
+  const navigateByRole = (role: string | null, businessData?: Business | null) => {
     if (!role) {
-      router.replace('/screens/role-select');
+      router.replace('/screens/role-select' as any);
+    } else if (role === 'admin') {
+      router.replace('/screens/admin-dashboard' as any);
     } else if (role === 'company') {
-      router.replace('/screens/dashboard-company');
+      if (!businessData) {
+        router.replace('/screens/business-setup' as any);
+      } else if (businessData.status === 'pending' || businessData.status === 'rejected') {
+        router.replace('/screens/business-pending' as any);
+      } else {
+        router.replace('/screens/dashboard-company' as any);
+      }
     } else {
-      router.replace('/screens/dashboard');
+      router.replace('/screens/dashboard' as any);
     }
   };
 
@@ -58,7 +75,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         setProfile(data);
-        navigateByRole(data.role);
+        
+        let businessData = null;
+        if (data.role === 'company') {
+          const { data: bData } = await supabase
+            .from('businesses')
+            .select('*')
+            .eq('owner_id', userId)
+            .single();
+          
+          if (bData) {
+            businessData = bData;
+            setBusiness(businessData);
+          } else {
+            setBusiness(null);
+          }
+        }
+
+        navigateByRole(data.role, businessData);
       }
     } finally {
       setProfileLoaded(true);
@@ -77,6 +111,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .single();
     if (profileData) {
       setProfile(profileData);
+      
+      if (profileData.role === 'company') {
+        const { data: bData } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', data.user.id)
+          .single();
+        if (bData) {
+          setBusiness(bData);
+        } else {
+          setBusiness(null);
+        }
+      }
     }
   };
 
@@ -87,8 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setBusiness(null);
     setProfileLoaded(false);
-    router.replace('/screens/loginscreen');
+    router.replace('/screens/loginscreen' as any);
   };
 
   useEffect(() => {
@@ -98,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
-        router.replace('/screens/home');
+        router.replace('/screens/home' as any);
       }
       setLoading(false);
     });
@@ -107,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       if (!session) {
         setProfile(null);
+        setBusiness(null);
         setProfileLoaded(false);
       }
     });
@@ -119,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user: session?.user ?? null,
       profile,
+      business,
       loading,
       profileLoaded,
       refreshProfile,

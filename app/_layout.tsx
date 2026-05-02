@@ -45,6 +45,19 @@ export default function RootLayout() {
           <Stack.Screen name="screens/dashboard-company" />
           <Stack.Screen name="screens/dashboard" />
           <Stack.Screen name="screens/profile" />
+          <Stack.Screen name="screens/admin-dashboard" />
+          <Stack.Screen name="screens/admin-businesses" />
+          <Stack.Screen name="screens/admin-business-detail" />
+          <Stack.Screen name="screens/business-setup" />
+          <Stack.Screen name="screens/business-pending" />
+          {/* Cliente */}
+          <Stack.Screen name="screens/explore" />
+          <Stack.Screen name="screens/my-appointments" />
+          {/* Empresa */}
+          <Stack.Screen name="screens/company-agenda" />
+          <Stack.Screen name="screens/company-services" />
+          <Stack.Screen name="screens/company-employees" />
+          <Stack.Screen name="screens/company-business" />
         </Stack>
         <StatusBar style="auto" />
       </AuthProvider>

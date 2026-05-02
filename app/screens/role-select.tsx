@@ -36,9 +36,9 @@ export default function RoleSelectScreen() {
 
             // ✅ Redirigir según el rol elegido
             if (selected === 'company') {
-                router.replace('/screens/dashboard-company');
+                router.replace('/screens/business-setup' as any);
             } else {
-                router.replace('/screens/dashboard');
+                router.replace('/screens/dashboard' as any);
             }
         } catch (error: any) {
             Alert.alert('Error', error.message);

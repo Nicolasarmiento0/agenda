@@ -169,13 +169,13 @@ Misma estructura, misma calidad. Solo falta el contenido real.
 |---|---|
 | `auth.users` | ✅ Existe (manejo por Supabase Auth) |
 | `profiles` | ✅ Existe con campos: id, nickname, avatar_url, role |
-| `service_categories` | ❌ No existe |
-| `catalog_services` | ❌ No existe |
-| `businesses` | ❌ No existe |
-| `business_services` | ❌ No existe |
-| `employees` | ❌ No existe |
-| `employee_availability` | ❌ No existe |
-| `appointments` | ❌ No existe |
+| `service_categories` | ✅ Existe + RLS + Datos Semilla |
+| `catalog_services` | ✅ Existe + RLS + Datos Semilla |
+| `businesses` | ✅ Existe + RLS |
+| `business_services` | ✅ Existe + RLS |
+| `employees` | ✅ Existe + RLS |
+| `employee_availability` | ✅ Existe + RLS |
+| `appointments` | ✅ Existe + RLS + Realtime activado |
 
 ---
 
@@ -203,17 +203,17 @@ Confirmadas en uso activo en el código:
 ## Orden exacto de próximos cambios (Fase 0 y Fase 1)
 
 ### Fase 0 — Todo en Supabase (sin tocar código)
-1. Crear tabla `service_categories` + RLS
-2. Crear tabla `catalog_services` + RLS
-3. Crear tabla `businesses` + RLS
-4. Crear tabla `business_services` + RLS
-5. Crear tabla `employees` + RLS
-6. Crear tabla `employee_availability` + RLS
-7. Crear tabla `appointments` + RLS
+✅ 1. Crear tabla `service_categories` + RLS
+✅ 2. Crear tabla `catalog_services` + RLS
+✅ 3. Crear tabla `businesses` + RLS
+✅ 4. Crear tabla `business_services` + RLS
+✅ 5. Crear tabla `employees` + RLS
+✅ 6. Crear tabla `employee_availability` + RLS
+✅ 7. Crear tabla `appointments` + RLS
 8. Crear bucket `business-logos`
 9. Crear bucket `employee-photos`
-10. Activar Realtime en `appointments`
-11. Insertar datos semilla: categorías + servicios base
+✅ 10. Activar Realtime en `appointments`
+✅ 11. Insertar datos semilla: categorías + servicios base
 
 ### Fase 1 — Primeros cambios en código
 1. Renombrar `.Md/` → `docs/`
