@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -15,7 +16,6 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { supabase } from '../lib/supabase';
 import { appColors } from '../styles/appStyles';
 
 const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.65;
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function Sidebar({ visible, onClose }: Props) {
-  const { profile } = useAuth();
+  const { profile, profileLoaded, signOut } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
 
   // 1. Estado para mantener el Modal renderizado durante la animación
@@ -72,8 +72,7 @@ export default function Sidebar({ visible, onClose }: Props) {
 
   const handleLogout = async () => {
     onClose();
-    await supabase.auth.signOut();
-    router.replace('/screens/loginscreen');
+    await signOut();
   };
 
   const handleNavigate = (route: string) => {
@@ -121,70 +120,78 @@ export default function Sidebar({ visible, onClose }: Props) {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Navegación Dinámica según Rol */}
-          
-          {/* ---- MENU CLIENTE ---- */}
-          {profile?.role === 'client' && (
+          {!profileLoaded ? (
+            // Mientras el perfil carga, mostrar skeleton para evitar el bug del menú vacío
+            <View style={styles.loadingMenu}>
+              <ActivityIndicator size="small" color={appColors.primary} />
+            </View>
+          ) : (
             <>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard')}>
-                <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/explore')}>
-                <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/my-appointments')}>
-                <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIS CITAS</Text>
+              {/* ---- MENU CLIENTE ---- */}
+              {profile?.role === 'client' && (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard')}>
+                    <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/explore')}>
+                    <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/my-appointments')}>
+                    <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIS CITAS</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* ---- MENU EMPRESA ---- */}
+              {profile?.role === 'company' && (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard-company')}>
+                    <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-agenda')}>
+                    <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-services')}>
+                    <Feather name="list" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>SERVICIOS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-employees')}>
+                    <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPLEADOS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-business')}>
+                    <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* ---- MENU ADMIN ---- */}
+              {profile?.role === 'admin' && (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-dashboard')}>
+                    <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-businesses')}>
+                    <Feather name="shield" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPRESAS</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* ---- ITEM COMÚN ---- */}
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/profile')}>
+                <Feather name="user" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                <Text style={[styles.menuText, { color: colors.textPrimary }]}>PERFIL</Text>
               </TouchableOpacity>
             </>
           )}
-
-          {/* ---- MENU EMPRESA ---- */}
-          {profile?.role === 'company' && (
-            <>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/dashboard-company')}>
-                <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-agenda')}>
-                <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-services')}>
-                <Feather name="list" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>SERVICIOS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-employees')}>
-                <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPLEADOS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-business')}>
-                <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ---- MENU ADMIN ---- */}
-          {profile?.role === 'admin' && (
-            <>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-dashboard')}>
-                <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-businesses')}>
-                <Feather name="shield" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPRESAS</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ---- ITEM COMÚN ---- */}
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/profile')}>
-            <Feather name="user" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-            <Text style={[styles.menuText, { color: colors.textPrimary }]}>PERFIL</Text>
-          </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -264,6 +271,10 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginVertical: 16,
+  },
+  loadingMenu: {
+    paddingVertical: 24,
+    alignItems: 'center',
   },
   menuItem: {
     flexDirection: 'row',

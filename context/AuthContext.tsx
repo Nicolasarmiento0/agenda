@@ -1,6 +1,6 @@
 import { Session, User } from '@supabase/supabase-js';
 import { router } from 'expo-router';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type Profile = {
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const navigateByRole = (role: string | null, businessData?: Business | null) => {
+  const navigateByRole = useCallback((role: string | null, businessData?: Business | null) => {
     if (!role) {
       router.replace('/screens/role-select' as any);
     } else if (role === 'admin') {
@@ -63,9 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       router.replace('/screens/dashboard' as any);
     }
-  };
+  }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data } = await supabase
         .from('profiles')
@@ -97,11 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setProfileLoaded(true);
     }
-  };
+  }, [navigateByRole]);
 
   // Solo actualiza el perfil en el estado, sin redirigir.
   // Usar esto cuando el usuario ya está autenticado y solo queremos refrescar datos (ej: tras cambiar avatar).
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     const { data } = await supabase.auth.getUser();
     if (!data?.user?.id) return;
     const { data: profileData } = await supabase
@@ -125,19 +125,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  };
+  }, []);
 
-  const updateProfileState = (updates: Partial<Profile>) => {
+  const updateProfileState = useCallback((updates: Partial<Profile>) => {
     setProfile((prev) => (prev ? { ...prev, ...updates } : null));
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
     setBusiness(null);
     setProfileLoaded(false);
     router.replace('/screens/loginscreen' as any);
-  };
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -163,18 +163,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const contextValue = useMemo(() => ({
+    session,
+    user: session?.user ?? null,
+    profile,
+    business,
+    loading,
+    profileLoaded,
+    refreshProfile,
+    updateProfileState,
+    signOut,
+  }), [session, profile, business, loading, profileLoaded, refreshProfile, updateProfileState, signOut]);
+
   return (
-    <AuthContext.Provider value={{
-      session,
-      user: session?.user ?? null,
-      profile,
-      business,
-      loading,
-      profileLoaded,
-      refreshProfile,
-      updateProfileState,
-      signOut,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
