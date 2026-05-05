@@ -47,8 +47,8 @@ type Worker = {
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const HOUR_HEIGHT = 72; // px por hora
-const START_HOUR = 8;
-const END_HOUR = 20;
+const START_HOUR = 5;
+const END_HOUR = 24;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
