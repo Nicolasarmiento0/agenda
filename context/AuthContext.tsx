@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (businessData.status === 'pending' || businessData.status === 'rejected') {
         router.replace('/screens/business-pending' as any);
       } else {
-        router.replace('/screens/dashboard-company' as any);
+        router.replace('/screens/company-agenda' as any);
       }
     } else {
       router.replace('/screens/dashboard' as any);
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         setProfile(data);
-        
+
         let businessData = null;
         if (data.role === 'company') {
           const { data: bData } = await supabase
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .eq('owner_id', userId)
             .single();
-          
+
           if (bData) {
             businessData = bData;
             setBusiness(businessData);
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .single();
     if (profileData) {
       setProfile(profileData);
-      
+
       if (profileData.role === 'company') {
         const { data: bData } = await supabase
           .from('businesses')
