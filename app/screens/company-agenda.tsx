@@ -7,6 +7,7 @@ import {
   Modal,
   PanResponder,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -444,6 +445,7 @@ export default function CompanyAgendaScreen() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
@@ -496,6 +498,12 @@ export default function CompanyAgendaScreen() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchWorkers(), fetchAppointments()]);
+    setRefreshing(false);
+  }, [fetchWorkers, fetchAppointments]);
 
   useEffect(() => {
     if (viewMode === 'week' && !selectedWorkerFilter && workers.length > 0) {
@@ -589,6 +597,7 @@ export default function CompanyAgendaScreen() {
       style={{ flex: 1 }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
@@ -660,7 +669,9 @@ export default function CompanyAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+    >
       {/* Cabecera de días */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
         {weekDays.map((d, i) => (

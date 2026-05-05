@@ -5,6 +5,7 @@ import {
   Modal,
   PanResponder,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -257,6 +258,7 @@ export default function CompanyEmployeesScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -304,6 +306,12 @@ export default function CompanyEmployeesScreen() {
 
   useEffect(() => {
     fetchEmployees();
+  }, [fetchEmployees]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchEmployees();
+    setRefreshing(false);
   }, [fetchEmployees]);
 
   const stats = useMemo(() => {
@@ -367,7 +375,11 @@ export default function CompanyEmployeesScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+      >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
           {/* Botón invitar */}

@@ -6,6 +6,7 @@ import {
   Animated,
   Image,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -53,6 +54,7 @@ export default function AdminBusinessDetailScreen() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -82,6 +84,12 @@ export default function AdminBusinessDetailScreen() {
     }
     setLoading(false);
   };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchBusiness();
+    setRefreshing(false);
+  }, []);
 
   const handleApprove = () => {
     showAlert({
@@ -170,7 +178,11 @@ export default function AdminBusinessDetailScreen() {
         </View>
       ) : (
         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+          >
 
             {/* Logo + nombre + estado */}
             <View style={styles.profileSection}>

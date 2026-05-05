@@ -2,6 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
+    RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,9 +15,16 @@ import { useTheme } from '../../context/ThemeContext';
 import { appColors, appStyles } from '../../styles/appStyles';
 
 export default function DashboardCompanyScreen() {
-    const { profile } = useAuth();
+    const { profile, refreshProfile } = useAuth();
     const { colors, isDarkMode, toggleTheme } = useTheme();
     const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = React.useCallback(async () => {
+        setRefreshing(true);
+        await refreshProfile();
+        setRefreshing(false);
+    }, [refreshProfile]);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
@@ -42,7 +51,11 @@ export default function DashboardCompanyScreen() {
                 </TouchableOpacity>
             </View>
 
-            <View style={localStyles.content}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+            >
                 <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
                     <View style={localStyles.badge}>
@@ -71,7 +84,7 @@ export default function DashboardCompanyScreen() {
                     </View>
 
                 </Animated.View>
-            </View>
+            </ScrollView>
 
             <Sidebar
                 visible={sidebarVisible}

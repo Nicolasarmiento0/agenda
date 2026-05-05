@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +23,7 @@ export default function MyAppointmentsScreen() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -56,6 +58,12 @@ export default function MyAppointmentsScreen() {
     setLoading(false);
   };
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchAppointments();
+    setRefreshing(false);
+  }, []);
+
   const handleCancel = async (apptId: string) => {
     const { error } = await supabase.from('appointments').delete().eq('id', apptId);
     if (!error) {
@@ -88,7 +96,11 @@ export default function MyAppointmentsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+      >
         <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }]}>
 
           {/* Tabs */}
