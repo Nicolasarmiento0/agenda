@@ -14,7 +14,9 @@ import {
   View
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ type Appointment = {
   id: string;
   clientName: string;
   service: string;
+  worker_id: string;
   worker: string;
   workerColor: string;
   startHour: number; // ej: 9.5 = 9:30
@@ -56,18 +59,7 @@ const STATUS_CONFIG = {
 
 // ─── Datos mock ───────────────────────────────────────────────────────────────
 
-const MOCK_WORKERS: Worker[] = [
-  { id: 'w1', name: 'Juan', color: '#D00024', initials: 'JU' },
-  { id: 'w2', name: 'Sofía', color: '#3B7BE0', initials: 'SO' },
-];
-
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  { id: 'a1', clientName: 'Carlos M.', service: 'Corte + barba', worker: 'Juan', workerColor: '#D00024', startHour: 9, durationHours: 1, status: 'confirmed' },
-  { id: 'a2', clientName: 'Ana P.', service: 'Coloración', worker: 'Sofía', workerColor: '#3B7BE0', startHour: 10, durationHours: 1.5, status: 'confirmed' },
-  { id: 'a3', clientName: 'Miguel R.', service: 'Corte', worker: 'Juan', workerColor: '#D00024', startHour: 12, durationHours: 0.5, status: 'pending' },
-  { id: 'a4', clientName: 'Laura S.', service: 'Tratamiento', worker: 'Sofía', workerColor: '#3B7BE0', startHour: 13, durationHours: 1, status: 'pending' },
-  { id: 'a5', clientName: 'Diego F.', service: 'Corte', worker: 'Juan', workerColor: '#D00024', startHour: 15, durationHours: 0.5, status: 'completed' },
-];
+// Mocks eliminados, los datos vendrán de Supabase.
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -292,7 +284,7 @@ function AppointmentFormModal({
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
-  const [worker, setWorker] = useState('');
+  const [workerId, setWorkerId] = useState('');
   const [startHour, setStartHour] = useState(9);
   const [durationHours, setDurationHours] = useState(0.5);
 
@@ -301,13 +293,13 @@ function AppointmentFormModal({
       if (initialData) {
         setClientName(initialData.clientName);
         setService(initialData.service);
-        setWorker(initialData.worker);
+        setWorkerId(initialData.worker_id);
         setStartHour(initialData.startHour);
         setDurationHours(initialData.durationHours);
       } else {
         setClientName('');
         setService('');
-        setWorker(MOCK_WORKERS[0].name);
+        setWorkerId('');
         setStartHour(9);
         setDurationHours(0.5);
       }
@@ -318,7 +310,7 @@ function AppointmentFormModal({
     onSave({
       clientName,
       service,
-      worker,
+      worker_id: workerId,
       startHour,
       durationHours,
     });
@@ -353,13 +345,13 @@ function AppointmentFormModal({
 
           <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
           <View style={styles.modalRow}>
-            {MOCK_WORKERS.map(w => (
+            {colors.workersList?.map((w: any) => (
               <TouchableOpacity
                 key={w.id}
-                onPress={() => setWorker(w.name)}
-                style={[styles.modalChip, worker === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+                onPress={() => setWorkerId(w.id)}
+                style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
               >
-                <Text style={[styles.modalChipText, worker === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+                <Text style={[styles.modalChipText, workerId === w.id ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -404,6 +396,7 @@ function AppointmentFormModal({
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function CompanyAgendaScreen() {
+  const { business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
@@ -413,8 +406,57 @@ export default function CompanyAgendaScreen() {
   const [formVisible, setFormVisible] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
 
-  const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
+
+  const fetchWorkers = useCallback(async () => {
+    if (!business?.id) return;
+    const { data, error } = await supabase.from('workers').select('*').eq('business_id', business.id);
+    if (!error && data) {
+      setWorkers(data.map(w => ({
+        id: w.id,
+        name: w.name,
+        color: w.color || '#D00024',
+        initials: w.name.substring(0, 2).toUpperCase(),
+      })));
+    }
+  }, [business?.id]);
+
+  const fetchAppointments = useCallback(async () => {
+    if (!business?.id) return;
+    
+    // Convert local Date to YYYY-MM-DD
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*, workers(name, color)')
+      .eq('business_id', business.id)
+      .eq('date', dateStr);
+
+    if (!error && data) {
+      setAppointments(data.map(a => ({
+        id: a.id,
+        clientName: a.client_name,
+        service: a.service,
+        worker_id: a.worker_id,
+        worker: a.workers?.name || 'Desconocido',
+        workerColor: a.workers?.color || '#000',
+        startHour: Number(a.start_hour),
+        durationHours: Number(a.duration_hours),
+        status: a.status as any,
+      })));
+    }
+  }, [business?.id, selectedDate]);
+
+  useEffect(() => {
+    fetchWorkers();
+  }, [fetchWorkers]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const nowPosition = useMemo(() => nowLinePosition(), []);
@@ -441,38 +483,46 @@ export default function CompanyAgendaScreen() {
     setSheetVisible(true);
   }, []);
 
-  const handleSheetAction = useCallback((actionId: string, appt: Appointment) => {
+  const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
     if (actionId === 'confirm') {
-      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'confirmed' } : a));
+      const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
     } else if (actionId === 'no-show') {
-      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'no-show' } : a));
+      const { error } = await supabase.from('appointments').update({ status: 'no-show' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
     } else if (actionId === 'cancel') {
-      setAppointments(prev => prev.filter(a => a.id !== appt.id));
+      const { error } = await supabase.from('appointments').delete().eq('id', appt.id);
+      if (!error) fetchAppointments();
     } else if (actionId === 'edit') {
       setEditingAppt(appt);
       setSheetVisible(false);
       setFormVisible(true);
     }
-  }, []);
+  }, [fetchAppointments]);
 
-  const handleSaveAppt = useCallback((data: Partial<Appointment>) => {
+  const handleSaveAppt = useCallback(async (data: Partial<Appointment>) => {
+    if (!business?.id) return;
+    const dateStr = selectedDate.toISOString().split('T')[0];
+
+    const apptData = {
+      business_id: business.id,
+      worker_id: data.worker_id,
+      client_name: data.clientName || 'Sin nombre',
+      service: data.service || 'Servicio',
+      date: dateStr,
+      start_hour: data.startHour || 9,
+      duration_hours: data.durationHours || 0.5,
+      status: 'pending',
+    };
+
     if (editingAppt) {
-      setAppointments(prev => prev.map(a => a.id === editingAppt.id ? { ...a, ...data } as Appointment : a));
+      const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
+      if (!error) fetchAppointments();
     } else {
-      const workerInfo = MOCK_WORKERS.find(w => w.name === data.worker) || MOCK_WORKERS[0];
-      const newAppt: Appointment = {
-        id: 'new-' + Date.now(),
-        clientName: data.clientName || 'Sin nombre',
-        service: data.service || 'Servicio',
-        worker: data.worker || workerInfo.name,
-        workerColor: workerInfo.color,
-        startHour: data.startHour || 9,
-        durationHours: data.durationHours || 0.5,
-        status: 'pending',
-      };
-      setAppointments(prev => [...prev, newAppt]);
+      const { error } = await supabase.from('appointments').insert([apptData]);
+      if (!error) fetchAppointments();
     }
-  }, [editingAppt]);
+  }, [editingAppt, business?.id, selectedDate, fetchAppointments]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -484,8 +534,8 @@ export default function CompanyAgendaScreen() {
 
   const LABEL_WIDTH = 46;
   const PADDING = 16;
-  const WORKERS = selectedWorkerFilter ? MOCK_WORKERS.filter(w => w.name === selectedWorkerFilter) : MOCK_WORKERS;
-  const colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / WORKERS.length);
+  const WORKERS = selectedWorkerFilter ? workers.filter(w => w.name === selectedWorkerFilter) : workers;
+  const colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / Math.max(WORKERS.length, 1));
 
   const renderDayGrid = () => (
     <ScrollView
@@ -691,7 +741,7 @@ export default function CompanyAgendaScreen() {
         >
           <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
         </TouchableOpacity>
-        {MOCK_WORKERS.map(w => (
+        {workers.map(w => (
           <TouchableOpacity
             key={w.id}
             style={[styles.filterChip, selectedWorkerFilter === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
@@ -738,7 +788,7 @@ export default function CompanyAgendaScreen() {
         initialData={editingAppt}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
-        colors={colors}
+        colors={{ ...colors, workersList: workers }}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}

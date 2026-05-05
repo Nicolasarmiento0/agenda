@@ -14,7 +14,9 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 
 // ─── Tipos y Datos ────────────────────────────────────────────────────────────
@@ -30,10 +32,8 @@ type Employee = {
   availableDays: number[];
 };
 
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 'w1', name: 'Juan', specialty: 'Barbero', color: '#D00024', initials: 'JU', active: true, appointmentsToday: 3, availableDays: [1, 2, 3, 4, 5, 6] },
-  { id: 'w2', name: 'Sofía', specialty: 'Colorista', color: '#3B7BE0', initials: 'SO', active: true, appointmentsToday: 2, availableDays: [1, 2, 3, 4, 5] },
-];
+// Se cargan desde Supabase
+const INITIAL_EMPLOYEES: Employee[] = [];
 
 const WEEK_DAYS = [
   { label: 'Lun', val: 1 },
@@ -254,6 +254,7 @@ function EmployeeFormModal({
 // ─── Pantalla Principal ───────────────────────────────────────────────────────
 
 export default function CompanyEmployeesScreen() {
+  const { business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
@@ -276,6 +277,36 @@ export default function CompanyEmployeesScreen() {
     ]).start();
   }, []);
 
+  const fetchEmployees = useCallback(async () => {
+    if (!business?.id) return;
+    const { data, error } = await supabase
+      .from('workers')
+      .select('*')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching workers:', error);
+      return;
+    }
+
+    const formatted: Employee[] = data.map(w => ({
+      id: w.id,
+      name: w.name,
+      specialty: w.specialty || '',
+      color: w.color || PALETTE[0],
+      initials: w.name.substring(0, 2).toUpperCase(),
+      active: w.active,
+      appointmentsToday: 0, // TODO: calculate from appointments
+      availableDays: w.available_days || [],
+    }));
+    setEmployees(formatted);
+  }, [business?.id]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
   const stats = useMemo(() => {
     const total = employees.length;
     const activos = employees.filter(e => e.active).length;
@@ -290,34 +321,39 @@ export default function CompanyEmployeesScreen() {
     setSheetVisible(true);
   }, []);
 
-  const handleSheetAction = useCallback((actionId: string, emp: Employee) => {
+  const handleSheetAction = useCallback(async (actionId: string, emp: Employee) => {
     if (actionId === 'toggleActive') {
-      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, active: !e.active } : e));
+      const { error } = await supabase.from('workers').update({ active: !emp.active }).eq('id', emp.id);
+      if (!error) fetchEmployees();
     } else if (actionId === 'delete') {
-      setEmployees(prev => prev.filter(e => e.id !== emp.id));
+      const { error } = await supabase.from('workers').delete().eq('id', emp.id);
+      if (!error) fetchEmployees();
     } else if (actionId === 'edit') {
       setEditingEmp(emp);
       setFormVisible(true);
     }
-  }, []);
+  }, [fetchEmployees]);
 
-  const handleSaveEmp = useCallback((data: Partial<Employee>) => {
+  const handleSaveEmp = useCallback(async (data: Partial<Employee>) => {
+    if (!business?.id) return;
+    
+    const workerData = {
+      name: data.name || 'Sin nombre',
+      specialty: data.specialty || '',
+      color: data.color || PALETTE[0],
+      available_days: data.availableDays || [],
+    };
+
     if (editingEmp) {
-      setEmployees(prev => prev.map(e => e.id === editingEmp.id ? { ...e, ...data } as Employee : e));
+      const { error } = await supabase.from('workers').update(workerData).eq('id', editingEmp.id);
+      if (!error) fetchEmployees();
     } else {
-      const newEmp: Employee = {
-        id: 'new-' + Date.now(),
-        name: data.name || 'Sin nombre',
-        specialty: data.specialty || 'Servicio',
-        color: data.color || PALETTE[0],
-        initials: (data.name || 'S').substring(0, 2).toUpperCase(),
-        active: true,
-        appointmentsToday: 0,
-        availableDays: data.availableDays || [],
-      };
-      setEmployees(prev => [...prev, newEmp]);
+      const { error } = await supabase.from('workers').insert([
+        { ...workerData, business_id: business.id }
+      ]);
+      if (!error) fetchEmployees();
     }
-  }, [editingEmp]);
+  }, [editingEmp, business?.id, fetchEmployees]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>

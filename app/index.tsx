@@ -19,7 +19,7 @@ export default function Index() {
     if (loading) return;
 
     if (!session) {
-      router.replace('/screens/home' as any);
+      router.replace('/screens/loginscreen' as any);
       return;
     }
 
@@ -35,7 +35,7 @@ export default function Index() {
       } else if (business.status === 'pending' || business.status === 'rejected') {
         router.replace('/screens/business-pending' as any);
       } else {
-        router.replace('/screens/dashboard-company' as any);
+        router.replace('/screens/company-agenda' as any);
       }
     } else {
       router.replace('/screens/dashboard' as any);

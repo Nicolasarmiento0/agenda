@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
-        router.replace('/screens/home' as any);
+        router.replace('/screens/loginscreen' as any);
       }
       setLoading(false);
     });
