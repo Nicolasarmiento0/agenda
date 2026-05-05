@@ -287,8 +287,8 @@ function AppointmentFormModal({
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
   const [workerId, setWorkerId] = useState('');
-  const [startHour, setStartHour] = useState(9);
-  const [durationHours, setDurationHours] = useState(0.5);
+  const [startTimeText, setStartTimeText] = useState('09:00');
+  const [durationMinutes, setDurationMinutes] = useState(30);
 
   useEffect(() => {
     if (visible) {
@@ -296,25 +296,35 @@ function AppointmentFormModal({
         setClientName(initialData.clientName);
         setService(initialData.service);
         setWorkerId(initialData.worker_id);
-        setStartHour(initialData.startHour);
-        setDurationHours(initialData.durationHours);
+        const hh = Math.floor(initialData.startHour);
+        const mm = Math.round((initialData.startHour - hh) * 60);
+        setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+        setDurationMinutes(Math.round(initialData.durationHours * 60));
       } else {
         setClientName('');
         setService('');
         setWorkerId('');
-        setStartHour(9);
-        setDurationHours(0.5);
+        setStartTimeText('09:00');
+        setDurationMinutes(30);
       }
     }
   }, [visible, initialData]);
 
   const handleSave = () => {
+    const [hhStr, mmStr] = startTimeText.split(':');
+    const hh = parseInt(hhStr, 10);
+    const mm = parseInt(mmStr || '0', 10);
+    let startHour = 9;
+    if (!isNaN(hh)) {
+      startHour = hh + (isNaN(mm) ? 0 : mm / 60);
+    }
+
     onSave({
       clientName,
       service,
       worker_id: workerId,
       startHour,
-      durationHours,
+      durationHours: durationMinutes / 60,
     });
     onClose();
   };
@@ -361,24 +371,31 @@ function AppointmentFormModal({
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora</Text>
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora (HH:MM)</Text>
                 <TextInput
                   style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={String(startHour)}
-                  onChangeText={v => setStartHour(Number(v))}
-                  keyboardType="numeric"
-                  placeholder="Ej: 9.5"
+                  value={startTimeText}
+                  onChangeText={setStartTimeText}
+                  placeholder="Ej: 09:30"
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (hrs)</Text>
-                <TextInput
-                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={String(durationHours)}
-                  onChangeText={v => setDurationHours(Number(v))}
-                  keyboardType="numeric"
-                  placeholder="Ej: 1"
-                />
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (min)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, height: 40 }}>
+                  <TouchableOpacity 
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
+                    onPress={() => setDurationMinutes(Math.max(10, durationMinutes - 10))}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{durationMinutes}</Text>
+                  <TouchableOpacity 
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
+                    onPress={() => setDurationMinutes(durationMinutes + 10)}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -465,6 +482,12 @@ export default function CompanyAgendaScreen() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  useEffect(() => {
+    if (viewMode === 'week' && !selectedWorkerFilter && workers.length > 0) {
+      setSelectedWorkerFilter(workers[0].name);
+    }
+  }, [viewMode, selectedWorkerFilter, workers]);
 
   const nowPosition = useMemo(() => nowLinePosition(), []);
 
@@ -759,13 +782,15 @@ export default function CompanyAgendaScreen() {
 
       {/* ── Filtro por trabajador ──────────────────────────────────── */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
-        <TouchableOpacity
-          style={[styles.filterChip, !selectedWorkerFilter && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
-          onPress={() => setSelectedWorkerFilter(null)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
-        </TouchableOpacity>
+        {viewMode === 'day' && (
+          <TouchableOpacity
+            style={[styles.filterChip, !selectedWorkerFilter && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            onPress={() => setSelectedWorkerFilter(null)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
+          </TouchableOpacity>
+        )}
         {workers.map(w => (
           <TouchableOpacity
             key={w.id}

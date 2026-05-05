@@ -1,8 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Modal,
   PanResponder,
   Platform,
@@ -11,13 +10,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import { appColors, appStyles } from '../../styles/appStyles';
+import { appColors } from '../../styles/appStyles';
 
 // ─── Tipos y Datos ────────────────────────────────────────────────────────────
 
@@ -336,7 +335,7 @@ export default function CompanyEmployeesScreen() {
 
   const handleSaveEmp = useCallback(async (data: Partial<Employee>) => {
     if (!business?.id) return;
-    
+
     const workerData = {
       name: data.name || 'Sin nombre',
       specialty: data.specialty || '',
@@ -382,7 +381,7 @@ export default function CompanyEmployeesScreen() {
               }}
             >
               <Feather name="user-plus" size={18} color={appColors.primary} />
-              <Text style={[styles.addButtonText, { color: appColors.primary }]}>INVITAR EMPLEADO</Text>
+              <Text style={[styles.addButtonText, { color: appColors.primary }]}>AGREGAR EMPLEADO</Text>
             </TouchableOpacity>
           </View>
 
