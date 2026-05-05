@@ -13,7 +13,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -454,6 +455,7 @@ export default function ClientAgendaScreen() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
@@ -510,6 +512,12 @@ export default function ClientAgendaScreen() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchWorkers(), fetchAppointments()]);
+    setRefreshing(false);
+  }, [fetchWorkers, fetchAppointments]);
 
   useEffect(() => {
     if (viewMode === 'week' && !selectedWorkerFilter && workers.length > 0) {
@@ -612,6 +620,7 @@ export default function ClientAgendaScreen() {
       style={{ flex: 1 }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
@@ -683,7 +692,12 @@ export default function ClientAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+    <ScrollView 
+      style={{ flex: 1 }} 
+      showsVerticalScrollIndicator={false} 
+      contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+    >
       {/* Cabecera de días */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
         {weekDays.map((d, i) => (

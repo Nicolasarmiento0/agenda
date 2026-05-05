@@ -10,6 +10,7 @@ import {
   Linking,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,6 +37,7 @@ export default function CompanyBusinessScreen() {
   const [avatarUrl, setAvatarUrl] = useState(business?.avatar_url || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -136,10 +138,16 @@ export default function CompanyBusinessScreen() {
           : appColors.primary;
 
   const statusLabel =
-    business?.status === 'approved' ? 'APROBADO'
+    business?.status === 'approved' ? 'NEGOCIO APROBADO'
       : business?.status === 'pending' ? 'PENDIENTE'
         : business?.status === 'rejected' ? 'RECHAZADO'
           : 'SUSPENDIDO';
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refreshProfile();
+    setRefreshing(false);
+  }, [refreshProfile]);
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
@@ -154,7 +162,13 @@ export default function CompanyBusinessScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />
+        }
+      >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
           {/* Badge */}
@@ -313,7 +327,7 @@ const localStyles = StyleSheet.create({
     marginBottom: 4,
   },
   badgeDot: { width: 7, height: 7, borderRadius: 4 },
-  badgeText: { fontSize: 8, letterSpacing: 3 },
+  badgeText: { fontSize: 10, letterSpacing: 3 },
   divider: { height: 1, marginVertical: 28 },
   card: {
     borderWidth: 1,

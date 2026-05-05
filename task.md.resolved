@@ -1,16 +1,19 @@
-# Tasks
+# Tareas: Pull-to-Refresh Global
 
-## company-agenda.tsx
-- [/] Agregar status `no-show` al tipo y STATUS_CONFIG
-- [/] Convertir MOCK_APPOINTMENTS a useState editable
-- [/] Chips de filtro por trabajador (Todos | Juan | Sofía)
-- [/] Stats recalculadas desde estado filtrado
-- [/] Bottom sheet acciones funcionales (Confirmar / Editar / No-show / Cancelar)
-- [/] Modal nueva cita (FAB +): cliente, servicio, trabajador, hora, duración
-- [/] Modal editar cita (desde sheet → "Editar")
+## Cliente
+- `[x]` 1. `client-agenda.tsx` (refreshData / refreshProfile)
+- `[ ]` 2. `my-appointments.tsx` (fetchAppointments)
+- `[ ]` 3. `explore.tsx` (refresh data)
+- `[ ]` 4. `profile.tsx` (refreshProfile)
 
-## company-employees.tsx
-- [/] Lista de empleados con datos mock (avatar, nombre, especialidad, badge, citas)
-- [/] Stats: Total / Activos calculadas desde estado
-- [/] Bottom sheet por empleado (activar/desactivar, editar, eliminar)
-- [/] Modal "Invitar empleado" (nombre, especialidad, color, días disponibles)
+## Empresa
+- `[ ]` 5. `company-agenda.tsx` (refreshData)
+- `[ ]` 6. `company-services.tsx` (fetchServices)
+- `[ ]` 7. `company-employees.tsx` (fetchEmployees)
+- `[ ]` 8. `dashboard-company.tsx` (refreshStats)
+
+## Admin
+- `[ ]` 9. `admin-businesses.tsx` (fetchBusinesses)
+- `[ ]` 10. `admin-business-detail.tsx` (fetchBusinessDetails)
+- `[ ]` 11. `admin-dashboard.tsx` (fetchStats)
+- `[ ]` 12. `business-pending.tsx` (refreshProfile)

@@ -1,79 +1,49 @@
-# Agenda Funcional + Empleados Funcional
+# Pull-to-Refresh Global
 
-Hacer funcionales las pantallas `company-agenda` (ya con el nuevo diseño) y `company-employees`, con datos mock reales y flujos interactivos completos.
+El objetivo de esta implementación es asegurar que todas las pantallas funcionales y de datos de la aplicación soporten la funcionalidad de "arrastrar hacia abajo para actualizar" (Pull-to-refresh). Esto mejorará la experiencia de usuario (UX) para Clientes, Empresas y Administradores, evitando que tengan que salir y volver a entrar a una pantalla para ver los datos más recientes.
 
----
+## Pantallas a Modificar
 
-## Cambios propuestos
+Se añadirá el componente `RefreshControl` nativo de React Native a los `ScrollView` o `FlatList` principales de las siguientes pantallas, invocando las funciones de recarga específicas de cada vista:
 
-### `company-agenda.tsx` — Agenda funcional
+### Cliente
+1. **`client-agenda.tsx`**: Recargará la lista de barberías y las citas del mes.
+2. **`my-appointments.tsx`**: Recargará el listado de citas futuras e históricas del cliente.
+3. **`explore.tsx`**: Recargará el feed de explorar y la lista de negocios (si aplica).
+4. **`profile.tsx`**: Recargará los datos de la cuenta llamando a `refreshProfile()`.
 
-#### Estado reactivo real
-- Reemplazar `MOCK_APPOINTMENTS` por estado `useState<Appointment[]>` editable en memoria.
-- Filtro por trabajador: chips de filtro encima de la grilla (`Todos | Juan | Sofía`).
-- Las stats (HOY / PENDIENTES / HECHAS) se recalculan desde el estado filtrado.
+### Empresa
+5. **`company-agenda.tsx`**: Recargará las citas agendadas y los trabajadores disponibles.
+6. **`company-services.tsx`**: Recargará el catálogo de servicios de la base de datos.
+7. **`company-employees.tsx`**: Recargará la lista del personal de la barbería.
+8. **`dashboard-company.tsx`**: Recargará las estadísticas financieras y de citas (y `business-pending.tsx` para revisar estados de aprobación).
 
-#### Bottom sheet de detalle (ver/editar cita)
-Las acciones del sheet ya existen visualmente. Vamos a conectarlas:
-- **Confirmar** → cambia `status` a `'confirmed'`
-- **Editar** → abre un `Modal` de edición (form con: cliente, servicio, trabajador, hora, duración)
-- **No show** → cambia `status` a `'no-show'` (se agrega al tipo)
-- **Cancelar** → elimina la cita del estado con confirmación
+### Administrador
+9. **`admin-businesses.tsx`**: Recargará la lista global de todas las empresas.
+10. **`admin-business-detail.tsx`**: Recargará los detalles de una empresa específica.
+11. **`admin-dashboard.tsx`**: Recargará las estadísticas de la plataforma administrativa.
 
-#### Modal nueva cita (FAB `+`)
-Form en modal completo:
-- Nombre del cliente (TextInput)
-- Servicio (selector de opciones fijas)
-- Trabajador (selector)
-- Hora de inicio (selector de horas 08:00–19:30 en pasos de 30 min)
-- Duración (selector: 30 / 60 / 90 / 120 min)
-- Botón Guardar → agrega al estado
+## Patrón de Implementación (Ejemplo)
 
----
+```tsx
+  const [refreshing, setRefreshing] = useState(false);
 
-### `company-employees.tsx` — Empleados funcional
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await funcionParaRecargarDatos(); // ej: fetchAppointments, loadServices, refreshProfile
+    setRefreshing(false);
+  }, []);
 
-Reemplazar la pantalla vacía con:
+  <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}>
+     {...}
+  </ScrollView>
+```
 
-#### Lista de empleados (datos mock)
-Cada empleado muestra:
-- Avatar con iniciales + color
-- Nombre, especialidad
-- Badge de estado: Activo / Inactivo
-- Cantidad de citas hoy
+## User Review Required
 
-#### Acciones por empleado (bottom sheet al tocar)
-- Ver disponibilidad (días de la semana que trabaja)
-- Activar / Desactivar empleado
-- Editar nombre/especialidad
-- Eliminar
-
-#### Modal agregar empleado
-Al tocar "INVITAR EMPLEADO":
-- Nombre
-- Especialidad
-- Color (selector de colores)
-- Días disponibles (checkboxes Lun–Dom)
-- Guardar → agrega a lista
-
-#### Stats actualizadas
-- TOTAL y ACTIVOS calculados desde el estado
-
----
-
-## Notas de implementación
-
-- Todo con estado en memoria (mock), sin Supabase todavía.
-- Usar el mismo patrón de bottom sheet con `PanResponder` + `Animated` que ya tiene la agenda.
-- Mantener coherencia visual con el diseño existente (dark mode, colores del tema, mismo header pattern).
-
----
-
-## Verificación
-
-- [ ] Filtro por trabajador filtra citas en la grilla
-- [ ] Tap en cita → sheet → acciones cambian estado de la cita
-- [ ] FAB → modal → crear cita → aparece en la grilla
-- [ ] Empleados lista con datos mock
-- [ ] Tap en empleado → sheet con acciones
-- [ ] Botón "Invitar" → modal → nuevo empleado aparece en lista
+> [!IMPORTANT]
+> Este cambio impactará **11 archivos** en total a lo largo de tu proyecto. 
+> 
+> Es una tarea repetitiva pero necesaria para asegurar que en ninguna pantalla el usuario se quede con datos "viejos" pegados en la pantalla.
+>
+> ¿Estás de acuerdo con proceder y aplicar esta funcionalidad a todas las listas y vistas enumeradas arriba?
