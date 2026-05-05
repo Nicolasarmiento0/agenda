@@ -14,6 +14,9 @@ export type Business = {
   id: string;
   name: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  avatar_url?: string;
+  description?: string;
+  maps_url?: string;
 };
 
 type AuthContextType = {
