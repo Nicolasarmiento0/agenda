@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -15,12 +14,14 @@ import {
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appStyles } from '../../styles/appStyles';
 
 export default function ProfileScreen() {
   const { profile, user, signOut, refreshProfile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { showAlert } = useAlert();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [nickname, setNickname] = useState(profile?.nickname || '');
@@ -43,7 +44,7 @@ export default function ProfileScreen() {
   // ─── Actualizar nickname ───────────────────────────────────────────────────
   const handleUpdateProfile = async () => {
     if (!nickname.trim()) {
-      Alert.alert('Atención', 'El nickname no puede estar vacío');
+      showAlert({ title: 'Atención', message: 'El nickname no puede estar vacío' });
       return;
     }
     try {
@@ -57,10 +58,10 @@ export default function ProfileScreen() {
       if (error) throw error;
       if (data) await refreshProfile();
 
-      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      showAlert({ title: 'Éxito', message: 'Perfil actualizado correctamente' });
       setIsEditing(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      showAlert({ title: 'Error', message: error.message });
     }
   };
 
@@ -113,10 +114,10 @@ export default function ProfileScreen() {
       // Refrescamos el perfil completo desde Supabase para que todos los estados
       // queden sincronizados con lo que realmente está guardado en la base de datos
       await refreshProfile();
-      Alert.alert('Éxito', 'Foto de perfil actualizada correctamente.');
+      showAlert({ title: 'Éxito', message: 'Foto de perfil actualizada correctamente.' });
     } catch (error: any) {
       console.error('Error al subir avatar:', error);
-      Alert.alert('Error', error.message || 'No se pudo actualizar la imagen.');
+      showAlert({ title: 'Error', message: error.message || 'No se pudo actualizar la imagen.' });
     } finally {
       setUploadingAvatar(false);
     }
@@ -126,10 +127,10 @@ export default function ProfileScreen() {
   const deleteAvatar = async () => {
     if (!profile?.avatar_url) return;
 
-    Alert.alert(
-      'Borrar foto',
-      '¿Estás seguro de que quieres eliminar tu foto de perfil?',
-      [
+    showAlert({
+      title: 'Borrar foto',
+      message: '¿Estás seguro de que quieres eliminar tu foto de perfil?',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
@@ -160,17 +161,17 @@ export default function ProfileScreen() {
               if (updateError) throw updateError;
 
               await refreshProfile();
-              Alert.alert('Listo', 'Foto de perfil eliminada.');
+              showAlert({ title: 'Listo', message: 'Foto de perfil eliminada.' });
             } catch (error: any) {
               console.error('Error al borrar avatar:', error);
-              Alert.alert('Error', error.message || 'No se pudo eliminar la imagen.');
+              showAlert({ title: 'Error', message: error.message || 'No se pudo eliminar la imagen.' });
             } finally {
               setUploadingAvatar(false);
             }
           },
         },
       ]
-    );
+    });
   };
 
   // ─── Menú de opciones de avatar ───────────────────────────────────────────
@@ -185,7 +186,7 @@ export default function ProfileScreen() {
 
     options.push({ text: 'Cancelar', style: 'cancel' });
 
-    Alert.alert('Foto de perfil', '¿Qué deseas hacer?', options);
+    showAlert({ title: 'Foto de perfil', message: '¿Qué deseas hacer?', buttons: options });
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────

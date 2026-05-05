@@ -126,9 +126,10 @@ export default function AdminDashboardScreen() {
             <View style={[styles.badgeDot, { backgroundColor: appColors.primary }]} />
             <Text style={[styles.badgeText, { color: appColors.primary }]}>PANEL DE ADMINISTRACIÓN</Text>
           </View>
-          <Text style={[appStyles.title, { color: colors.textPrimary, paddingVertical: 6 }]}>
-            HOLA,{'\n'}{profile?.nickname?.split(' ')[0]?.toUpperCase() ?? 'ADMIN'}
+          <Text style={[appStyles.title2, { color: colors.textPrimary, paddingVertical: 6 }]}>
+            HOLA,{'\n'}{profile?.nickname?.toUpperCase() ?? 'ADMIN'}
           </Text>
+
         </View>
 
         {loading ? (

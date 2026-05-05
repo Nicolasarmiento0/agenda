@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   Modal,
@@ -15,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useAlert } from '../../context/AlertContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
@@ -49,6 +49,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function AdminBusinessDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,14 +84,13 @@ export default function AdminBusinessDetailScreen() {
   };
 
   const handleApprove = () => {
-    Alert.alert(
-      'Aprobar empresa',
-      `¿Confirmas la aprobación de "${business?.name}"? La empresa podrá operar inmediatamente.`,
-      [
+    showAlert({
+      title: 'Aprobar empresa',
+      message: `¿Confirmas la aprobación de "${business?.name}"? La empresa podrá operar inmediatamente.`,
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'APROBAR',
-          style: 'default',
           onPress: async () => {
             setProcessing(true);
             const { error } = await supabase
@@ -99,17 +99,19 @@ export default function AdminBusinessDetailScreen() {
               .eq('id', id);
             setProcessing(false);
             if (error) {
-              Alert.alert('Error', 'No se pudo aprobar. Inténtalo de nuevo.');
+              showAlert({ title: 'Error', message: 'No se pudo aprobar. Inténtalo de nuevo.' });
             } else {
               setBusiness((prev) => prev ? { ...prev, status: 'approved' } : prev);
-              Alert.alert('✓ Empresa aprobada', 'La empresa puede operar ahora.', [
-                { text: 'OK', onPress: () => router.back() },
-              ]);
+              showAlert({ 
+                title: '✓ Empresa aprobada', 
+                message: 'La empresa puede operar ahora.', 
+                buttons: [{ text: 'OK', onPress: () => router.back() }]
+              });
             }
           },
         },
       ]
-    );
+    });
   };
 
   const handleReject = async () => {
@@ -122,12 +124,14 @@ export default function AdminBusinessDetailScreen() {
     setRejectModal(false);
 
     if (error) {
-      Alert.alert('Error', 'No se pudo rechazar. Inténtalo de nuevo.');
+      showAlert({ title: 'Error', message: 'No se pudo rechazar. Inténtalo de nuevo.' });
     } else {
       setBusiness((prev) => prev ? { ...prev, status: 'rejected' } : prev);
-      Alert.alert('Solicitud rechazada', 'La empresa fue notificada.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showAlert({ 
+        title: 'Solicitud rechazada', 
+        message: 'La empresa fue notificada.', 
+        buttons: [{ text: 'OK', onPress: () => router.back() }]
+      });
     }
   };
 

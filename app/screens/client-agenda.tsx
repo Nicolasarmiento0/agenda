@@ -13,12 +13,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
@@ -61,10 +61,6 @@ const STATUS_CONFIG = {
   completed: { label: 'Completado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
   'no-show': { label: 'No Show', bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
 };
-
-// ─── Datos mock ───────────────────────────────────────────────────────────────
-
-// Mocks eliminados, los datos vendrán de Supabase.
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -444,6 +440,7 @@ export default function ClientAgendaScreen() {
   }, []);
 
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -588,19 +585,19 @@ export default function ClientAgendaScreen() {
     if (editingAppt) {
       const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
       if (error) {
-        Alert.alert('Error', `No se pudo editar: ${error.message}`);
+        showAlert({ title: 'Error', message: `No se pudo editar: ${error.message}` });
       } else {
         fetchAppointments();
       }
     } else {
       const { error } = await supabase.from('appointments').insert([apptData]);
       if (error) {
-        Alert.alert('Error', `No se pudo agendar: ${error.message}`);
+        showAlert({ title: 'Error', message: `No se pudo agendar: ${error.message}` });
       } else {
         fetchAppointments();
       }
     }
-  }, [editingAppt, business?.id, selectedDate, fetchAppointments, profile]);
+  }, [editingAppt, business?.id, selectedDate, fetchAppointments, profile, showAlert]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);

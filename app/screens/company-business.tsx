@@ -3,7 +3,6 @@ import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -21,12 +20,14 @@ import {
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 
 export default function CompanyBusinessScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { profile, business, refreshProfile } = useAuth();
+  const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
@@ -75,7 +76,7 @@ export default function CompanyBusinessScreen() {
         uploadImage(result.assets[0].base64);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo abrir la galería');
+      showAlert({ title: 'Error', message: 'No se pudo abrir la galería' });
     }
   };
 
@@ -84,7 +85,6 @@ export default function CompanyBusinessScreen() {
     setIsUploading(true);
     try {
       // Usaremos el bucket de avatars para guardar el logo de la empresa.
-      // Se podría crear un bucket específico "business_logos" pero esto requiere setup manual en supabase.
       const filePath = `${profile.id}/business_${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
@@ -99,7 +99,7 @@ export default function CompanyBusinessScreen() {
 
       setAvatarUrl(publicUrlData.publicUrl);
     } catch (error: any) {
-      Alert.alert('Error al subir imagen', error.message);
+      showAlert({ title: 'Error al subir imagen', message: error.message });
     } finally {
       setIsUploading(false);
     }
@@ -125,7 +125,7 @@ export default function CompanyBusinessScreen() {
       await refreshProfile();
       setEditModalVisible(false);
     } catch (error: any) {
-      Alert.alert('Error al guardar', error.message);
+      showAlert({ title: 'Error al guardar', message: error.message });
     } finally {
       setIsSaving(false);
     }
@@ -202,10 +202,7 @@ export default function CompanyBusinessScreen() {
 
           {/* Info cards */}
           {[
-            //{ label: 'NOMBRE', value: business?.name ?? '—' },
             { label: 'DIRECCIÓN MAPS', value: business?.maps_url || 'No agregada', isLink: !!business?.maps_url },
-            //{ label: 'PROPIETARIO', value: profile?.nickname ?? '—' },
-            //{ label: 'ESTADO', value: statusLabel },
           ].map((item, i) => (
             <View key={i} style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>{item.label}</Text>

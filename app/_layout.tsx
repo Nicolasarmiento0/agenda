@@ -3,9 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Linking } from 'react-native';
 import { AuthProvider } from '../context/AuthContext';
-import { ThemeProvider } from '../context/ThemeContext'; // agrega este import
+import { ThemeProvider } from '../context/ThemeContext';
+import { AlertProvider } from '../context/AlertContext';
+import TeslaAlert from '../components/TeslaAlert';
 import { supabase } from '../lib/supabase';
-
 
 export default function RootLayout() {
 
@@ -32,35 +33,38 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="screens/home" />
-          <Stack.Screen name="screens/loginscreen" />
-          <Stack.Screen name="screens/signup" />
-          <Stack.Screen name="screens/forgotPassword" />
-          <Stack.Screen name="screens/emailConfirmation" />
-          <Stack.Screen name="screens/resetPassword" />
-          <Stack.Screen name="screens/role-select" />
-          <Stack.Screen name="screens/dashboard-company" />
-          <Stack.Screen name="screens/dashboard" />
-          <Stack.Screen name="screens/profile" />
-          <Stack.Screen name="screens/admin-dashboard" />
-          <Stack.Screen name="screens/admin-businesses" />
-          <Stack.Screen name="screens/admin-business-detail" />
-          <Stack.Screen name="screens/business-setup" />
-          <Stack.Screen name="screens/business-pending" />
-          {/* Cliente */}
-          <Stack.Screen name="screens/explore" />
-          <Stack.Screen name="screens/my-appointments" />
-          {/* Empresa */}
-          <Stack.Screen name="screens/company-agenda" />
-          <Stack.Screen name="screens/company-services" />
-          <Stack.Screen name="screens/company-employees" />
-          <Stack.Screen name="screens/company-business" />
-        </Stack>
-        <StatusBar style="auto" />
-      </AuthProvider>
+      <AlertProvider>
+        <AuthProvider>
+          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="screens/home" />
+            <Stack.Screen name="screens/loginscreen" />
+            <Stack.Screen name="screens/signup" />
+            <Stack.Screen name="screens/forgotPassword" />
+            <Stack.Screen name="screens/emailConfirmation" />
+            <Stack.Screen name="screens/resetPassword" />
+            <Stack.Screen name="screens/role-select" />
+            <Stack.Screen name="screens/dashboard-company" />
+            <Stack.Screen name="screens/dashboard" />
+            <Stack.Screen name="screens/profile" />
+            <Stack.Screen name="screens/admin-dashboard" />
+            <Stack.Screen name="screens/admin-businesses" />
+            <Stack.Screen name="screens/admin-business-detail" />
+            <Stack.Screen name="screens/business-setup" />
+            <Stack.Screen name="screens/business-pending" />
+            {/* Cliente */}
+            <Stack.Screen name="screens/explore" />
+            <Stack.Screen name="screens/my-appointments" />
+            {/* Empresa */}
+            <Stack.Screen name="screens/company-agenda" />
+            <Stack.Screen name="screens/company-services" />
+            <Stack.Screen name="screens/company-employees" />
+            <Stack.Screen name="screens/company-business" />
+          </Stack>
+          <TeslaAlert />
+          <StatusBar style="auto" />
+        </AuthProvider>
+      </AlertProvider>
     </ThemeProvider>
   );
 }

@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -9,17 +8,19 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 
 export default function RoleSelectScreen() {
     const { user, updateProfileState } = useAuth();
     const { colors, isDarkMode } = useTheme();
+    const { showAlert } = useAlert();
     const [selected, setSelected] = useState<'client' | 'company' | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleConfirm = async () => {
         if (!selected) {
-            Alert.alert('Atención', 'Por favor selecciona una opción');
+            showAlert({ title: 'Atención', message: 'Por favor selecciona una opción' });
             return;
         }
 
@@ -41,7 +42,7 @@ export default function RoleSelectScreen() {
                 router.replace('/screens/dashboard' as any);
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            showAlert({ title: 'Error', message: error.message });
         } finally {
             setLoading(false);
         }

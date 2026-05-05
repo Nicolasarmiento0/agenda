@@ -57,6 +57,15 @@ export const appStyles = StyleSheet.create({
     padding: 10,
     paddingVertical: 20,
   },
+  title2: {
+    fontSize: 25,
+    fontWeight: '700',
+    color: appColors.textPrimary,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    padding: 10,
+    paddingVertical: 20,
+  },
   subtitle: {
     fontSize: 14,
     color: appColors.textSecondary,
