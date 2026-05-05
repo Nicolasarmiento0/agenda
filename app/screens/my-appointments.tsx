@@ -149,9 +149,9 @@ export default function MyAppointmentsScreen() {
                         <Feather name="clock" size={14} color={colors.textSecondary} />
                         <Text style={[localStyles.detailText, { color: colors.textPrimary }]}>{formatHour(appt.start_hour)}</Text>
                       </View>
-                      <View style={localStyles.detailRow}>
+                      <View style={[localStyles.detailRow, { flex: 1 }]}>
                         <Feather name="user" size={14} color={colors.textSecondary} />
-                        <Text style={[localStyles.detailText, { color: colors.textPrimary }]}>{appt.workers?.name || 'Barbero'}</Text>
+                        <Text style={[localStyles.detailText, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>{appt.workers?.name || 'Barbero'}</Text>
                       </View>
                     </View>
 
