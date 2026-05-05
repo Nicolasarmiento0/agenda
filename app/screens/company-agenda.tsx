@@ -277,16 +277,19 @@ function AppointmentFormModal({
   onClose,
   onSave,
   colors,
+  selectedDateStr,
 }: {
   visible: boolean;
   initialData?: Appointment;
   onClose: () => void;
   onSave: (appt: Partial<Appointment>) => void;
   colors: any;
+  selectedDateStr: string;
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
   const [workerId, setWorkerId] = useState('');
+  const [dateText, setDateText] = useState('');
   const [startTimeText, setStartTimeText] = useState('09:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
 
@@ -300,15 +303,17 @@ function AppointmentFormModal({
         const mm = Math.round((initialData.startHour - hh) * 60);
         setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
         setDurationMinutes(Math.round(initialData.durationHours * 60));
+        setDateText(initialData.date || selectedDateStr);
       } else {
         setClientName('');
         setService('');
         setWorkerId('');
         setStartTimeText('09:00');
         setDurationMinutes(30);
+        setDateText(selectedDateStr);
       }
     }
-  }, [visible, initialData]);
+  }, [visible, initialData, selectedDateStr]);
 
   const handleSave = () => {
     const [hhStr, mmStr] = startTimeText.split(':');
@@ -325,6 +330,7 @@ function AppointmentFormModal({
       worker_id: workerId,
       startHour,
       durationHours: durationMinutes / 60,
+      date: dateText,
     });
     onClose();
   };
@@ -368,6 +374,14 @@ function AppointmentFormModal({
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha (YYYY-MM-DD)</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={dateText}
+              onChangeText={setDateText}
+              placeholder="Ej: 2026-05-05"
+            />
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
@@ -535,7 +549,7 @@ export default function CompanyAgendaScreen() {
 
   const handleSaveAppt = useCallback(async (data: Partial<Appointment>) => {
     if (!business?.id) return;
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = data.date || selectedDate.toISOString().split('T')[0];
 
     const apptData = {
       business_id: business.id,
@@ -839,6 +853,7 @@ export default function CompanyAgendaScreen() {
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
         colors={{ ...colors, workersList: workers }}
+        selectedDateStr={selectedDate.toISOString().split('T')[0]}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
