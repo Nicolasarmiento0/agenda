@@ -1,28 +1,26 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl,
-  ActivityIndicator,
-  Alert,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
+import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
@@ -216,7 +214,7 @@ function AppointmentSheet({
   const endHour = appt.startHour + appt.durationHours;
 
   const isMine = appt.isMine;
-  
+
   let canCancel = false;
   if (appt.date) {
     const apptDate = new Date(`${appt.date}T${String(Math.floor(appt.startHour)).padStart(2, '0')}:${String(Math.round((appt.startHour % 1) * 60)).padStart(2, '0')}:00`);
@@ -339,23 +337,29 @@ function AppointmentFormModal({
   }, [visible, initialData, selectedDateStr]);
 
   const handleSave = async () => {
+    console.log('handleSave called', { service, workerId, dateText, startTimeText });
     if (loading) return;
-    // ── Validación de campos obligatorios ──────────────────────────────
+
+    // ── Validación de campos obligatorios ──
     if (!service.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' });
+      onClose(); // ← cierra el modal primero
+      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' }), 300);
       return;
     }
     if (!workerId) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
+      onClose();
+      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' }), 300);
       return;
     }
     if (!dateText.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
+      onClose();
+      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' }), 300);
       return;
     }
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(startTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+      onClose();
+      setTimeout(() => showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' }), 300);
       return;
     }
 
@@ -432,15 +436,15 @@ function AppointmentFormModal({
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (min)</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, height: 40 }}>
-                  <TouchableOpacity 
-                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
+                  <TouchableOpacity
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }}
                     onPress={() => setDurationMinutes(Math.max(10, durationMinutes - 10))}
                   >
                     <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>-</Text>
                   </TouchableOpacity>
                   <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{durationMinutes}</Text>
-                  <TouchableOpacity 
-                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
+                  <TouchableOpacity
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }}
                     onPress={() => setDurationMinutes(durationMinutes + 10)}
                   >
                     <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>+</Text>
@@ -453,8 +457,8 @@ function AppointmentFormModal({
               <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
                 <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleSave} 
+              <TouchableOpacity
+                onPress={handleSave}
                 disabled={loading}
                 style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
               >
@@ -640,10 +644,10 @@ export default function ClientAgendaScreen() {
       });
 
       if (hasCollision) {
-        Alert.alert(
-          'Horario no disponible', 
-          'El profesional ya tiene una cita agendada en este horario. Por favor elige otro.'
-        );
+        showAlert({
+          title: 'Horario no disponible',
+          message: 'El profesional ya tiene una cita agendada en este horario. Por favor elige otro.'
+        });
         return false;
       }
 
@@ -772,9 +776,9 @@ export default function ClientAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <ScrollView 
-      style={{ flex: 1 }} 
-      showsVerticalScrollIndicator={false} 
+    <ScrollView
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 100 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >

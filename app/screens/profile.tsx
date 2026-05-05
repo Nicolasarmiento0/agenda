@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Image,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,14 +14,15 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appStyles } from '../../styles/appStyles';
 
 export default function ProfileScreen() {
-  const { profile, user, signOut, refreshProfile } = useAuth();
+  // ── FIX 1: se agrega updateProfileState ──────────────────────────────────
+  const { profile, user, signOut, refreshProfile, updateProfileState } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
 
@@ -42,7 +44,6 @@ export default function ProfileScreen() {
     }
   }, [profile]);
 
-  // Refresca el perfil desde Supabase cada vez que el usuario entra a esta pantalla
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
@@ -76,11 +77,29 @@ export default function ProfileScreen() {
   // ─── Subir avatar ──────────────────────────────────────────────────────────
   const uploadAvatar = async () => {
     try {
+      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        showAlert({ 
+          title: 'Permiso necesario', 
+          message: 'Para cambiar tu foto, necesitamos permiso para acceder a tu galería. Por favor, actívalo en los ajustes de tu teléfono.' 
+        });
+        return;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
+        quality: 0.7,
       });
 
       if (result.canceled || !result.assets[0].uri) return;
@@ -89,18 +108,25 @@ export default function ProfileScreen() {
       const image = result.assets[0];
 
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
-      // Siempre sobreescribimos el mismo archivo por usuario para no acumular archivos huérfanos
-      const fileName = `${user?.id}/avatar.${fileExt}`;
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
-      const response = await fetch(image.uri);
-      const arrayBuffer = await response.arrayBuffer();
+      const formData = new FormData();
+      formData.append('file', {
+        uri: image.uri,
+        name: fileName.split('/')[1],
+        type: image.mimeType || `image/${fileExt}`,
+      } as any);
 
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, arrayBuffer, {
-          contentType: `image/${fileExt}`,
+        .upload(fileName, formData, {
+          contentType: image.mimeType || `image/${fileExt}`,
           upsert: true,
         });
+
+
+      console.log('storageError:', JSON.stringify(storageError)); // ← nuevo
+      //console.log('storageData:', JSON.stringify(storageData));   // ← nuevo
 
       if (storageError) throw storageError;
 
@@ -108,24 +134,23 @@ export default function ProfileScreen() {
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Añadimos un timestamp como query param para romper el caché en todos los dispositivos
-      // Esto fuerza a React Native (y navegadores) a descargar la imagen nueva en lugar de usar la cacheada
-      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
-
+      // ── FIX 2: guardar URL limpia en DB (sin timestamp) ───────────────────
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: cacheBustedUrl })
+        .update({ avatar_url: publicUrl })
         .eq('id', user?.id);
 
       if (updateError) throw updateError;
 
-      // Refrescamos el perfil completo desde Supabase para que todos los estados
-      // queden sincronizados con lo que realmente está guardado en la base de datos
-      await refreshProfile();
+      // ── FIX 2: actualizar estado local con timestamp para forzar re-render
+      updateProfileState({ avatar_url: `${publicUrl}?t=${Date.now()}` });
+
       showAlert({ title: 'Éxito', message: 'Foto de perfil actualizada correctamente.' });
     } catch (error: any) {
-      console.error('Error al subir avatar:', error);
-      showAlert({ title: 'Error', message: error.message || 'No se pudo actualizar la imagen.' });
+      showAlert({ 
+        title: 'Error de subida', 
+        message: error.message || 'No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.' 
+      });
     } finally {
       setUploadingAvatar(false);
     }
@@ -147,20 +172,19 @@ export default function ProfileScreen() {
             try {
               setUploadingAvatar(true);
 
-              // Extraemos el path relativo desde la URL pública
-              // URL ejemplo: https://xxx.supabase.co/storage/v1/object/public/avatars/user-id/123.jpg
               const url = new URL(profile.avatar_url!);
               const pathParts = url.pathname.split('/avatars/');
-              const filePath = pathParts[1]; // ej: "user-id/123.jpg"
+              const filePath = pathParts[1];
 
               if (filePath) {
+                // ── FIX 3: limpiar el ?t=... del path antes de borrar ─────
+                const cleanPath = filePath.split('?')[0];
                 const { error: removeError } = await supabase.storage
                   .from('avatars')
-                  .remove([filePath]);
+                  .remove([cleanPath]);
                 if (removeError) throw removeError;
               }
 
-              // Limpiar avatar_url en la tabla profiles
               const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ avatar_url: null })
@@ -168,7 +192,9 @@ export default function ProfileScreen() {
 
               if (updateError) throw updateError;
 
-              await refreshProfile();
+              // ── FIX 3: actualizar estado local directamente ───────────────
+              updateProfileState({ avatar_url: null });
+
               showAlert({ title: 'Listo', message: 'Foto de perfil eliminada.' });
             } catch (error: any) {
               console.error('Error al borrar avatar:', error);
@@ -198,6 +224,7 @@ export default function ProfileScreen() {
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
+  console.log('avatar_url:', profile?.avatar_url);
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Sidebar visible={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
@@ -229,7 +256,6 @@ export default function ProfileScreen() {
           {/* ── Card avatar ── */}
           <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
-            {/* Toca el avatar para cambiar/borrar */}
             <TouchableOpacity
               onPress={handleAvatarPress}
               disabled={uploadingAvatar}
@@ -237,9 +263,12 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
             >
               {profile?.avatar_url ? (
-                <Image
-                  source={{ uri: profile.avatar_url }}
+                <ExpoImage
+                  key={profile.avatar_url}
+                  source={{ uri: profile.avatar_url.split('?')[0] + '?t=' + Date.now() }}
                   style={localStyles.avatarImage}
+                  contentFit="cover"
+                  transition={200}
                 />
               ) : (
                 <View
@@ -252,7 +281,6 @@ export default function ProfileScreen() {
                 </View>
               )}
 
-              {/* Ícono de cámara sobre el avatar */}
               <View style={[localStyles.cameraIcon, { backgroundColor: colors.primary }]}>
                 <Text style={{ fontSize: 14 }}>
                   {uploadingAvatar ? '⏳' : '📷'}

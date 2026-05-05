@@ -14,8 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  Alert
+  ActivityIndicator
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -632,10 +631,10 @@ export default function CompanyAgendaScreen() {
       });
 
       if (hasCollision) {
-        Alert.alert(
-          'Horario no disponible', 
-          'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
-        );
+        showAlert({ 
+          title: 'Horario no disponible', 
+          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
+        });
         return false;
       }
 

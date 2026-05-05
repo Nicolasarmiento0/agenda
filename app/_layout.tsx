@@ -2,11 +2,11 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Linking } from 'react-native';
-import { AuthProvider } from '../context/AuthContext';
-import { ThemeProvider } from '../context/ThemeContext';
-import { AlertProvider } from '../context/AlertContext';
-import { BusinessProvider } from '../context/BusinessContext';
 import TeslaAlert from '../components/TeslaAlert';
+import { AlertProvider } from '../context/AlertContext';
+import { AuthProvider } from '../context/AuthContext';
+import { BusinessProvider } from '../context/BusinessContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 
 export default function RootLayout() {
@@ -37,35 +37,35 @@ export default function RootLayout() {
       <AlertProvider>
         <BusinessProvider>
           <AuthProvider>
-          <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="screens/home" />
-            <Stack.Screen name="screens/loginscreen" />
-            <Stack.Screen name="screens/signup" />
-            <Stack.Screen name="screens/forgotPassword" />
-            <Stack.Screen name="screens/emailConfirmation" />
-            <Stack.Screen name="screens/resetPassword" />
-            <Stack.Screen name="screens/role-select" />
-            <Stack.Screen name="screens/dashboard-company" />
-            <Stack.Screen name="screens/dashboard" />
-            <Stack.Screen name="screens/profile" />
-            <Stack.Screen name="screens/admin-dashboard" />
-            <Stack.Screen name="screens/admin-businesses" />
-            <Stack.Screen name="screens/admin-business-detail" />
-            <Stack.Screen name="screens/business-setup" />
-            <Stack.Screen name="screens/business-pending" />
-            {/* Cliente */}
-            <Stack.Screen name="screens/explore" />
-            <Stack.Screen name="screens/my-appointments" />
-            {/* Empresa */}
-            <Stack.Screen name="screens/company-agenda" />
-            <Stack.Screen name="screens/company-services" />
-            <Stack.Screen name="screens/company-employees" />
-            <Stack.Screen name="screens/company-business" />
-          </Stack>
+            <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="screens/home" />
+              <Stack.Screen name="screens/loginscreen" />
+              <Stack.Screen name="screens/signup" />
+              <Stack.Screen name="screens/forgotPassword" />
+              <Stack.Screen name="screens/emailConfirmation" />
+              <Stack.Screen name="screens/resetPassword" />
+              <Stack.Screen name="screens/role-select" />
+              <Stack.Screen name="screens/dashboard-company" />
+              <Stack.Screen name="screens/dashboard" />
+              <Stack.Screen name="screens/profile" />
+              <Stack.Screen name="screens/admin-dashboard" />
+              <Stack.Screen name="screens/admin-businesses" />
+              <Stack.Screen name="screens/admin-business-detail" />
+              <Stack.Screen name="screens/business-setup" />
+              <Stack.Screen name="screens/business-pending" />
+              {/* Cliente */}
+              <Stack.Screen name="screens/explore" />
+              <Stack.Screen name="screens/my-appointments" />
+              {/* Empresa */}
+              <Stack.Screen name="screens/company-agenda" />
+              <Stack.Screen name="screens/company-services" />
+              <Stack.Screen name="screens/company-employees" />
+              <Stack.Screen name="screens/company-business" />
+            </Stack>
+            <StatusBar style="auto" />
+          </AuthProvider>
           <TeslaAlert />
-          <StatusBar style="auto" />
-        </AuthProvider>
         </BusinessProvider>
       </AlertProvider>
     </ThemeProvider>
