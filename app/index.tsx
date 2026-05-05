@@ -19,7 +19,7 @@ export default function Index() {
     if (loading) return;
 
     if (!session) {
-      router.replace('/screens/loginscreen' as any);
+      router.replace('/screens/home' as any);
       return;
     }
 
