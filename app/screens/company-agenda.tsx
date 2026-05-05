@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   Dimensions,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -33,6 +34,7 @@ type Appointment = {
   startHour: number; // ej: 9.5 = 9:30
   durationHours: number; // ej: 1.5 = 90 min
   status: 'confirmed' | 'pending' | 'completed' | 'no-show';
+  date?: string;
 };
 
 type Worker = {
@@ -319,76 +321,78 @@ function AppointmentFormModal({
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-            {initialData ? 'Editar Cita' : 'Nueva Cita'}
-          </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {initialData ? 'Editar Cita' : 'Nueva Cita'}
+            </Text>
 
-          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
-          <TextInput
-            style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-            value={clientName}
-            onChangeText={setClientName}
-            placeholderTextColor={colors.textSecondary}
-            placeholder="Nombre del cliente"
-          />
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={clientName}
+              onChangeText={setClientName}
+              placeholderTextColor={colors.textSecondary}
+              placeholder="Nombre del cliente"
+            />
 
-          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Servicio</Text>
-          <TextInput
-            style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-            value={service}
-            onChangeText={setService}
-            placeholderTextColor={colors.textSecondary}
-            placeholder="Ej: Corte y barba"
-          />
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Servicio</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={service}
+              onChangeText={setService}
+              placeholderTextColor={colors.textSecondary}
+              placeholder="Ej: Corte y barba"
+            />
 
-          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
-          <View style={styles.modalRow}>
-            {colors.workersList?.map((w: any) => (
-              <TouchableOpacity
-                key={w.id}
-                onPress={() => setWorkerId(w.id)}
-                style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
-              >
-                <Text style={[styles.modalChipText, workerId === w.id ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
+            <View style={styles.modalRow}>
+              {colors.workersList?.map((w: any) => (
+                <TouchableOpacity
+                  key={w.id}
+                  onPress={() => setWorkerId(w.id)}
+                  style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+                >
+                  <Text style={[styles.modalChipText, workerId === w.id ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora</Text>
+                <TextInput
+                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={String(startHour)}
+                  onChangeText={v => setStartHour(Number(v))}
+                  keyboardType="numeric"
+                  placeholder="Ej: 9.5"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (hrs)</Text>
+                <TextInput
+                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={String(durationHours)}
+                  onChangeText={v => setDurationHours(Number(v))}
+                  keyboardType="numeric"
+                  placeholder="Ej: 1"
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
+                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora</Text>
-              <TextInput
-                style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                value={String(startHour)}
-                onChangeText={v => setStartHour(Number(v))}
-                keyboardType="numeric"
-                placeholder="Ej: 9.5"
-              />
+              <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (hrs)</Text>
-              <TextInput
-                style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                value={String(durationHours)}
-                onChangeText={v => setDurationHours(Number(v))}
-                keyboardType="numeric"
-                placeholder="Ej: 1"
-              />
-            </View>
-          </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
-              <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
-              <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -410,6 +414,8 @@ export default function CompanyAgendaScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
 
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+
   const fetchWorkers = useCallback(async () => {
     if (!business?.id) return;
     const { data, error } = await supabase.from('workers').select('*').eq('business_id', business.id);
@@ -424,16 +430,17 @@ export default function CompanyAgendaScreen() {
   }, [business?.id]);
 
   const fetchAppointments = useCallback(async () => {
-    if (!business?.id) return;
-    
-    // Convert local Date to YYYY-MM-DD
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    
+    if (!business?.id || !weekDays[0] || !weekDays[6]) return;
+
+    const startStr = weekDays[0].toISOString().split('T')[0];
+    const endStr = weekDays[6].toISOString().split('T')[0];
+
     const { data, error } = await supabase
       .from('appointments')
       .select('*, workers(name, color)')
       .eq('business_id', business.id)
-      .eq('date', dateStr);
+      .gte('date', startStr)
+      .lte('date', endStr);
 
     if (!error && data) {
       setAppointments(data.map(a => ({
@@ -446,9 +453,10 @@ export default function CompanyAgendaScreen() {
         startHour: Number(a.start_hour),
         durationHours: Number(a.duration_hours),
         status: a.status as any,
+        date: a.date,
       })));
     }
-  }, [business?.id, selectedDate]);
+  }, [business?.id, weekDays]);
 
   useEffect(() => {
     fetchWorkers();
@@ -458,19 +466,21 @@ export default function CompanyAgendaScreen() {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const nowPosition = useMemo(() => nowLinePosition(), []);
 
   // Stats
+  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+
   const filteredAppointments = useMemo(() => {
     if (!selectedWorkerFilter) return appointments;
     return appointments.filter(a => a.worker === selectedWorkerFilter);
   }, [appointments, selectedWorkerFilter]);
 
   const stats = useMemo(() => {
-    const total = filteredAppointments.length;
-    const pending = filteredAppointments.filter(a => a.status === 'pending').length;
-    const completed = filteredAppointments.filter(a => a.status === 'completed').length;
+    const todayApps = filteredAppointments.filter(a => a.date === selectedDateStr);
+    const total = todayApps.length;
+    const pending = todayApps.filter(a => a.status === 'pending').length;
+    const completed = todayApps.filter(a => a.status === 'completed').length;
     return [
       { label: 'CITAS HOY', value: String(total) },
       { label: 'PENDIENTES', value: String(pending) },
@@ -582,8 +592,8 @@ export default function CompanyAgendaScreen() {
                 },
               ]}
             >
-              {appointments
-                .filter(a => a.worker === w.name)
+              {filteredAppointments
+                .filter(a => a.worker === w.name && a.date === selectedDateStr)
                 .map(appt => (
                   <AppointmentCard
                     key={appt.id}
@@ -644,21 +654,36 @@ export default function CompanyAgendaScreen() {
           </View>
         ))}
         <View style={[styles.columnsOverlay, { left: LABEL_WIDTH }]}>
-          {weekDays.map((d, di) => (
-            <View
-              key={di}
-              style={[
-                styles.workerColumn,
-                {
-                  width: weekColWidth,
-                  left: di * weekColWidth,
-                  borderLeftColor: colors.border,
-                  borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
-                  backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
-                },
-              ]}
-            />
-          ))}
+          {weekDays.map((d, di) => {
+            const dateStr = d.toISOString().split('T')[0];
+            return (
+              <View
+                key={di}
+                style={[
+                  styles.workerColumn,
+                  {
+                    width: weekColWidth,
+                    left: di * weekColWidth,
+                    borderLeftColor: colors.border,
+                    borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
+                    backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
+                  },
+                ]}
+              >
+                {filteredAppointments
+                  .filter(a => a.date === dateStr)
+                  .map(appt => (
+                    <AppointmentCard
+                      key={appt.id}
+                      appt={appt}
+                      columnWidth={weekColWidth}
+                      onPress={() => openSheet(appt)}
+                      colors={colors}
+                    />
+                  ))}
+              </View>
+            );
+          })}
           {nowPosition !== null && (
             <View style={[styles.nowLine, { top: nowPosition, width: 7 * weekColWidth }]}>
               <View style={styles.nowDot} />
