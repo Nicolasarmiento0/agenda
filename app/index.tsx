@@ -29,7 +29,10 @@ export default function Index() {
       router.replace('/screens/role-select' as any);
     } else if (profile.role === 'admin') {
       router.replace('/screens/admin-dashboard' as any);
-    } else if (profile.role === 'company') {
+    } else if (profile.role === 'client') {
+      router.replace('/screens/client-agenda' as any);
+    }
+    else if (profile.role === 'company') {
       if (!business) {
         router.replace('/screens/business-setup' as any);
       } else if (business.status === 'pending' || business.status === 'rejected') {
@@ -38,7 +41,7 @@ export default function Index() {
         router.replace('/screens/company-agenda' as any);
       }
     } else {
-      router.replace('/screens/dashboard' as any);
+      router.replace('/screens/explore' as any);
     }
   }, [loading, session, profile, business, profileLoaded]);
 

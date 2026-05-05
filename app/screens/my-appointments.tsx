@@ -12,9 +12,16 @@ import Sidebar from '../../components/Sidebar';
 import { useTheme } from '../../context/ThemeContext';
 import { appColors, appStyles } from '../../styles/appStyles';
 
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
+
 export default function MyAppointmentsScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { profile } = useAuth();
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -28,6 +35,45 @@ export default function MyAppointmentsScreen() {
       ]),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [profile]);
+
+  const fetchAppointments = async () => {
+    if (!profile?.id) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*, businesses(name, address), workers(name)')
+      .eq('client_id', profile.id)
+      .order('date', { ascending: true })
+      .order('start_hour', { ascending: true });
+    
+    if (data) {
+      setAppointments(data);
+    }
+    setLoading(false);
+  };
+
+  const handleCancel = async (apptId: string) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', apptId);
+    if (!error) {
+      fetchAppointments();
+    }
+  };
+
+  const formatHour = (h: number) => {
+    const hh = Math.floor(h);
+    const mm = Math.round((h - hh) * 60);
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  const upcomingApps = appointments.filter(a => a.date >= todayStr && a.status !== 'completed' && a.status !== 'no-show');
+  const historyApps = appointments.filter(a => a.date < todayStr || a.status === 'completed' || a.status === 'no-show');
+  const displayedApps = activeTab === 'upcoming' ? upcomingApps : historyApps;
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
@@ -47,30 +93,81 @@ export default function MyAppointmentsScreen() {
 
           {/* Tabs */}
           <View style={[localStyles.tabs, { borderColor: colors.border }]}>
-            <View style={[localStyles.tabActive, { borderBottomColor: appColors.primary }]}>
-              <Text style={[localStyles.tabText, { color: appColors.primary }]}>PRÓXIMAS</Text>
-            </View>
-            <TouchableOpacity style={localStyles.tab}>
-              <Text style={[localStyles.tabText, { color: colors.textSecondary }]}>HISTORIAL</Text>
+            <TouchableOpacity 
+              style={[localStyles.tab, activeTab === 'upcoming' && localStyles.tabActive, activeTab === 'upcoming' && { borderBottomColor: appColors.primary }]}
+              onPress={() => setActiveTab('upcoming')}
+            >
+              <Text style={[localStyles.tabText, { color: activeTab === 'upcoming' ? appColors.primary : colors.textSecondary }]}>PRÓXIMAS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[localStyles.tab, activeTab === 'history' && localStyles.tabActive, activeTab === 'history' && { borderBottomColor: appColors.primary }]}
+              onPress={() => setActiveTab('history')}
+            >
+              <Text style={[localStyles.tabText, { color: activeTab === 'history' ? appColors.primary : colors.textSecondary }]}>HISTORIAL</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Estado vacío */}
-          <View style={localStyles.emptyContainer}>
-            <View style={[localStyles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Feather name="calendar" size={32} color={colors.textSecondary} />
+          {loading ? (
+            <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 40 }}>Cargando...</Text>
+          ) : displayedApps.length === 0 ? (
+            <View style={localStyles.emptyContainer}>
+              <View style={[localStyles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Feather name="calendar" size={32} color={colors.textSecondary} />
+              </View>
+              <Text style={[localStyles.emptyTitle, { color: colors.textPrimary }]}>SIN CITAS</Text>
+              <Text style={[localStyles.emptySubtitle, { color: colors.textSecondary }]}>
+                {activeTab === 'upcoming' ? 'Aún no tienes citas agendadas.\nExplora negocios y reserva una.' : 'No tienes historial de citas.'}
+              </Text>
             </View>
-            <Text style={[localStyles.emptyTitle, { color: colors.textPrimary }]}>SIN CITAS</Text>
-            <Text style={[localStyles.emptySubtitle, { color: colors.textSecondary }]}>
-              Aún no tienes citas agendadas.{'\n'}Explora negocios y reserva una.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[localStyles.ctaButton, { backgroundColor: appColors.primary }]}
-            >
-              <Text style={localStyles.ctaText}>EXPLORAR NEGOCIOS</Text>
-            </TouchableOpacity>
-          </View>
+          ) : (
+            <View style={{ paddingHorizontal: 20 }}>
+              {displayedApps.map(appt => {
+                const apptDate = new Date(`${appt.date}T${String(Math.floor(appt.start_hour)).padStart(2, '0')}:${String(Math.round((appt.start_hour % 1) * 60)).padStart(2, '0')}:00`);
+                const hoursDiff = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+                const canCancel = activeTab === 'upcoming' && hoursDiff > 2;
+
+                return (
+                  <View key={appt.id} style={[localStyles.apptCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={localStyles.apptHeader}>
+                      <View>
+                        <Text style={[localStyles.businessName, { color: colors.textPrimary }]}>{appt.businesses?.name || 'Negocio'}</Text>
+                        <Text style={[localStyles.serviceName, { color: colors.textSecondary }]}>{appt.service}</Text>
+                      </View>
+                      <View style={[localStyles.statusBadge, appt.status === 'confirmed' ? { backgroundColor: '#EEF8F0' } : { backgroundColor: '#FFF5E5' }]}>
+                        <Text style={[localStyles.statusText, appt.status === 'confirmed' ? { color: '#2E7D45' } : { color: '#A0660A' }]}>
+                          {appt.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={localStyles.apptDetails}>
+                      <View style={localStyles.detailRow}>
+                        <Feather name="calendar" size={14} color={colors.textSecondary} />
+                        <Text style={[localStyles.detailText, { color: colors.textPrimary }]}>{appt.date}</Text>
+                      </View>
+                      <View style={localStyles.detailRow}>
+                        <Feather name="clock" size={14} color={colors.textSecondary} />
+                        <Text style={[localStyles.detailText, { color: colors.textPrimary }]}>{formatHour(appt.start_hour)}</Text>
+                      </View>
+                      <View style={localStyles.detailRow}>
+                        <Feather name="user" size={14} color={colors.textSecondary} />
+                        <Text style={[localStyles.detailText, { color: colors.textPrimary }]}>{appt.workers?.name || 'Barbero'}</Text>
+                      </View>
+                    </View>
+
+                    {canCancel && (
+                      <TouchableOpacity 
+                        style={localStyles.cancelBtn}
+                        onPress={() => handleCancel(appt.id)}
+                      >
+                        <Text style={localStyles.cancelBtnText}>Cancelar Cita</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
 
         </Animated.View>
       </ScrollView>
@@ -149,4 +246,58 @@ const localStyles = StyleSheet.create({
     letterSpacing: 2,
     fontWeight: '600',
   },
+  apptCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  apptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  businessName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  serviceName: {
+    fontSize: 14,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  apptDetails: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#eee',
+  },
+  cancelBtnText: {
+    color: '#E24B4A',
+    fontSize: 14,
+    fontWeight: '600',
+  }
 });

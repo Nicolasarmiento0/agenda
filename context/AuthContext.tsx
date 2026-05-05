@@ -59,9 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/screens/client-agenda' as any);
     }
     else if (role === 'company') {
-      router.replace('/screens/company-agenda' as any);
-    }
-    else if (role === 'company') {
       if (!businessData) {
         router.replace('/screens/business-setup' as any);
       } else if (businessData.status === 'pending' || businessData.status === 'rejected') {
