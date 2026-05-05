@@ -5,6 +5,7 @@ import { Linking } from 'react-native';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { AlertProvider } from '../context/AlertContext';
+import { BusinessProvider } from '../context/BusinessContext';
 import TeslaAlert from '../components/TeslaAlert';
 import { supabase } from '../lib/supabase';
 
@@ -34,7 +35,8 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AlertProvider>
-        <AuthProvider>
+        <BusinessProvider>
+          <AuthProvider>
           <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="screens/home" />
@@ -64,6 +66,7 @@ export default function RootLayout() {
           <TeslaAlert />
           <StatusBar style="auto" />
         </AuthProvider>
+        </BusinessProvider>
       </AlertProvider>
     </ThemeProvider>
   );

@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   RefreshControl,
@@ -9,100 +10,198 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useBusiness, SelectedBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
-import { appColors, appStyles } from '../../styles/appStyles';
+import { supabase } from '../../lib/supabase';
+import { appColors } from '../../styles/appStyles';
 
 const CATEGORIES = [
-  { icon: 'scissors', label: 'Barbería' },
-  { icon: 'heart', label: 'Spa' },
-  { icon: 'star', label: 'Uñas' },
-  { icon: 'zap', label: 'Tatuajes' },
-  { icon: 'sun', label: 'Bronceado' },
-  { icon: 'smile', label: 'Estética' },
+  { icon: 'scissors', label: 'BARBERÍA' },
+  { icon: 'heart', label: 'SPA' },
+  { icon: 'star', label: 'UÑAS' },
+  { icon: 'zap', label: 'TATUAJES' },
+  { icon: 'sun', label: 'BRONCEADO' },
+  { icon: 'smile', label: 'ESTÉTICA' },
 ];
 
 export default function ExploreScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { setSelectedBusiness } = useBusiness();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const [businesses, setBusinesses] = useState<SelectedBusiness[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true);
-    setSearch('');
-    setRefreshing(false);
-  }, []);
-
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
 
   useEffect(() => {
     Animated.sequence([
-      Animated.delay(150),
+      Animated.delay(100),
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
       ]),
     ]).start();
   }, []);
 
+  const fetchBusinesses = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('id, name, description, address, phone, avatar_url')
+      .eq('status', 'approved')
+      .order('name');
+    if (!error && data) {
+      setBusinesses(data as SelectedBusiness[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchBusinesses(); }, [fetchBusinesses]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchBusinesses();
+    setRefreshing(false);
+  }, [fetchBusinesses]);
+
+  const handleSelectBusiness = (b: SelectedBusiness) => {
+    setSelectedBusiness(b);
+    router.push('/screens/client-agenda' as any);
+  };
+
+  const filtered = search.trim()
+    ? businesses.filter(b =>
+        b.name.toLowerCase().includes(search.toLowerCase()) ||
+        b.description?.toLowerCase().includes(search.toLowerCase()) ||
+        b.address?.toLowerCase().includes(search.toLowerCase())
+      )
+    : businesses;
+
   return (
-    <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={localStyles.header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
+        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={styles.iconBtn}>
+          <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>EXPLORAR</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
+        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>EXPLORAR</Text>
+        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={styles.iconBtn}>
+          <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+        contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />
+        }
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-          {/* Buscador */}
-          <View style={[localStyles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Feather name="search" size={16} color={colors.textSecondary} />
+          {/* ── Buscador ─────────────────────────────────────────────── */}
+          <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.textSecondary} />
             <TextInput
-              style={[localStyles.searchInput, { color: colors.textPrimary }]}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
               placeholder="Buscar negocios..."
               placeholderTextColor={colors.textSecondary}
               value={search}
               onChangeText={setSearch}
             />
-          </View>
-
-          {/* Categorías */}
-          <Text style={[localStyles.sectionTitle, { color: colors.textSecondary }]}>CATEGORÍAS</Text>
-          <View style={localStyles.categoriesGrid}>
-            {CATEGORIES.map((cat, i) => (
-              <TouchableOpacity
-                key={i}
-                activeOpacity={0.7}
-                style={[localStyles.categoryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              >
-                <Feather name={cat.icon as any} size={22} color={appColors.primary} />
-                <Text style={[localStyles.categoryLabel, { color: colors.textPrimary }]}>{cat.label}</Text>
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+                <Feather name="x" size={15} color={colors.textSecondary} />
               </TouchableOpacity>
-            ))}
+            )}
           </View>
 
-          {/* Estado vacío */}
-          <View style={[localStyles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Feather name="map-pin" size={32} color={colors.textSecondary} />
-            <Text style={[localStyles.emptyTitle, { color: colors.textPrimary }]}>DESCUBRE NEGOCIOS</Text>
-            <Text style={[localStyles.emptySubtitle, { color: colors.textSecondary }]}>
-              Próximamente podrás buscar y reservar citas con negocios cercanos a ti.
-            </Text>
-          </View>
+          {/* ── Categorías ───────────────────────────────────────────── */}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CATEGORÍAS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }}>
+            <View style={styles.categoriesRow}>
+              {CATEGORIES.map((cat, i) => (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.7}
+                  style={[styles.categoryChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                >
+                  <Feather name={cat.icon as any} size={16} color={appColors.primary} />
+                  <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>{cat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* ── Lista de negocios ────────────────────────────────────── */}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+            {search.trim() ? 'RESULTADOS' : 'NEGOCIOS DISPONIBLES'}
+          </Text>
+
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Cargando...</Text>
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Feather name="map-pin" size={28} color={colors.textSecondary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                {search.trim() ? 'SIN RESULTADOS' : 'SIN NEGOCIOS'}
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                {search.trim()
+                  ? 'Intenta con otra búsqueda.'
+                  : 'Aún no hay negocios disponibles.'}
+              </Text>
+            </View>
+          ) : (
+            filtered.map((b) => (
+              <TouchableOpacity
+                key={b.id}
+                activeOpacity={0.75}
+                onPress={() => handleSelectBusiness(b)}
+                style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
+                {/* Avatar */}
+                <View style={[styles.businessAvatar, { backgroundColor: appColors.primary + '18' }]}>
+                  <Text style={[styles.businessInitial, { color: appColors.primary }]}>
+                    {b.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+
+                {/* Info */}
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.businessName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {b.name}
+                  </Text>
+                  {b.description ? (
+                    <Text style={[styles.businessDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                      {b.description}
+                    </Text>
+                  ) : null}
+                  {b.address ? (
+                    <View style={styles.addressRow}>
+                      <Feather name="map-pin" size={10} color={colors.textSecondary} />
+                      <Text style={[styles.addressText, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {'  '}{b.address}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* CTA */}
+                <View style={[styles.bookBtn, { backgroundColor: appColors.primary }]}>
+                  <Feather name="calendar" size={14} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
 
         </Animated.View>
       </ScrollView>
@@ -112,70 +211,154 @@ export default function ExploreScreen() {
   );
 }
 
-const localStyles = StyleSheet.create({
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+
+  // Header
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  hamburger: { fontSize: 26 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLabel: {
+    fontSize: 11,
+    letterSpacing: 3,
+    fontWeight: '600',
+  },
+
+  // Search
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 4,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 28,
+    paddingVertical: 11,
+    marginTop: 12,
+    marginBottom: 24,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    letterSpacing: 0.5,
+    fontSize: 13,
+    letterSpacing: 0.4,
   },
-  sectionTitle: {
+
+  // Sections
+  sectionLabel: {
     fontSize: 10,
     letterSpacing: 3,
-    marginBottom: 14,
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  categoriesGrid: {
+
+  // Categories horizontal
+  categoriesRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 28,
+    gap: 10,
   },
-  categoryCard: {
-    width: '30%',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 18,
+  categoryChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 4,
   },
   categoryLabel: {
     fontSize: 11,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     fontWeight: '500',
   },
-  emptyCard: {
-    borderWidth: 1,
+
+  // Business cards
+  businessCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 4,
-    padding: 32,
+    padding: 16,
+    marginBottom: 10,
+    gap: 14,
+  },
+  businessAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  businessInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  businessName: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  businessDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+    letterSpacing: 0.2,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  addressText: {
+    fontSize: 11,
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  bookBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  // Empty states
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 12,
+    letterSpacing: 2,
+  },
+  emptyCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 4,
+    padding: 36,
     alignItems: 'center',
     gap: 12,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 3,
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     letterSpacing: 0.5,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
 });

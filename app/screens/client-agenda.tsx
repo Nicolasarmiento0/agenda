@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -14,11 +15,14 @@ import {
   TouchableOpacity,
   View,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
+import { useBusiness } from '../../context/BusinessContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
@@ -45,6 +49,15 @@ type Worker = {
   name: string;
   color: string;
   initials: string;
+};
+
+type Business = {
+  id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  phone?: string;
+  avatar_url?: string;
 };
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -284,13 +297,15 @@ function AppointmentFormModal({
   onSave,
   colors,
   selectedDateStr,
+  showAlert,
 }: {
   visible: boolean;
   initialData?: Appointment;
   onClose: () => void;
-  onSave: (appt: Partial<Appointment>) => void;
+  onSave: (appt: Partial<Appointment>) => Promise<boolean>;
   colors: any;
   selectedDateStr: string;
+  showAlert: (opts: { title: string; message: string }) => void;
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
@@ -298,6 +313,7 @@ function AppointmentFormModal({
   const [dateText, setDateText] = useState('');
   const [startTimeText, setStartTimeText] = useState('09:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -318,19 +334,38 @@ function AppointmentFormModal({
         setDurationMinutes(30);
         setDateText(selectedDateStr);
       }
+      setLoading(false);
     }
   }, [visible, initialData, selectedDateStr]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (loading) return;
+    // ── Validación de campos obligatorios ──────────────────────────────
+    if (!service.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' });
+      return;
+    }
+    if (!workerId) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
+      return;
+    }
+    if (!dateText.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
+      return;
+    }
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(startTimeText.trim())) {
+      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+      return;
+    }
+
     const [hhStr, mmStr] = startTimeText.split(':');
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
-    let startHour = 9;
-    if (!isNaN(hh)) {
-      startHour = hh + (isNaN(mm) ? 0 : mm / 60);
-    }
+    const startHour = hh + mm / 60;
 
-    onSave({
+    setLoading(true);
+    const success = await onSave({
       clientName,
       service,
       worker_id: workerId,
@@ -338,7 +373,11 @@ function AppointmentFormModal({
       durationHours: durationMinutes / 60,
       date: dateText,
     });
-    onClose();
+    setLoading(false);
+
+    if (success) {
+      onClose();
+    }
   };
 
   return (
@@ -414,8 +453,16 @@ function AppointmentFormModal({
               <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
                 <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+              <TouchableOpacity 
+                onPress={handleSave} 
+                disabled={loading}
+                style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -429,18 +476,10 @@ function AppointmentFormModal({
 
 export default function ClientAgendaScreen() {
   const { profile } = useAuth();
-  const [business, setBusiness] = useState<any>(null);
-
-  useEffect(() => {
-    const initBusiness = async () => {
-      const { data } = await supabase.from('businesses').select('*').eq('status', 'approved').limit(1).single();
-      if (data) setBusiness(data);
-    };
-    initBusiness();
-  }, []);
-
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
+  const { selectedBusiness: business } = useBusiness();
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -566,36 +605,80 @@ export default function ClientAgendaScreen() {
     }
   }, [fetchAppointments]);
 
-  const handleSaveAppt = useCallback(async (data: Partial<Appointment>) => {
-    if (!business?.id) return;
-    const dateStr = data.date || selectedDate.toISOString().split('T')[0];
-
-    const apptData = {
-      business_id: business.id,
-      worker_id: data.worker_id,
-      client_id: profile?.id,
-      client_name: profile?.nickname || 'Cliente',
-      service: data.service || 'Servicio',
-      date: dateStr,
-      start_hour: data.startHour || 9,
-      duration_hours: data.durationHours || 0.5,
-      status: 'pending',
-    };
-
-    if (editingAppt) {
-      const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
-      if (error) {
-        showAlert({ title: 'Error', message: `No se pudo editar: ${error.message}` });
-      } else {
-        fetchAppointments();
+  const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
+    try {
+      if (!business?.id) {
+        showAlert({ title: 'Sin negocio', message: 'Por favor selecciona un negocio desde la pantalla Explorar.' });
+        return false;
       }
-    } else {
-      const { error } = await supabase.from('appointments').insert([apptData]);
-      if (error) {
-        showAlert({ title: 'Error', message: `No se pudo agendar: ${error.message}` });
-      } else {
-        fetchAppointments();
+      const dateStr = data.date || selectedDate.toISOString().split('T')[0];
+
+      const newStart = data.startHour || 9;
+      const newEnd = newStart + (data.durationHours || 0.5);
+
+      // ── Validar colisiones de horario ──
+      let query = supabase
+        .from('appointments')
+        .select('id, start_hour, duration_hours')
+        .eq('worker_id', data.worker_id)
+        .eq('date', dateStr);
+
+      if (editingAppt) {
+        query = query.neq('id', editingAppt.id);
       }
+
+      const { data: existingAppts, error: fetchError } = await query;
+      if (fetchError) {
+        showAlert({ title: 'Error', message: `No se pudo validar disponibilidad: ${fetchError.message}` });
+        return false;
+      }
+
+      const hasCollision = existingAppts?.some(a => {
+        const eStart = Number(a.start_hour);
+        const eEnd = eStart + Number(a.duration_hours);
+        return newStart < eEnd && newEnd > eStart;
+      });
+
+      if (hasCollision) {
+        Alert.alert(
+          'Horario no disponible', 
+          'El profesional ya tiene una cita agendada en este horario. Por favor elige otro.'
+        );
+        return false;
+      }
+
+      const apptData = {
+        business_id: business.id,
+        worker_id: data.worker_id,
+        client_id: profile?.id,
+        client_name: profile?.nickname || 'Cliente',
+        service: data.service || 'Servicio',
+        date: dateStr,
+        start_hour: newStart,
+        duration_hours: data.durationHours || 0.5,
+        status: 'pending',
+      };
+
+      if (editingAppt) {
+        const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
+        if (error) {
+          showAlert({ title: 'Error', message: `No se pudo editar: ${error.message}` });
+          return false;
+        }
+      } else {
+        const { error } = await supabase.from('appointments').insert([apptData]);
+        if (error) {
+          showAlert({ title: 'Error', message: `No se pudo agendar: ${error.message}` });
+          return false;
+        }
+      }
+
+      fetchAppointments();
+      return true;
+    } catch (err: any) {
+      console.error('Error in handleSaveAppt:', err);
+      showAlert({ title: 'Error Inesperado', message: err.message || 'Ocurrió un error al procesar la cita.' });
+      return false;
     }
   }, [editingAppt, business?.id, selectedDate, fetchAppointments, profile, showAlert]);
 
@@ -798,8 +881,21 @@ export default function ClientAgendaScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* ── Título del negocio (estilo Tesla) ────────────────────── */}
+      {business && (
+        <View style={[styles.businessHeader, { borderBottomColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
+            <Text style={[styles.businessHeaderName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {business.name.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* ── Selector de fecha (modo día) ────────────────────────── */}
       {viewMode === 'day' && (
+
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={styles.navBtn} activeOpacity={0.7}>
             <Feather name="chevron-left" size={20} color={colors.textPrimary} />
@@ -873,6 +969,10 @@ export default function ClientAgendaScreen() {
         style={[styles.fab, { backgroundColor: appColors.primary }]}
         activeOpacity={0.85}
         onPress={() => {
+          if (!business?.id) {
+            showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
+            return;
+          }
           setEditingAppt(undefined);
           setFormVisible(true);
         }}
@@ -888,6 +988,7 @@ export default function ClientAgendaScreen() {
         onSave={handleSaveAppt}
         colors={{ ...colors, workersList: workers }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
+        showAlert={showAlert}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1313,6 +1414,26 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: 13,
     fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // Business header (Tesla style)
+  businessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  businessHeaderLabel: {
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  businessHeaderName: {
+    fontSize: 14,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
 });

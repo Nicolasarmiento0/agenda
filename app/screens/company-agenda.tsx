@@ -13,11 +13,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
@@ -279,13 +282,15 @@ function AppointmentFormModal({
   onSave,
   colors,
   selectedDateStr,
+  showAlert,
 }: {
   visible: boolean;
   initialData?: Appointment;
   onClose: () => void;
-  onSave: (appt: Partial<Appointment>) => void;
+  onSave: (appt: Partial<Appointment>) => Promise<boolean>;
   colors: any;
   selectedDateStr: string;
+  showAlert: (opts: { title: string; message: string }) => void;
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
@@ -293,6 +298,7 @@ function AppointmentFormModal({
   const [dateText, setDateText] = useState('');
   const [startTimeText, setStartTimeText] = useState('09:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -313,19 +319,42 @@ function AppointmentFormModal({
         setDurationMinutes(30);
         setDateText(selectedDateStr);
       }
+      setLoading(false);
     }
   }, [visible, initialData, selectedDateStr]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (loading) return;
+    // ── Validación de campos obligatorios ──────────────────────────────
+    if (!clientName.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
+      return;
+    }
+    if (!service.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' });
+      return;
+    }
+    if (!workerId) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
+      return;
+    }
+    if (!dateText.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
+      return;
+    }
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(startTimeText.trim())) {
+      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+      return;
+    }
+
     const [hhStr, mmStr] = startTimeText.split(':');
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
-    let startHour = 9;
-    if (!isNaN(hh)) {
-      startHour = hh + (isNaN(mm) ? 0 : mm / 60);
-    }
+    const startHour = hh + mm / 60;
 
-    onSave({
+    setLoading(true);
+    const success = await onSave({
       clientName,
       service,
       worker_id: workerId,
@@ -333,7 +362,11 @@ function AppointmentFormModal({
       durationHours: durationMinutes / 60,
       date: dateText,
     });
-    onClose();
+    setLoading(false);
+
+    if (success) {
+      onClose();
+    }
   };
 
   return (
@@ -418,8 +451,16 @@ function AppointmentFormModal({
               <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
                 <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+              <TouchableOpacity 
+                onPress={handleSave} 
+                disabled={loading}
+                style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -434,6 +475,7 @@ function AppointmentFormModal({
 export default function CompanyAgendaScreen() {
   const { business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -555,29 +597,81 @@ export default function CompanyAgendaScreen() {
     }
   }, [fetchAppointments]);
 
-  const handleSaveAppt = useCallback(async (data: Partial<Appointment>) => {
-    if (!business?.id) return;
-    const dateStr = data.date || selectedDate.toISOString().split('T')[0];
+  const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
+    try {
+      if (!business?.id) {
+        showAlert({ title: 'Error', message: 'No se ha seleccionado ningún negocio.' });
+        return false;
+      }
+      const dateStr = data.date || selectedDate.toISOString().split('T')[0];
 
-    const apptData = {
-      business_id: business.id,
-      worker_id: data.worker_id,
-      client_name: data.clientName || 'Sin nombre',
-      service: data.service || 'Servicio',
-      date: dateStr,
-      start_hour: data.startHour || 9,
-      duration_hours: data.durationHours || 0.5,
-      status: 'pending',
-    };
+      const newStart = data.startHour || 9;
+      const newEnd = newStart + (data.durationHours || 0.5);
 
-    if (editingAppt) {
-      const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
-      if (!error) fetchAppointments();
-    } else {
-      const { error } = await supabase.from('appointments').insert([apptData]);
-      if (!error) fetchAppointments();
+      // ── Validar colisiones de horario ──
+      let query = supabase
+        .from('appointments')
+        .select('id, start_hour, duration_hours')
+        .eq('worker_id', data.worker_id)
+        .eq('date', dateStr);
+
+      if (editingAppt) {
+        query = query.neq('id', editingAppt.id);
+      }
+
+      const { data: existingAppts, error: fetchError } = await query;
+      if (fetchError) {
+        showAlert({ title: 'Error', message: `No se pudo validar el horario: ${fetchError.message}` });
+        return false;
+      }
+
+      const hasCollision = existingAppts?.some(a => {
+        const eStart = Number(a.start_hour);
+        const eEnd = eStart + Number(a.duration_hours);
+        return newStart < eEnd && newEnd > eStart;
+      });
+
+      if (hasCollision) {
+        Alert.alert(
+          'Horario no disponible', 
+          'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
+        );
+        return false;
+      }
+
+      const apptData = {
+        business_id: business.id,
+        worker_id: data.worker_id,
+        client_name: data.clientName || 'Sin nombre',
+        service: data.service || 'Servicio',
+        date: dateStr,
+        start_hour: newStart,
+        duration_hours: data.durationHours || 0.5,
+        status: 'pending',
+      };
+
+      if (editingAppt) {
+        const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
+        if (error) {
+          showAlert({ title: 'Error', message: `No se pudo actualizar: ${error.message}` });
+          return false;
+        }
+      } else {
+        const { error } = await supabase.from('appointments').insert([apptData]);
+        if (error) {
+          showAlert({ title: 'Error', message: `No se pudo agendar: ${error.message}` });
+          return false;
+        }
+      }
+
+      fetchAppointments();
+      return true;
+    } catch (err: any) {
+      console.error('Error in handleSaveAppt:', err);
+      showAlert({ title: 'Error Inesperado', message: err.message || 'Ocurrió un error al procesar la cita.' });
+      return false;
     }
-  }, [editingAppt, business?.id, selectedDate, fetchAppointments]);
+  }, [editingAppt, business?.id, selectedDate, fetchAppointments, showAlert]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -850,6 +944,10 @@ export default function CompanyAgendaScreen() {
         style={[styles.fab, { backgroundColor: appColors.primary }]}
         activeOpacity={0.85}
         onPress={() => {
+          if (!business?.id) {
+            showAlert({ title: 'Sin negocio', message: 'Debes seleccionar o tener un negocio activo.' });
+            return;
+          }
           setEditingAppt(undefined);
           setFormVisible(true);
         }}
@@ -865,6 +963,7 @@ export default function CompanyAgendaScreen() {
         onSave={handleSaveAppt}
         colors={{ ...colors, workersList: workers }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
+        showAlert={showAlert}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
