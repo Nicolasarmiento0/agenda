@@ -127,6 +127,10 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/client-agenda')}>
+                  <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/my-appointments')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIS CITAS</Text>

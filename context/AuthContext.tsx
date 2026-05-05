@@ -54,7 +54,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/screens/role-select' as any);
     } else if (role === 'admin') {
       router.replace('/screens/admin-dashboard' as any);
-    } else if (role === 'company') {
+    }
+    else if (role === 'client') {
+      router.replace('/screens/client-agenda' as any);
+    }
+    else if (role === 'company') {
+      router.replace('/screens/company-agenda' as any);
+    }
+    else if (role === 'company') {
       if (!businessData) {
         router.replace('/screens/business-setup' as any);
       } else if (businessData.status === 'pending' || businessData.status === 'rejected') {
