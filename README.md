@@ -1,50 +1,104 @@
-# Welcome to your Expo app 👋
+# 📅 Agenda — Reservas para PyMEs
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> App móvil para que pequeños negocios (barberías, salones, consultorios, etc.) gestionen sus reservas de forma simple y profesional.
 
-## Get started
+**Stack:** React Native · Expo · Supabase · TypeScript
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 🚀 ¿Qué es esto?
 
-2. Start the app
+**Agenda** es una aplicación móvil pensada para PyMEs de servicios (barberías, peluquerías, centros de estética, consultorios, etc.) que necesitan:
 
-   ```bash
-   npx expo start
-   ```
+- Que sus clientes reserven online sin llamar ni escribir por WhatsApp
+- Ver su agenda del día de un vistazo
+- Gestionar sus servicios, horarios y trabajadores
+- Fidelizar a sus clientes con puntos o membresías
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## ✅ Funcionalidades implementadas
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+| Módulo | Estado |
+|---|---|
+| Autenticación con Supabase | ✅ |
+| Navegación con Expo Router | ✅ |
+| Estructura base de la app | ✅ |
 
-## Get a fresh project
+> Ver roadmap completo en [`FUNCIONALIDADES.md`](./FUNCIONALIDADES.md)
 
-When you're ready, run:
+---
+
+## 🛠️ Instalación y desarrollo
+
+### Requisitos
+
+- Node.js 18+
+- Expo CLI
+- Cuenta en [Supabase](https://supabase.com)
+
+### Pasos
 
 ```bash
-npm run reset-project
+# 1. Clonar el repositorio
+git clone https://github.com/Nicolasarmiento0/agenda.git
+cd agenda
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Completar SUPABASE_URL y SUPABASE_ANON_KEY
+
+# 4. Iniciar la app
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Opciones para correr la app
 
-## Learn more
+- 📱 **Expo Go** — escanear QR desde el celular
+- 🤖 **Android Emulator** — Android Studio
+- 🍎 **iOS Simulator** — Xcode (solo Mac)
+- 🌐 **Web** — directamente en el navegador
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📁 Estructura del proyecto
 
-## Join the community
+```
+agenda/
+├── app/               # Rutas y pantallas (file-based routing)
+├── components/        # Componentes reutilizables
+├── context/           # Estado global (AuthContext, etc.)
+├── hooks/             # Custom hooks
+├── lib/               # Cliente Supabase y utilidades
+├── styles/            # Estilos globales
+├── constants/         # Colores, tamaños, textos
+└── assets/            # Imágenes e íconos
+```
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📄 Documentación
+
+- [`FUNCIONALIDADES.md`](./FUNCIONALIDADES.md) — Roadmap completo de features por fase
+- [`GUIA_CLIENTES.md`](./GUIA_CLIENTES.md) — Instrucciones para que las PyMEs compartan con sus clientes
+
+---
+
+## 🤝 Contribuir
+
+Este proyecto está en desarrollo activo. Si querés contribuir:
+
+1. Hacé un fork
+2. Creá una rama: `git checkout -b feature/nueva-funcionalidad`
+3. Commiteá tus cambios: `git commit -m 'feat: agrego nueva funcionalidad'`
+4. Push: `git push origin feature/nueva-funcionalidad`
+5. Abrí un Pull Request
+
+---
+
+## 📬 Contacto
+
+Desarrollado por [@Nicolasarmiento0](https://github.com/Nicolasarmiento0)
