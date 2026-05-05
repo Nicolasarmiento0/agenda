@@ -1,0 +1,16 @@
+# Tasks
+
+## company-agenda.tsx
+- [/] Agregar status `no-show` al tipo y STATUS_CONFIG
+- [/] Convertir MOCK_APPOINTMENTS a useState editable
+- [/] Chips de filtro por trabajador (Todos | Juan | Sofía)
+- [/] Stats recalculadas desde estado filtrado
+- [/] Bottom sheet acciones funcionales (Confirmar / Editar / No-show / Cancelar)
+- [/] Modal nueva cita (FAB +): cliente, servicio, trabajador, hora, duración
+- [/] Modal editar cita (desde sheet → "Editar")
+
+## company-employees.tsx
+- [/] Lista de empleados con datos mock (avatar, nombre, especialidad, badge, citas)
+- [/] Stats: Total / Activos calculadas desde estado
+- [/] Bottom sheet por empleado (activar/desactivar, editar, eliminar)
+- [/] Modal "Invitar empleado" (nombre, especialidad, color, días disponibles)

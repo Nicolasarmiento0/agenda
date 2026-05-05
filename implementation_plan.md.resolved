@@ -1,0 +1,79 @@
+# Agenda Funcional + Empleados Funcional
+
+Hacer funcionales las pantallas `company-agenda` (ya con el nuevo diseño) y `company-employees`, con datos mock reales y flujos interactivos completos.
+
+---
+
+## Cambios propuestos
+
+### `company-agenda.tsx` — Agenda funcional
+
+#### Estado reactivo real
+- Reemplazar `MOCK_APPOINTMENTS` por estado `useState<Appointment[]>` editable en memoria.
+- Filtro por trabajador: chips de filtro encima de la grilla (`Todos | Juan | Sofía`).
+- Las stats (HOY / PENDIENTES / HECHAS) se recalculan desde el estado filtrado.
+
+#### Bottom sheet de detalle (ver/editar cita)
+Las acciones del sheet ya existen visualmente. Vamos a conectarlas:
+- **Confirmar** → cambia `status` a `'confirmed'`
+- **Editar** → abre un `Modal` de edición (form con: cliente, servicio, trabajador, hora, duración)
+- **No show** → cambia `status` a `'no-show'` (se agrega al tipo)
+- **Cancelar** → elimina la cita del estado con confirmación
+
+#### Modal nueva cita (FAB `+`)
+Form en modal completo:
+- Nombre del cliente (TextInput)
+- Servicio (selector de opciones fijas)
+- Trabajador (selector)
+- Hora de inicio (selector de horas 08:00–19:30 en pasos de 30 min)
+- Duración (selector: 30 / 60 / 90 / 120 min)
+- Botón Guardar → agrega al estado
+
+---
+
+### `company-employees.tsx` — Empleados funcional
+
+Reemplazar la pantalla vacía con:
+
+#### Lista de empleados (datos mock)
+Cada empleado muestra:
+- Avatar con iniciales + color
+- Nombre, especialidad
+- Badge de estado: Activo / Inactivo
+- Cantidad de citas hoy
+
+#### Acciones por empleado (bottom sheet al tocar)
+- Ver disponibilidad (días de la semana que trabaja)
+- Activar / Desactivar empleado
+- Editar nombre/especialidad
+- Eliminar
+
+#### Modal agregar empleado
+Al tocar "INVITAR EMPLEADO":
+- Nombre
+- Especialidad
+- Color (selector de colores)
+- Días disponibles (checkboxes Lun–Dom)
+- Guardar → agrega a lista
+
+#### Stats actualizadas
+- TOTAL y ACTIVOS calculados desde el estado
+
+---
+
+## Notas de implementación
+
+- Todo con estado en memoria (mock), sin Supabase todavía.
+- Usar el mismo patrón de bottom sheet con `PanResponder` + `Animated` que ya tiene la agenda.
+- Mantener coherencia visual con el diseño existente (dark mode, colores del tema, mismo header pattern).
+
+---
+
+## Verificación
+
+- [ ] Filtro por trabajador filtra citas en la grilla
+- [ ] Tap en cita → sheet → acciones cambian estado de la cita
+- [ ] FAB → modal → crear cita → aparece en la grilla
+- [ ] Empleados lista con datos mock
+- [ ] Tap en empleado → sheet con acciones
+- [ ] Botón "Invitar" → modal → nuevo empleado aparece en lista

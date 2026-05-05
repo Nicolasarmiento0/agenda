@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -28,7 +29,7 @@ type Appointment = {
   workerColor: string;
   startHour: number; // ej: 9.5 = 9:30
   durationHours: number; // ej: 1.5 = 90 min
-  status: 'confirmed' | 'pending' | 'completed';
+  status: 'confirmed' | 'pending' | 'completed' | 'no-show';
 };
 
 type Worker = {
@@ -50,6 +51,7 @@ const STATUS_CONFIG = {
   confirmed: { label: 'Confirmado', bg: '#EEF8F0', text: '#2E7D45', dot: '#3D9E5A' },
   pending: { label: 'Pendiente', bg: '#FFF5E5', text: '#A0660A', dot: '#F0A030' },
   completed: { label: 'Completado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
+  'no-show': { label: 'No Show', bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
 };
 
 // ─── Datos mock ───────────────────────────────────────────────────────────────
@@ -59,7 +61,7 @@ const MOCK_WORKERS: Worker[] = [
   { id: 'w2', name: 'Sofía', color: '#3B7BE0', initials: 'SO' },
 ];
 
-const MOCK_APPOINTMENTS: Appointment[] = [
+const INITIAL_APPOINTMENTS: Appointment[] = [
   { id: 'a1', clientName: 'Carlos M.', service: 'Corte + barba', worker: 'Juan', workerColor: '#D00024', startHour: 9, durationHours: 1, status: 'confirmed' },
   { id: 'a2', clientName: 'Ana P.', service: 'Coloración', worker: 'Sofía', workerColor: '#3B7BE0', startHour: 10, durationHours: 1.5, status: 'confirmed' },
   { id: 'a3', clientName: 'Miguel R.', service: 'Corte', worker: 'Juan', workerColor: '#D00024', startHour: 12, durationHours: 0.5, status: 'pending' },
@@ -163,11 +165,13 @@ function AppointmentSheet({
   appt,
   visible,
   onClose,
+  onAction,
   colors,
 }: {
   appt: Appointment | null;
   visible: boolean;
   onClose: () => void;
+  onAction: (action: string, appt: Appointment) => void;
   colors: any;
 }) {
   const slideY = useRef(new Animated.Value(400)).current;
@@ -206,10 +210,10 @@ function AppointmentSheet({
   const endHour = appt.startHour + appt.durationHours;
 
   const ACTIONS = [
-    { icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
-    { icon: 'edit-2', label: 'Editar', color: appColors.primary },
-    { icon: 'phone', label: 'Llamar', color: '#3B7BE0' },
-    { icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
+    { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
+    { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
+    { id: 'no-show', icon: 'user-x', label: 'No Show', color: '#D00024' },
+    { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
   ];
 
   return (
@@ -258,7 +262,7 @@ function AppointmentSheet({
         {/* Acciones rápidas */}
         <View style={styles.sheetActions}>
           {ACTIONS.map((a) => (
-            <TouchableOpacity key={a.label} style={styles.sheetAction} activeOpacity={0.7} onPress={onClose}>
+            <TouchableOpacity key={a.label} style={styles.sheetAction} activeOpacity={0.7} onPress={() => { onClose(); onAction(a.id, appt); }}>
               <View style={[styles.sheetActionIcon, { backgroundColor: a.color + '18' }]}>
                 <Feather name={a.icon as any} size={18} color={a.color} />
               </View>
@@ -267,6 +271,132 @@ function AppointmentSheet({
           ))}
         </View>
       </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── Componente: Formulario Cita ──────────────────────────────────────────────
+
+function AppointmentFormModal({
+  visible,
+  initialData,
+  onClose,
+  onSave,
+  colors,
+}: {
+  visible: boolean;
+  initialData?: Appointment;
+  onClose: () => void;
+  onSave: (appt: Partial<Appointment>) => void;
+  colors: any;
+}) {
+  const [clientName, setClientName] = useState('');
+  const [service, setService] = useState('');
+  const [worker, setWorker] = useState('');
+  const [startHour, setStartHour] = useState(9);
+  const [durationHours, setDurationHours] = useState(0.5);
+
+  useEffect(() => {
+    if (visible) {
+      if (initialData) {
+        setClientName(initialData.clientName);
+        setService(initialData.service);
+        setWorker(initialData.worker);
+        setStartHour(initialData.startHour);
+        setDurationHours(initialData.durationHours);
+      } else {
+        setClientName('');
+        setService('');
+        setWorker(MOCK_WORKERS[0].name);
+        setStartHour(9);
+        setDurationHours(0.5);
+      }
+    }
+  }, [visible, initialData]);
+
+  const handleSave = () => {
+    onSave({
+      clientName,
+      service,
+      worker,
+      startHour,
+      durationHours,
+    });
+    onClose();
+  };
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+        <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+            {initialData ? 'Editar Cita' : 'Nueva Cita'}
+          </Text>
+
+          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
+          <TextInput
+            style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={clientName}
+            onChangeText={setClientName}
+            placeholderTextColor={colors.textSecondary}
+            placeholder="Nombre del cliente"
+          />
+
+          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Servicio</Text>
+          <TextInput
+            style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={service}
+            onChangeText={setService}
+            placeholderTextColor={colors.textSecondary}
+            placeholder="Ej: Corte y barba"
+          />
+
+          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
+          <View style={styles.modalRow}>
+            {MOCK_WORKERS.map(w => (
+              <TouchableOpacity
+                key={w.id}
+                onPress={() => setWorker(w.name)}
+                style={[styles.modalChip, worker === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+              >
+                <Text style={[styles.modalChipText, worker === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora</Text>
+              <TextInput
+                style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                value={String(startHour)}
+                onChangeText={v => setStartHour(Number(v))}
+                keyboardType="numeric"
+                placeholder="Ej: 9.5"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (hrs)</Text>
+              <TextInput
+                style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                value={String(durationHours)}
+                onChangeText={v => setDurationHours(Number(v))}
+                keyboardType="numeric"
+                placeholder="Ej: 1"
+              />
+            </View>
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
+              <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
+              <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -280,26 +410,69 @@ export default function CompanyAgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
+  const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
+
+  const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
+  const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const nowPosition = useMemo(() => nowLinePosition(), []);
 
   // Stats
+  const filteredAppointments = useMemo(() => {
+    if (!selectedWorkerFilter) return appointments;
+    return appointments.filter(a => a.worker === selectedWorkerFilter);
+  }, [appointments, selectedWorkerFilter]);
+
   const stats = useMemo(() => {
-    const total = MOCK_APPOINTMENTS.length;
-    const pending = MOCK_APPOINTMENTS.filter(a => a.status === 'pending').length;
-    const completed = MOCK_APPOINTMENTS.filter(a => a.status === 'completed').length;
+    const total = filteredAppointments.length;
+    const pending = filteredAppointments.filter(a => a.status === 'pending').length;
+    const completed = filteredAppointments.filter(a => a.status === 'completed').length;
     return [
-      { label: 'HOY', value: String(total) },
+      { label: 'CITAS HOY', value: String(total) },
       { label: 'PENDIENTES', value: String(pending) },
       { label: 'HECHAS', value: String(completed) },
     ];
-  }, []);
+  }, [filteredAppointments]);
 
   const openSheet = useCallback((appt: Appointment) => {
     setSelectedAppt(appt);
     setSheetVisible(true);
   }, []);
+
+  const handleSheetAction = useCallback((actionId: string, appt: Appointment) => {
+    if (actionId === 'confirm') {
+      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'confirmed' } : a));
+    } else if (actionId === 'no-show') {
+      setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'no-show' } : a));
+    } else if (actionId === 'cancel') {
+      setAppointments(prev => prev.filter(a => a.id !== appt.id));
+    } else if (actionId === 'edit') {
+      setEditingAppt(appt);
+      setSheetVisible(false);
+      setFormVisible(true);
+    }
+  }, []);
+
+  const handleSaveAppt = useCallback((data: Partial<Appointment>) => {
+    if (editingAppt) {
+      setAppointments(prev => prev.map(a => a.id === editingAppt.id ? { ...a, ...data } as Appointment : a));
+    } else {
+      const workerInfo = MOCK_WORKERS.find(w => w.name === data.worker) || MOCK_WORKERS[0];
+      const newAppt: Appointment = {
+        id: 'new-' + Date.now(),
+        clientName: data.clientName || 'Sin nombre',
+        service: data.service || 'Servicio',
+        worker: data.worker || workerInfo.name,
+        workerColor: workerInfo.color,
+        startHour: data.startHour || 9,
+        durationHours: data.durationHours || 0.5,
+        status: 'pending',
+      };
+      setAppointments(prev => [...prev, newAppt]);
+    }
+  }, [editingAppt]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -311,7 +484,7 @@ export default function CompanyAgendaScreen() {
 
   const LABEL_WIDTH = 46;
   const PADDING = 16;
-  const WORKERS = MOCK_WORKERS;
+  const WORKERS = selectedWorkerFilter ? MOCK_WORKERS.filter(w => w.name === selectedWorkerFilter) : MOCK_WORKERS;
   const colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / WORKERS.length);
 
   const renderDayGrid = () => (
@@ -359,7 +532,7 @@ export default function CompanyAgendaScreen() {
                 },
               ]}
             >
-              {MOCK_APPOINTMENTS
+              {appointments
                 .filter(a => a.worker === w.name)
                 .map(appt => (
                   <AppointmentCard
@@ -509,6 +682,27 @@ export default function CompanyAgendaScreen() {
         </View>
       )}
 
+      {/* ── Filtro por trabajador ──────────────────────────────────── */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
+        <TouchableOpacity
+          style={[styles.filterChip, !selectedWorkerFilter && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+          onPress={() => setSelectedWorkerFilter(null)}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
+        </TouchableOpacity>
+        {MOCK_WORKERS.map(w => (
+          <TouchableOpacity
+            key={w.id}
+            style={[styles.filterChip, selectedWorkerFilter === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            onPress={() => setSelectedWorkerFilter(w.name)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       {/* ── Stats row ────────────────────────────────────────────── */}
       <View style={styles.statsRow}>
         {stats.map((s, i) => (
@@ -530,16 +724,29 @@ export default function CompanyAgendaScreen() {
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: appColors.primary }]}
         activeOpacity={0.85}
-        onPress={() => { /* TODO: abrir modal nueva cita */ }}
+        onPress={() => {
+          setEditingAppt(undefined);
+          setFormVisible(true);
+        }}
       >
         <Feather name="plus" size={24} color="#fff" />
       </TouchableOpacity>
+
+      {/* ── Modal Formulario ─────────────────────────────────────── */}
+      <AppointmentFormModal
+        visible={formVisible}
+        initialData={editingAppt}
+        onClose={() => setFormVisible(false)}
+        onSave={handleSaveAppt}
+        colors={colors}
+      />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
       <AppointmentSheet
         appt={selectedAppt}
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
+        onAction={handleSheetAction}
         colors={colors}
       />
 
@@ -604,6 +811,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: 0.3,
+  },
+
+  // Filters
+  workerFilters: {
+    maxHeight: 40,
+    minHeight: 40,
+    marginBottom: 10,
+  },
+  workerFiltersContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: 'center',
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#444',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 
   // Stats
@@ -870,5 +1100,70 @@ const styles = StyleSheet.create({
   sheetActionLabel: {
     fontSize: 11,
     letterSpacing: 0.2,
+  },
+
+  // Modal Form
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+    letterSpacing: 0.5,
+  },
+  modalLabel: {
+    fontSize: 12,
+    marginBottom: 6,
+    letterSpacing: 0.5,
+    marginTop: 12,
+  },
+  modalInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  modalChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  modalChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 32,
+  },
+  modalBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  modalBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
