@@ -345,6 +345,67 @@ function AppointmentFormModal({
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
+  const [services, setServices] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!visible || !colors.selectedBusinessId) return;
+
+      try {
+        // Intentar obtener servicios de business_services
+        const { data: bizServices, error: bizError } = await supabase
+          .from('business_services')
+          .select('name, price')
+          .eq('business_id', colors.selectedBusinessId)
+          .eq('is_active', true);
+
+        if (!bizError && bizServices && bizServices.length > 0) {
+          setServices(bizServices);
+        } else {
+          // Fallback: Si no hay servicios configurados, usar los del catálogo para la categoría
+          const { data: bizData } = await supabase
+            .from('businesses')
+            .select('category_id')
+            .eq('id', colors.selectedBusinessId)
+            .single();
+
+          if (bizData?.category_id) {
+            const { data: catServices } = await supabase
+              .from('catalog_services')
+              .select('name')
+              .eq('category_id', bizData.category_id);
+            
+            if (catServices && catServices.length > 0) {
+              setServices(catServices.map(s => ({ name: s.name, price: 0 })));
+            } else {
+              // Último recurso: hardcoded placeholders
+              setServices([
+                { name: 'Servicio 1', price: 0 },
+                { name: 'Servicio 2', price: 0 },
+                { name: 'Servicio 3', price: 0 }
+              ]);
+            }
+          } else {
+            setServices([
+              { name: 'Servicio 1', price: 0 },
+              { name: 'Servicio 2', price: 0 },
+              { name: 'Servicio 3', price: 0 }
+            ]);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching services:', err);
+        setServices([
+          { name: 'Servicio 1', price: 0 },
+          { name: 'Servicio 2', price: 0 },
+          { name: 'Servicio 3', price: 0 }
+        ]);
+      }
+    };
+
+    fetchServices();
+  }, [visible, colors.selectedBusinessId]);
+
   useEffect(() => {
     if (visible) {
       if (initialData) {
@@ -455,14 +516,23 @@ function AppointmentFormModal({
               {initialData ? 'Editar Cita' : 'Nueva Cita'}
             </Text>
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Servicio</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={service}
-              onChangeText={setService}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="Ej: Corte y barba"
-            />
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
+            <View style={[styles.modalRow, { marginBottom: 16 }]}>
+              {services.map((s) => (
+                <TouchableOpacity
+                  key={s.name}
+                  onPress={() => setService(s.name)}
+                  style={[
+                    styles.modalChip,
+                    service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                  ]}
+                >
+                  <Text style={[styles.modalChipText, service === s.name ? { color: '#fff' } : { color: colors.textSecondary }]}>
+                    {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
             <View style={styles.modalRow}>
@@ -1111,7 +1181,7 @@ export default function ClientAgendaScreen() {
         initialData={editingAppt}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
-        colors={{ ...colors, workersList: workers }}
+        colors={{ ...colors, workersList: workers, selectedBusinessId: business?.id }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
         showAlert={showAlert}
         openingTime={business?.opening_time}
