@@ -19,10 +19,9 @@ import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import { appStyles } from '../../styles/appStyles';
+import { appColors, appStyles } from '../../styles/appStyles';
 
 export default function ProfileScreen() {
-  // ── FIX 1: se agrega updateProfileState ──────────────────────────────────
   const { profile, user, signOut, refreshProfile, updateProfileState } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
@@ -33,6 +32,11 @@ export default function ProfileScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [stats, setStats] = useState({
+    completed: 0,
+    upcoming: 0
+  });
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshProfile();
@@ -40,34 +44,46 @@ export default function ProfileScreen() {
   }, [refreshProfile]);
 
   useEffect(() => {
-    if (profile?.nickname) {
-      setNickname(profile.nickname);
-    }
+    if (profile?.nickname) setNickname(profile.nickname);
+    if (profile?.role === 'client') fetchStats();
   }, [profile]);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshProfile();
-    }, [])
-  );
+  const fetchStats = async () => {
+    if (!user?.id) return;
+    try {
+      const { data: appts, error } = await supabase
+        .from('appointments')
+        .select('status')
+        .or(`client_id.eq.${user.id},client_name.eq.${profile?.nickname}`);
 
-  // ─── Actualizar nickname ───────────────────────────────────────────────────
+      if (error) throw error;
+      if (appts) {
+        setStats({
+          completed: appts.filter(a => a.status === 'completed').length,
+          upcoming: appts.filter(a => a.status === 'confirmed' || a.status === 'pending').length
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  };
+
+  useFocusEffect(useCallback(() => { refreshProfile(); }, []));
+
+  // ─── LÓGICA DE ACTUALIZACIÓN DE NICKNAME ───
   const handleUpdateProfile = async () => {
     if (!nickname.trim()) {
       showAlert({ title: 'Atención', message: 'El nickname no puede estar vacío' });
       return;
     }
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ nickname })
-        .eq('id', user?.id)
-        .select()
-        .single();
+        .eq('id', user?.id);
 
       if (error) throw error;
-      if (data) await refreshProfile();
-
+      await refreshProfile();
       showAlert({ title: 'Éxito', message: 'Perfil actualizado correctamente' });
       setIsEditing(false);
     } catch (error: any) {
@@ -75,87 +91,64 @@ export default function ProfileScreen() {
     }
   };
 
-  // ─── Subir avatar ──────────────────────────────────────────────────────────
+  // ─── LÓGICA DE SUBIDA DE AVATAR (CORREGIDA) ───
   const uploadAvatar = async () => {
+    console.log('Iniciando subida de avatar...');
     try {
-      const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        showAlert({
-          title: 'Permiso necesario',
-          message: 'Para cambiar tu foto, necesitamos permiso para acceder a tu galería. Por favor, actívalo en los ajustes de tu teléfono.'
-        });
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert({ title: 'Permiso necesario', message: 'Necesitamos acceso a tu galería.' });
         return;
       }
 
-
-
+      // IMPORTANTE: En iOS se necesita un pequeño delay después de que se cierra un Alert/Modal
       await new Promise(resolve => setTimeout(resolve, 600));
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5, 
       });
+      
+      console.log('Resultado de ImagePicker:', result.canceled ? 'cancelado' : 'imagen seleccionada');
 
       if (result.canceled || !result.assets[0].uri) return;
 
       setUploadingAvatar(true);
       const image = result.assets[0];
-
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
       let body: any;
-      let contentType: string | undefined;
+      let contentType: string | undefined = image.mimeType || `image/${fileExt}`;
 
       if (Platform.OS === 'web') {
-        // En web, intentamos usar el objeto File si existe, o fetch del blob
-        const asset = result.assets[0];
-        if (asset.file) {
-          body = asset.file;
-        } else {
-          const response = await fetch(image.uri);
-          body = await response.blob();
-        }
-        contentType = image.mimeType || `image/${fileExt}`;
+        const response = await fetch(image.uri);
+        body = await response.blob();
       } else {
         const formData = new FormData();
         formData.append('file', {
           uri: image.uri,
           name: fileName.split('/')[1],
-          type: image.mimeType || `image/${fileExt}`,
+          type: contentType,
         } as any);
         body = formData;
-        // En nativo NO enviamos contentType si usamos FormData para que el boundary se genere solo
+        // En nativo con FormData no pasamos contentType manualmente para evitar errores de boundary
         contentType = undefined;
       }
 
+      // 1. Subir a Storage
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, body, {
-          upsert: true,
-          contentType,
-        });
-
-
-      console.log('storageError:', JSON.stringify(storageError)); // ← nuevo
-      //console.log('storageData:', JSON.stringify(storageData));   // ← nuevo
+        .upload(fileName, body, { upsert: true, contentType });
 
       if (storageError) throw storageError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
+      // 2. Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
 
-      // ── FIX 2: guardar URL limpia en DB (sin timestamp) ───────────────────
+      // 3. Actualizar base de datos (URL limpia)
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -163,21 +156,18 @@ export default function ProfileScreen() {
 
       if (updateError) throw updateError;
 
-      // ── FIX 2: actualizar estado local con timestamp para forzar re-render
+      // 4. Actualizar estado local con Timestamp para forzar el refresco visual
       updateProfileState({ avatar_url: `${publicUrl}?t=${Date.now()}` });
 
-      showAlert({ title: 'Éxito', message: 'Foto de perfil actualizada correctamente.' });
+      showAlert({ title: 'Éxito', message: 'Foto de perfil actualizada.' });
     } catch (error: any) {
-      showAlert({
-        title: 'Error de subida',
-        message: error.message || 'No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.'
-      });
+      showAlert({ title: 'Error de subida', message: error.message });
     } finally {
       setUploadingAvatar(false);
     }
   };
 
-  // ─── Borrar avatar ─────────────────────────────────────────────────────────
+  // ─── LÓGICA DE BORRADO DE AVATAR (CORREGIDA) ───
   const deleteAvatar = async () => {
     if (!profile?.avatar_url) return;
 
@@ -193,33 +183,24 @@ export default function ProfileScreen() {
             try {
               setUploadingAvatar(true);
 
+              // Extraer el path real del archivo eliminando la URL base y los query params
               const url = new URL(profile.avatar_url!);
               const pathParts = url.pathname.split('/avatars/');
-              const filePath = pathParts[1];
+              const filePath = pathParts[1]?.split('?')[0]; // Limpiamos el ?t=...
 
               if (filePath) {
-                // ── FIX 3: limpiar el ?t=... del path antes de borrar ─────
-                const cleanPath = filePath.split('?')[0];
-                const { error: removeError } = await supabase.storage
-                  .from('avatars')
-                  .remove([cleanPath]);
-                if (removeError) throw removeError;
+                await supabase.storage.from('avatars').remove([filePath]);
               }
 
-              const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ avatar_url: null })
-                .eq('id', user?.id);
+              // Actualizar DB a null
+              await supabase.from('profiles').update({ avatar_url: null }).eq('id', user?.id);
 
-              if (updateError) throw updateError;
-
-              // ── FIX 3: actualizar estado local directamente ───────────────
+              // Actualizar estado local
               updateProfileState({ avatar_url: null });
 
               showAlert({ title: 'Listo', message: 'Foto de perfil eliminada.' });
             } catch (error: any) {
-              console.error('Error al borrar avatar:', error);
-              showAlert({ title: 'Error', message: error.message || 'No se pudo eliminar la imagen.' });
+              showAlert({ title: 'Error', message: 'No se pudo eliminar la imagen.' });
             } finally {
               setUploadingAvatar(false);
             }
@@ -229,23 +210,13 @@ export default function ProfileScreen() {
     });
   };
 
-  // ─── Menú de opciones de avatar ───────────────────────────────────────────
   const handleAvatarPress = () => {
-    const options: any[] = [
-      { text: 'Cambiar foto', onPress: uploadAvatar },
-    ];
-
-    if (profile?.avatar_url) {
-      options.push({ text: 'Borrar foto', style: 'destructive', onPress: deleteAvatar });
-    }
-
+    const options: any[] = [{ text: 'Cambiar foto', onPress: uploadAvatar }];
+    if (profile?.avatar_url) options.push({ text: 'Borrar foto', style: 'destructive', onPress: deleteAvatar });
     options.push({ text: 'Cancelar', style: 'cancel' });
-
     showAlert({ title: 'Foto de perfil', message: '¿Qué deseas hacer?', buttons: options });
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-  console.log('avatar_url:', profile?.avatar_url);
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Sidebar visible={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
@@ -256,123 +227,99 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
       >
         <View style={[appStyles.screen, { backgroundColor: 'transparent' }]}>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 40, marginBottom: 10 }}>
-            <TouchableOpacity
-              onPress={() => setIsSidebarOpen(true)}
-              style={{ width: 40 }}
-            >
+          <View style={localStyles.topNav}>
+            <TouchableOpacity onPress={() => setIsSidebarOpen(true)}>
               <Feather name="menu" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
+            <TouchableOpacity onPress={toggleTheme}>
               <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <Text style={[appStyles.title, { color: colors.textPrimary, paddingVertical: 10 }]}>
-            MI PERFIL
-          </Text>
+          <Text style={[appStyles.title, { color: colors.textPrimary, paddingVertical: 10 }]}>MI PERFIL</Text>
 
-          {/* ── Card avatar ── */}
-          <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-
-            <TouchableOpacity
-              onPress={handleAvatarPress}
-              disabled={uploadingAvatar}
-              style={localStyles.avatarWrapper}
-              activeOpacity={0.8}
-            >
+          <View style={localStyles.headerContainer}>
+            <TouchableOpacity onPress={handleAvatarPress} disabled={uploadingAvatar} style={localStyles.avatarContainer}>
               {profile?.avatar_url ? (
                 <ExpoImage
+                  // IMPORTANTE: El key y el source con timestamp aseguran que la imagen cambie al instante
                   key={profile.avatar_url}
-                  source={{ uri: profile.avatar_url.split('?')[0] + '?t=' + Date.now() }}
-                  style={localStyles.avatarImage}
+                  source={{ uri: profile.avatar_url.includes('?') ? profile.avatar_url : `${profile.avatar_url}?t=${Date.now()}` }}
+                  style={localStyles.avatarImageLarge}
                   contentFit="cover"
                   transition={200}
                 />
               ) : (
-                <View
-                  style={[
-                    localStyles.avatarPlaceholder,
-                    { backgroundColor: isDarkMode ? '#333' : '#E1E1E1' },
-                  ]}
-                >
-                  <Feather name="user" size={40} color={isDarkMode ? '#666' : '#999'} />
+                <View style={[localStyles.avatarPlaceholderLarge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Feather name="user" size={50} color={colors.textSecondary} />
                 </View>
               )}
-
-              <View style={[localStyles.cameraIcon, { backgroundColor: colors.primary }]}>
-                {uploadingAvatar ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Feather name="camera" size={14} color="#fff" />
-                )}
+              <View style={[localStyles.cameraBadge, { backgroundColor: colors.primary }]}>
+                {uploadingAvatar ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="camera" size={12} color="#fff" />}
               </View>
             </TouchableOpacity>
 
-            <Text style={[localStyles.avatarHint, { color: colors.textSecondary }]}>
-              {uploadingAvatar ? 'Actualizando...' : 'Toca para cambiar o borrar'}
-            </Text>
-
-            <Text style={[localStyles.emailText, { color: colors.textSecondary }]}>
-              {user?.email}
-            </Text>
-          </View>
-
-          {/* ── Sección nickname ── */}
-          <View style={[localStyles.section, { borderTopColor: colors.border }]}>
-            <Text style={[localStyles.label, { color: colors.textSecondary }]}>NICKNAME</Text>
-
-            {isEditing ? (
-              <TextInput
-                style={[
-                  localStyles.input,
-                  {
-                    color: colors.textPrimary,
-                    backgroundColor: isDarkMode ? '#1E1E1E' : '#F9F9F9',
-                    borderColor: colors.primary,
-                  },
-                ]}
-                value={nickname}
-                onChangeText={setNickname}
-                placeholder="Tu apodo"
-                placeholderTextColor={colors.textSecondary}
-                autoFocus
-              />
-            ) : (
-              <Text style={[localStyles.value, { color: colors.textPrimary }]}>
-                {profile?.nickname || user?.user_metadata?.full_name || 'Usuario'}
+            <View style={localStyles.infoContainer}>
+              {isEditing ? (
+                <View style={localStyles.editInputContainer}>
+                  <Text style={[localStyles.atSymbol, { color: colors.textSecondary }]}>@</Text>
+                  <TextInput
+                    style={[localStyles.nicknameInput, { color: colors.textPrimary, borderBottomColor: colors.primary }]}
+                    value={nickname}
+                    onChangeText={setNickname}
+                    autoFocus
+                    placeholder="usuario"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <View style={localStyles.editActions}>
+                    <TouchableOpacity onPress={handleUpdateProfile} style={localStyles.saveAction}>
+                      <Feather name="check" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setIsEditing(false)} style={localStyles.cancelAction}>
+                      <Feather name="x" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={localStyles.nicknameWrapper}
+                  onPress={() => setIsEditing(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[localStyles.nicknameText, { color: colors.textPrimary }]}>
+                    @{profile?.nickname || 'usuario'}
+                  </Text>
+                  <Feather name="edit-2" size={12} color={colors.textSecondary} style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+              )}
+              <Text style={[localStyles.emailSubText, { color: colors.textSecondary }]}>
+                {user?.email}
               </Text>
-            )}
-
-            <TouchableOpacity
-              style={[
-                localStyles.button,
-                {
-                  backgroundColor: isEditing ? colors.primary : 'transparent',
-                  borderColor: colors.primary,
-                  borderWidth: 1,
-                },
-              ]}
-              onPress={isEditing ? handleUpdateProfile : () => setIsEditing(true)}
-            >
-              <Text style={{ color: isEditing ? '#FFFFFF' : colors.primary, fontWeight: 'bold', fontSize: 13 }}>
-                {isEditing ? 'GUARDAR CAMBIOS' : 'EDITAR NICKNAME'}
-              </Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
-          {/* ── Cerrar sesión ── */}
-          <View style={localStyles.logoutButton}>
-            <TouchableOpacity onPress={async () => {
-              await signOut();
-              router.replace('/screens/home');
-            }}>
-              <Text style={localStyles.logoutText}>CERRAR SESIÓN</Text>
-            </TouchableOpacity>
-          </View>
+          {profile?.role === 'client' && (
+            <View style={[localStyles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={localStyles.activityHeader}>
+                <Feather name="zap" size={18} color="#FF7A00" />
+                <Text style={[localStyles.activityTitle, { color: colors.textPrimary }]}>ACTIVIDAD</Text>
+              </View>
+              <View style={{ flexDirection: 'row' }}>
+                <View style={localStyles.statItem}>
+                  <Text style={[localStyles.statLabel, { color: colors.textSecondary }]}>COMPLETADAS</Text>
+                  <Text style={[localStyles.statValue, { color: colors.textPrimary }]}>{stats.completed}</Text>
+                </View>
+                <View style={localStyles.statItem}>
+                  <Text style={[localStyles.statLabel, { color: colors.textSecondary }]}>PRÓXIMAS</Text>
+                  <Text style={[localStyles.statValue, { color: colors.textPrimary }]}>{stats.upcoming}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
+          <TouchableOpacity style={localStyles.logoutButton} onPress={async () => { await signOut(); router.replace('/screens/home'); }}>
+            <Text style={localStyles.logoutText}>CERRAR SESIÓN</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -380,94 +327,52 @@ export default function ProfileScreen() {
 }
 
 const localStyles = StyleSheet.create({
-  menuButton: {
-    width: 40,
+  topNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 40, marginBottom: 10 },
+  headerContainer: { alignItems: 'center', marginTop: 20, marginBottom: 30 },
+  avatarContainer: { position: 'relative', marginBottom: 16 },
+  avatarImageLarge: {
+    width: 110,
+    height: 110,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: appColors.primary,
   },
-  card: {
-    padding: 24,
-    borderRadius: 20,
+  avatarPlaceholderLarge: {
+    width: 110,
+    height: 110,
+    borderRadius: 35,
     borderWidth: 1,
-    alignItems: 'center',
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: 8,
-  },
-  avatarImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cameraIcon: {
+  cameraBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    bottom: -2,
+    right: -2,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: appColors.background,
   },
-  avatarHint: {
-    fontSize: 11,
-    marginBottom: 10,
-    letterSpacing: 0.3,
-  },
-  emailText: {
-    fontSize: 15,
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
-  section: {
-    paddingVertical: 25,
-    borderTopWidth: 1,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 10,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontSize: 20,
-    fontWeight: '400',
-    marginBottom: 20,
-  },
-  input: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  logoutButton: {
-    marginTop: 'auto',
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#FF4B4B',
-    fontWeight: '700',
-    letterSpacing: 1,
-    fontSize: 12,
-  },
+  infoContainer: { alignItems: 'center', width: '100%' },
+  nicknameWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  nicknameText: { fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
+  editInputContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 4 },
+  atSymbol: { fontSize: 18, fontWeight: '700' },
+  nicknameInput: { fontSize: 18, fontWeight: '700', borderBottomWidth: 1, paddingVertical: 2, minWidth: 100 },
+  editActions: { flexDirection: 'row', gap: 12, marginLeft: 10 },
+  saveAction: { padding: 4 },
+  cancelAction: { padding: 4 },
+  emailSubText: { fontSize: 13, fontWeight: '400', opacity: 0.8 },
+  activityCard: { padding: 24, borderRadius: 24, borderWidth: 1, marginBottom: 32 },
+  activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  activityTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  statItem: { flex: 1 },
+  statLabel: { fontSize: 10, fontWeight: '700', marginBottom: 6 },
+  statValue: { fontSize: 20, fontWeight: '800' },
+  logoutButton: { marginTop: 20, paddingBottom: 40, alignItems: 'center' },
+  logoutText: { color: '#FF4B4B', fontWeight: '800', fontSize: 12, letterSpacing: 1 },
 });

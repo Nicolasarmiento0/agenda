@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -10,10 +11,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
-import { useBusiness, SelectedBusiness } from '../../context/BusinessContext';
+import { SelectedBusiness, useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
@@ -95,11 +95,11 @@ export default function ExploreScreen() {
   const subCategories = categories.filter(c => c.parent_id === selectedParentId);
 
   const filtered = businesses.filter(b => {
-    const matchesSearch = !search.trim() || 
+    const matchesSearch = !search.trim() ||
       b.name.toLowerCase().includes(search.toLowerCase()) ||
       b.description?.toLowerCase().includes(search.toLowerCase()) ||
       b.address?.toLowerCase().includes(search.toLowerCase());
-    
+
     let matchesCategory = true;
     if (selectedSubId) {
       matchesCategory = b.category_id === selectedSubId;
@@ -153,7 +153,7 @@ export default function ExploreScreen() {
           </View>
 
           {/* ── Sectores Principales ─────────────────────────────────────── */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SECTORES</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CATEGORÍAS</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 10 }}>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -162,7 +162,7 @@ export default function ExploreScreen() {
                 setSelectedSubId(null);
               }}
               style={[
-                styles.categoryChip, 
+                styles.categoryChip,
                 { backgroundColor: colors.surface, borderColor: colors.border },
                 !selectedParentId && { backgroundColor: appColors.primary, borderColor: appColors.primary }
               ]}
@@ -180,7 +180,7 @@ export default function ExploreScreen() {
                   setSelectedSubId(null);
                 }}
                 style={[
-                  styles.categoryChip, 
+                  styles.categoryChip,
                   { backgroundColor: colors.surface, borderColor: colors.border },
                   selectedParentId === cat.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }
                 ]}
@@ -203,7 +203,7 @@ export default function ExploreScreen() {
                     activeOpacity={0.7}
                     onPress={() => setSelectedSubId(cat.id === selectedSubId ? null : cat.id)}
                     style={[
-                      styles.subCategoryChip, 
+                      styles.subCategoryChip,
                       { backgroundColor: colors.surface, borderColor: colors.border },
                       selectedSubId === cat.id && { backgroundColor: appColors.primary, borderColor: 'transparent' }
                     ]}

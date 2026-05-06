@@ -94,7 +94,11 @@ export default function Sidebar({ visible, onClose }: Props) {
           style={[styles.drawer, { borderRightColor: colors.border }]}
         >
           {/* Avatar y nombre */}
-          <View style={styles.profileSection}>
+          <TouchableOpacity 
+            style={styles.profileSection} 
+            activeOpacity={0.7}
+            onPress={() => handleNavigate('/screens/profile')}
+          >
             {profile?.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
             ) : (
@@ -114,7 +118,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                     : 'CLIENTE'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -178,11 +182,6 @@ export default function Sidebar({ visible, onClose }: Props) {
               </>
             )}
 
-            {/* ---- ITEM COMÚN ---- */}
-            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/profile')}>
-              <Feather name="user" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-              <Text style={[styles.menuText, { color: colors.textPrimary }]}>PERFIL</Text>
-            </TouchableOpacity>
           </>
 
 
