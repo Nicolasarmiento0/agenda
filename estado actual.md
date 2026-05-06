@@ -14,6 +14,8 @@ Este documento detalla el progreso actual del desarrollo, las funcionalidades op
 - **Privacidad:** Implementada lógica de "enmascaramiento". Los clientes solo ven sus propios detalles de cita; las citas de otros usuarios aparecen simplemente como "Reservado".
 - **Regla de 2 Horas:** Restricción estricta de cancelación. Los clientes no pueden cancelar una cita si faltan menos de 120 minutos para el encuentro.
 - **Mis Citas:** Nueva pantalla con pestañas para citas "Próximas" e "Historial", con estados visuales (Pendiente, Confirmado).
+- **Estabilización de Imágenes:** Sistema de subida unificado y corregido para Perfil y Logo de Negocio. Soporte multiplataforma completo (Nativo y Web) eliminando errores de `Content-Type` y de red.
+- **Seguridad y RLS:** Implementación de políticas de Row-Level Security para el bucket de `avatars`, asegurando que cada usuario solo pueda gestionar sus propios archivos.
 
 ---
 
@@ -48,7 +50,7 @@ Este documento detalla el progreso actual del desarrollo, las funcionalidades op
 ---
 
 ## 🚧 Próximos Pasos (Roadmap Inmediato)
-1. **Pull-to-Refresh Global:** Extender la funcionalidad de actualización manual a todas las pantallas de listas (Citas, Servicios, Empleados, Admin).
-2. **Mejoras en el Explorador:** Implementar búsqueda y filtrado de negocios por categoría.
-3. **Notificaciones:** Integrar sistema de avisos para confirmaciones de citas.
-4. **Optimización de Imágenes:** Implementar compresión antes de la subida para ahorrar ancho de banda.
+1. **Pull-to-Refresh Global:** Extender la funcionalidad de actualización manual a todas las pantallas clave (Citas, Servicios, Empleados, Admin).
+2. **Explorador Avanzado:** Implementar búsqueda global y filtrado de negocios por categoría y cercanía.
+3. **Notificaciones:** Integrar sistema de avisos push para confirmaciones y recordatorios de citas.
+4. **Dashboard de Analíticas:** Mejorar la visualización de datos para el rol de Empresa (ingresos, citas por empleado, etc.).

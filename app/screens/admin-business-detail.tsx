@@ -143,6 +143,61 @@ export default function AdminBusinessDetailScreen() {
     }
   };
 
+  const handleSuspend = () => {
+    showAlert({
+      title: 'Suspender empresa',
+      message: `¿Estás seguro de que deseas suspender "${business?.name}"? No podrán agendar nuevas citas.`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'SUSPENDER',
+          style: 'destructive',
+          onPress: async () => {
+            setProcessing(true);
+            const { error } = await supabase
+              .from('businesses')
+              .update({ status: 'suspended' })
+              .eq('id', id);
+            setProcessing(false);
+            if (error) {
+              showAlert({ title: 'Error', message: 'No se pudo suspender.' });
+            } else {
+              setBusiness((prev) => prev ? { ...prev, status: 'suspended' } : prev);
+              showAlert({ title: '✓ Empresa suspendida', message: 'El negocio ha sido bloqueado temporalmente.' });
+            }
+          },
+        },
+      ]
+    });
+  };
+
+  const handleReactivate = () => {
+    showAlert({
+      title: 'Re-activar empresa',
+      message: `¿Deseas activar nuevamente "${business?.name}"?`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'ACTIVAR',
+          onPress: async () => {
+            setProcessing(true);
+            const { error } = await supabase
+              .from('businesses')
+              .update({ status: 'approved' })
+              .eq('id', id);
+            setProcessing(false);
+            if (error) {
+              showAlert({ title: 'Error', message: 'No se pudo activar.' });
+            } else {
+              setBusiness((prev) => prev ? { ...prev, status: 'approved' } : prev);
+              showAlert({ title: '✓ Empresa activada', message: 'El negocio ya puede operar normalmente.' });
+            }
+          },
+        },
+      ]
+    });
+  };
+
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
@@ -213,38 +268,64 @@ export default function AdminBusinessDetailScreen() {
 
           </ScrollView>
 
-          {/* Botones de acción — solo si está pendiente */}
-          {business.status === 'pending' && (
-            <View style={styles.actionBar}>
+          {/* Botones de acción */}
+          <View style={styles.actionBar}>
+            {business.status === 'pending' && (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn, { opacity: processing ? 0.5 : 1 }]}
+                  activeOpacity={0.8}
+                  onPress={() => setRejectModal(true)}
+                  disabled={processing}
+                >
+                  {processing ? <ActivityIndicator size="small" color="#EF4444" /> : (
+                    <>
+                      <Feather name="x" size={18} color="#EF4444" />
+                      <Text style={styles.rejectText}>RECHAZAR</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.approveBtn, { opacity: processing ? 0.5 : 1 }]}
+                  activeOpacity={0.8}
+                  onPress={handleApprove}
+                  disabled={processing}
+                >
+                  {processing ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <>
+                      <Feather name="check" size={18} color="#fff" />
+                      <Text style={styles.approveText}>APROBAR</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {business.status === 'approved' && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.rejectBtn, { opacity: processing ? 0.5 : 1 }]}
                 activeOpacity={0.8}
-                onPress={() => setRejectModal(true)}
+                onPress={handleSuspend}
                 disabled={processing}
               >
-                {processing ? <ActivityIndicator size="small" color="#EF4444" /> : (
-                  <>
-                    <Feather name="x" size={18} color="#EF4444" />
-                    <Text style={styles.rejectText}>RECHAZAR</Text>
-                  </>
-                )}
+                <Feather name="slash" size={18} color="#EF4444" />
+                <Text style={styles.rejectText}>SUSPENDER</Text>
               </TouchableOpacity>
+            )}
 
+            {business.status === 'suspended' && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.approveBtn, { opacity: processing ? 0.5 : 1 }]}
                 activeOpacity={0.8}
-                onPress={handleApprove}
+                onPress={handleReactivate}
                 disabled={processing}
               >
-                {processing ? <ActivityIndicator size="small" color="#fff" /> : (
-                  <>
-                    <Feather name="check" size={18} color="#fff" />
-                    <Text style={styles.approveText}>APROBAR</Text>
-                  </>
-                )}
+                <Feather name="play" size={18} color="#fff" />
+                <Text style={styles.approveText}>ACTIVAR</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
         </Animated.View>
       )}
 

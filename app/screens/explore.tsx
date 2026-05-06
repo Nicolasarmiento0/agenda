@@ -52,8 +52,8 @@ export default function ExploreScreen() {
   const fetchBusinesses = useCallback(async () => {
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, name, description, address, phone, avatar_url')
-      .eq('status', 'approved')
+      .select('id, name, description, address, phone, avatar_url, status')
+      .in('status', ['approved', 'suspended'])
       .order('name');
     if (!error && data) {
       setBusinesses(data as SelectedBusiness[]);
@@ -177,9 +177,16 @@ export default function ExploreScreen() {
 
                 {/* Info */}
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.businessName, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {b.name}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <Text style={[styles.businessName, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {b.name}
+                    </Text>
+                    {b.status === 'suspended' && (
+                      <View style={styles.suspendedBadge}>
+                        <Text style={styles.suspendedText}>SUSPENDIDO</Text>
+                      </View>
+                    )}
+                  </View>
                   {b.description ? (
                     <Text style={[styles.businessDesc, { color: colors.textSecondary }]} numberOfLines={2}>
                       {b.description}
@@ -308,7 +315,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.5,
-    marginBottom: 2,
+  },
+  suspendedBadge: {
+    backgroundColor: '#EF444420',
+    borderColor: '#EF4444',
+    borderWidth: 0.5,
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  suspendedText: {
+    color: '#EF4444',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   businessDesc: {
     fontSize: 12,

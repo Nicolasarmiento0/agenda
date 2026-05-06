@@ -7,6 +7,7 @@ export type SelectedBusiness = {
   address?: string;
   phone?: string;
   avatar_url?: string;
+  status: string;
 };
 
 type BusinessContextType = {

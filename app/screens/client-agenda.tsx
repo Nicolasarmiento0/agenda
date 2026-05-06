@@ -23,6 +23,19 @@ import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
+
+// Configuración de idioma para el calendario
+if (LocaleConfig) {
+  LocaleConfig.locales['es'] = {
+    monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+    monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+    dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    today: 'Hoy'
+  };
+  LocaleConfig.defaultLocale = 'es';
+}
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -85,6 +98,13 @@ function getWeekDays(baseDate: Date) {
     dd.setDate(monday.getDate() + i);
     return dd;
   });
+}
+
+function toLocalISOString(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function formatHour(h: number) {
@@ -312,6 +332,7 @@ function AppointmentFormModal({
   const [startTimeText, setStartTimeText] = useState('09:00');
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [loading, setLoading] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -333,6 +354,7 @@ function AppointmentFormModal({
         setDateText(selectedDateStr);
       }
       setLoading(false);
+      setShowCalendar(false);
     }
   }, [visible, initialData, selectedDateStr]);
 
@@ -342,24 +364,20 @@ function AppointmentFormModal({
 
     // ── Validación de campos obligatorios ──
     if (!service.trim()) {
-      onClose(); // ← cierra el modal primero
-      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' }), 300);
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' });
       return;
     }
     if (!workerId) {
-      onClose();
-      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' }), 300);
+      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
       return;
     }
     if (!dateText.trim()) {
-      onClose();
-      setTimeout(() => showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' }), 300);
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
       return;
     }
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(startTimeText.trim())) {
-      onClose();
-      setTimeout(() => showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' }), 300);
+      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
       return;
     }
 
@@ -415,13 +433,40 @@ function AppointmentFormModal({
               ))}
             </View>
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha (YYYY-MM-DD)</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={dateText}
-              onChangeText={setDateText}
-              placeholder="Ej: 2026-05-05"
-            />
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha de la Cita</Text>
+            <TouchableOpacity 
+              onPress={() => setShowCalendar(!showCalendar)}
+              style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+            >
+              <Text style={{ color: colors.textPrimary }}>{dateText || 'Seleccionar fecha'}</Text>
+              <Feather name="calendar" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {showCalendar && (
+              <View style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
+                <Calendar
+                  onDayPress={(day: any) => {
+                    setDateText(day.dateString);
+                    setShowCalendar(false);
+                  }}
+                  markedDates={dateText ? {
+                    [dateText]: { selected: true, selectedColor: appColors.primary }
+                  } : {}}
+                  theme={{
+                    backgroundColor: colors.surface,
+                    calendarBackground: colors.surface,
+                    textSectionTitleColor: colors.textSecondary,
+                    selectedDayBackgroundColor: appColors.primary,
+                    selectedDayTextColor: '#ffffff',
+                    todayTextColor: appColors.primary,
+                    dayTextColor: colors.textPrimary,
+                    textDisabledColor: colors.border,
+                    monthTextColor: colors.textPrimary,
+                    arrowColor: appColors.primary,
+                  }}
+                />
+              </View>
+            )}
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
@@ -568,7 +613,7 @@ export default function ClientAgendaScreen() {
   const nowPosition = useMemo(() => nowLinePosition(), []);
 
   // Stats
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const selectedDateStr = useMemo(() => toLocalISOString(selectedDate), [selectedDate]);
 
   const filteredAppointments = useMemo(() => {
     if (!selectedWorkerFilter) return appointments;
@@ -615,7 +660,7 @@ export default function ClientAgendaScreen() {
         showAlert({ title: 'Sin negocio', message: 'Por favor selecciona un negocio desde la pantalla Explorar.' });
         return false;
       }
-      const dateStr = data.date || selectedDate.toISOString().split('T')[0];
+      const dateStr = data.date || toLocalISOString(selectedDate);
 
       const newStart = data.startHour || 9;
       const newEnd = newStart + (data.durationHours || 0.5);
@@ -691,6 +736,8 @@ export default function ClientAgendaScreen() {
     d.setDate(d.getDate() + delta);
     setSelectedDate(d);
   };
+
+  const isSuspended = business?.status === 'suspended';
 
   // ─── Vista de día: columnas por trabajador ────────────────────────────────
 
@@ -890,7 +937,7 @@ export default function ClientAgendaScreen() {
         <View style={[styles.businessHeader, { borderBottomColor: colors.border }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
-            <Text style={[styles.businessHeaderName, { color: colors.textPrimary }]} numberOfLines={1}>
+            <Text style={[styles.businessHeaderTitle, { color: colors.textPrimary }]} numberOfLines={1}>
               {business.name.toUpperCase()}
             </Text>
           </View>
@@ -963,26 +1010,33 @@ export default function ClientAgendaScreen() {
         ))}
       </View>
 
-      {/* ── Grid ─────────────────────────────────────────────────── */}
       <View style={[styles.gridContainer, { borderTopColor: colors.border }]}>
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
-      </View>
 
+        {isSuspended && (
+          <View style={[styles.suspensionBadge, { backgroundColor: '#EF4444', padding: 12, borderRadius: 8, margin: 16, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' }]}>
+            <Feather name="alert-circle" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>NEGOCIO TEMPORALMENTE SUSPENDIDO</Text>
+          </View>
+        )}
+      </View>
       {/* ── FAB ──────────────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: appColors.primary }]}
-        activeOpacity={0.85}
-        onPress={() => {
-          if (!business?.id) {
-            showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
-            return;
-          }
-          setEditingAppt(undefined);
-          setFormVisible(true);
-        }}
-      >
-        <Feather name="plus" size={24} color="#fff" />
-      </TouchableOpacity>
+      {!isSuspended && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: appColors.primary }]}
+          activeOpacity={0.85}
+          onPress={() => {
+            if (!business?.id) {
+              showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
+              return;
+            }
+            setEditingAppt(undefined);
+            setFormVisible(true);
+          }}
+        >
+          <Feather name="plus" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* ── Modal Formulario ─────────────────────────────────────── */}
       <AppointmentFormModal
@@ -1435,9 +1489,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
   },
-  businessHeaderName: {
+  businessHeaderTitle: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  suspensionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  suspensionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
 });
