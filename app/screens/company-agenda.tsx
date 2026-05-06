@@ -381,6 +381,21 @@ function AppointmentFormModal({
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
 
+    // ── Validación de fecha y hora pasada ──
+    const now = new Date();
+    const todayStr = toLocalISOString(now);
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+
+    if (dateText < todayStr) {
+      showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
+      return;
+    }
+
+    if (dateText === todayStr && startHour < currentHour) {
+      showAlert({ title: 'Hora inválida', message: 'No puedes agendar citas para una hora que ya pasó.' });
+      return;
+    }
+
     setLoading(true);
     const success = await onSave({
       clientName,
@@ -451,6 +466,7 @@ function AppointmentFormModal({
             {showCalendar && (
               <View style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
                 <Calendar
+                  minDate={toLocalISOString(new Date())}
                   onDayPress={(day: any) => {
                     setDateText(day.dateString);
                     setShowCalendar(false);
