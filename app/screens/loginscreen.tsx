@@ -68,8 +68,9 @@ export default function LoginScreen() {
       return;
     }
 
-    // Al iniciar sesión exitosamente, AuthContext actualizará el estado
-    // y el Index (app/index.tsx) manejará la redirección automáticamente.
+    // Al iniciar sesión exitosamente, redirigimos al punto de entrada ('/')
+    // donde el Index manejará la distribución por roles.
+    router.replace('/');
   };
   return (
     <KeyboardAvoidingView

@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   RefreshControl,
   ScrollView,
@@ -261,7 +262,7 @@ export default function ProfileScreen() {
               onPress={() => setIsSidebarOpen(true)}
               style={{ width: 40 }}
             >
-              <Text style={{ fontSize: 24, color: colors.textPrimary }}>☰</Text>
+              <Feather name="menu" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
@@ -297,14 +298,16 @@ export default function ProfileScreen() {
                     { backgroundColor: isDarkMode ? '#333' : '#E1E1E1' },
                   ]}
                 >
-                  <Text style={{ fontSize: 40 }}>👤</Text>
+                  <Feather name="user" size={40} color={isDarkMode ? '#666' : '#999'} />
                 </View>
               )}
 
               <View style={[localStyles.cameraIcon, { backgroundColor: colors.primary }]}>
-                <Text style={{ fontSize: 14 }}>
-                  {uploadingAvatar ? '⏳' : '📷'}
-                </Text>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Feather name="camera" size={14} color="#fff" />
+                )}
               </View>
             </TouchableOpacity>
 

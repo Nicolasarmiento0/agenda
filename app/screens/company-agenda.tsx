@@ -1019,6 +1019,19 @@ export default function CompanyAgendaScreen() {
         )}
       </View>
 
+      {/* ── FAB ──────────────────────────────────────────────────── */}
+      {!isSuspended && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: appColors.primary }]}
+          activeOpacity={0.85}
+          onPress={() => {
+            setEditingAppt(undefined);
+            setFormVisible(true);
+          }}
+        >
+          <Feather name="plus" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* ── Modal Formulario ─────────────────────────────────────── */}
       <AppointmentFormModal

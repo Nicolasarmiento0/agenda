@@ -48,12 +48,16 @@ export default function TeslaAlert() {
                     if (btn.onPress) btn.onPress();
                   }}
                 >
-                  <Text style={[
-                    styles.buttonText, 
-                    { color: colors.textPrimary },
-                    isDestructive && { color: '#fff' },
-                    isCancel && { color: colors.textSecondary }
-                  ]}>
+                  <Text 
+                    style={[
+                      styles.buttonText, 
+                      { color: colors.textPrimary },
+                      isDestructive && { color: '#fff' },
+                      isCancel && { color: colors.textSecondary }
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {btn.text.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -124,6 +128,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
 });
