@@ -57,7 +57,7 @@ export default function BusinessSetupScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.4,
       base64: true,
     });
     if (!result.canceled) {
@@ -72,8 +72,8 @@ export default function BusinessSetupScreen() {
       const ext = logoUri?.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${userId}/logo.${ext}`;
       
-      const { error } = await supabase.storage.from('business-logos').upload(path, decode(logoBase64), {
-        contentType: `image/${ext}`,
+      const { error } = await supabase.storage.from('business-logos').upload(path, new Uint8Array(decode(logoBase64)), {
+        contentType: 'image/jpeg',
         upsert: true,
       });
       

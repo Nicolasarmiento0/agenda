@@ -100,7 +100,7 @@ export default function ProfileScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.3,
         base64: true,
       });
 
@@ -118,8 +118,8 @@ export default function ProfileScreen() {
 
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, decode(image.base64), {
-          contentType: image.mimeType || `image/${fileExt}`,
+        .upload(fileName, new Uint8Array(decode(image.base64)), {
+          contentType: 'image/jpeg',
           upsert: true,
         });
 
