@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { decode } from 'base64-arraybuffer';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
@@ -87,12 +86,14 @@ export default function ProfileScreen() {
       }
 
       if (finalStatus !== 'granted') {
-        showAlert({ 
-          title: 'Permiso necesario', 
-          message: 'Para cambiar tu foto, necesitamos permiso para acceder a tu galería. Por favor, actívalo en los ajustes de tu teléfono.' 
+        showAlert({
+          title: 'Permiso necesario',
+          message: 'Para cambiar tu foto, necesitamos permiso para acceder a tu galería. Por favor, actívalo en los ajustes de tu teléfono.'
         });
         return;
       }
+
+
 
       await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -107,7 +108,6 @@ export default function ProfileScreen() {
 
       setUploadingAvatar(true);
       const image = result.assets[0];
-
 
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
@@ -167,9 +167,9 @@ export default function ProfileScreen() {
 
       showAlert({ title: 'Éxito', message: 'Foto de perfil actualizada correctamente.' });
     } catch (error: any) {
-      showAlert({ 
-        title: 'Error de subida', 
-        message: error.message || 'No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.' 
+      showAlert({
+        title: 'Error de subida',
+        message: error.message || 'No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.'
       });
     } finally {
       setUploadingAvatar(false);
