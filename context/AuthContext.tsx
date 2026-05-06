@@ -17,6 +17,8 @@ export type Business = {
   avatar_url?: string;
   description?: string;
   maps_url?: string;
+  opening_time?: string;
+  closing_time?: string;
 };
 
 type AuthContextType = {
@@ -52,28 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Ref para evitar doble llamada a fetchProfile entre getSession y onAuthStateChange
   const fetchedRef = React.useRef(false);
 
-  const navigateByRole = useCallback((role: string | null, businessData?: Business | null) => {
-    if (!role) {
-      router.replace('/screens/role-select' as any);
-    } else if (role === 'admin') {
-      router.replace('/screens/admin-dashboard' as any);
-    }
-    else if (role === 'client') {
-      router.replace('/screens/client-agenda' as any);
-    }
-    else if (role === 'company') {
-      if (!businessData) {
-        router.replace('/screens/business-setup' as any);
-      } else if (businessData.status === 'pending' || businessData.status === 'rejected') {
-        router.replace('/screens/business-pending' as any);
-      } else {
-        router.replace('/screens/company-agenda' as any);
-      }
-    } else {
-      router.replace('/screens/dashboard' as any);
-    }
-  }, []);
-
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data } = await supabase
@@ -100,13 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setBusiness(null);
           }
         }
-
-        navigateByRole(data.role, businessData);
       }
     } finally {
       setProfileLoaded(true);
     }
-  }, [navigateByRole]);
+  }, []);
 
   // Solo actualiza el perfil en el estado, sin redirigir.
   // Usar esto cuando el usuario ya está autenticado y solo queremos refrescar datos (ej: tras cambiar avatar).
@@ -145,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setBusiness(null);
     setProfileLoaded(false);
-    router.replace('/screens/loginscreen' as any);
+    router.replace('/screens/home' as any);
   }, []);
 
   useEffect(() => {
@@ -156,7 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
-        router.replace('/screens/loginscreen' as any);
       }
       setLoading(false);
     });

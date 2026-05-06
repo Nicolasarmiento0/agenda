@@ -68,30 +68,8 @@ export default function LoginScreen() {
       return;
     }
 
-    // ✅ Navegar con el perfil real desde el login
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    if (!profileData?.role) {
-      router.replace('/screens/role-select');
-    } else if (profileData.role === 'company') {
-      router.replace('/screens/dashboard-company');
-    } else {
-      router.replace('/screens/company-agenda');
-    }
-    if (!profileData?.role) {
-      router.replace('/screens/role-select');
-    } else if (profileData.role === 'client') {
-      router.replace('/screens/client-agenda');
-    }
-    if (!profileData?.role) {
-      router.replace('/screens/role-select');
-    } else if (profileData.role === 'admin') {
-      router.replace('/screens/admin-dashboard');
-    }
+    // Al iniciar sesión exitosamente, AuthContext actualizará el estado
+    // y el Index (app/index.tsx) manejará la redirección automáticamente.
   };
   return (
     <KeyboardAvoidingView

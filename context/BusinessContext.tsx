@@ -8,6 +8,9 @@ export type SelectedBusiness = {
   phone?: string;
   avatar_url?: string;
   status: string;
+  category_id?: string;
+  opening_time?: string; // Formato 'HH:mm:ss'
+  closing_time?: string; // Formato 'HH:mm:ss'
 };
 
 type BusinessContextType = {

@@ -17,14 +17,15 @@ export default function Index() {
     console.log('business:', business);
 
     if (loading) return;
+    if (!profileLoaded) return;
 
     if (!session) {
+      // Usuario no autenticado -> Home
       router.replace('/screens/home' as any);
       return;
     }
 
-    if (!profileLoaded) return;
-
+    // Usuario autenticado -> Redirigir según rol
     if (!profile?.role) {
       router.replace('/screens/role-select' as any);
     } else if (profile.role === 'admin') {
@@ -41,7 +42,7 @@ export default function Index() {
         router.replace('/screens/company-agenda' as any);
       }
     } else {
-      router.replace('/screens/explore' as any);
+      router.replace('/screens/home' as any);
     }
   }, [loading, session, profile, business, profileLoaded]);
 

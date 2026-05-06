@@ -74,9 +74,8 @@ type Business = {
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const HOUR_HEIGHT = 72; // px por hora
-const START_HOUR = 5;
-const END_HOUR = 24;
-const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+const DEFAULT_START_HOUR = 7;
+const DEFAULT_END_HOUR = 22;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const STATUS_CONFIG = {
@@ -128,11 +127,11 @@ function isToday(date: Date) {
   return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
 }
 
-function nowLinePosition() {
+function nowLinePosition(startHour: number, endHour: number) {
   const now = new Date();
   const h = now.getHours() + now.getMinutes() / 60;
-  if (h < START_HOUR || h > END_HOUR) return null;
-  return (h - START_HOUR) * HOUR_HEIGHT;
+  if (h < startHour || h > endHour) return null;
+  return (h - startHour) * HOUR_HEIGHT;
 }
 
 // ─── Componente: AppointmentCard ─────────────────────────────────────────────
@@ -142,13 +141,15 @@ function AppointmentCard({
   columnWidth,
   onPress,
   colors,
+  startHour,
 }: {
   appt: Appointment;
   columnWidth: number;
   onPress: () => void;
   colors: any;
+  startHour: number;
 }) {
-  const top = (appt.startHour - START_HOUR) * HOUR_HEIGHT;
+  const top = (appt.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
   const status = STATUS_CONFIG[appt.status];
   const isShort = height < 48;
@@ -316,6 +317,8 @@ function AppointmentFormModal({
   colors,
   selectedDateStr,
   showAlert,
+  openingTime,
+  closingTime,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -324,6 +327,8 @@ function AppointmentFormModal({
   colors: any;
   selectedDateStr: string;
   showAlert: (opts: { title: string; message: string }) => void;
+  openingTime?: string;
+  closingTime?: string;
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
@@ -385,6 +390,22 @@ function AppointmentFormModal({
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
+    const durationHours = durationMinutes / 60;
+    const endHour = startHour + durationHours;
+
+    // ── Validación de horario de apertura ──
+    if (openingTime && closingTime) {
+      const openH = parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60;
+      const closeH = parseInt(closingTime.split(':')[0]) + parseInt(closingTime.split(':')[1]) / 60;
+
+      if (startHour < openH || endHour > closeH) {
+        showAlert({ 
+          title: 'Fuera de horario', 
+          message: `El negocio atiende de ${openingTime.substring(0,5)} a ${closingTime.substring(0,5)}. Ajusta tu cita.` 
+        });
+        return;
+      }
+    }
 
     setLoading(true);
     const success = await onSave({
@@ -529,6 +550,24 @@ export default function ClientAgendaScreen() {
   const { showAlert } = useAlert();
   const { selectedBusiness: business } = useBusiness();
 
+  // Horas dinámicas
+  const startHour = useMemo(() => {
+    if (!business?.opening_time) return DEFAULT_START_HOUR;
+    return parseInt(business.opening_time.split(':')[0]);
+  }, [business?.opening_time]);
+
+  const endHour = useMemo(() => {
+    if (!business?.closing_time) return DEFAULT_END_HOUR;
+    let h = parseInt(business.closing_time.split(':')[0]);
+    const m = parseInt(business.closing_time.split(':')[1]);
+    if (m > 0) h += 1;
+    return h;
+  }, [business?.closing_time]);
+
+  const hoursGrid = useMemo(() => {
+    return Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  }, [startHour, endHour]);
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -610,7 +649,7 @@ export default function ClientAgendaScreen() {
     }
   }, [viewMode, selectedWorkerFilter, workers]);
 
-  const nowPosition = useMemo(() => nowLinePosition(), []);
+  const nowPosition = useMemo(() => nowLinePosition(startHour, endHour), [startHour, endHour]);
 
   // Stats
   const selectedDateStr = useMemo(() => toLocalISOString(selectedDate), [selectedDate]);
@@ -768,7 +807,7 @@ export default function ClientAgendaScreen() {
       {/* Grid de tiempo */}
       <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
         {/* Líneas de hora */}
-        {HOURS.map(h => (
+        {hoursGrid.map(h => (
           <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
             <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
               {String(h).padStart(2, '0')}:00
@@ -789,6 +828,7 @@ export default function ClientAgendaScreen() {
                   left: wi * colWidth,
                   borderLeftColor: colors.border,
                   borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0,
+                  height: (endHour - startHour) * HOUR_HEIGHT,
                 },
               ]}
             >
@@ -801,6 +841,7 @@ export default function ClientAgendaScreen() {
                     columnWidth={colWidth}
                     onPress={() => openSheet(appt)}
                     colors={colors}
+                    startHour={startHour}
                   />
                 ))}
             </View>
@@ -850,7 +891,7 @@ export default function ClientAgendaScreen() {
       </View>
 
       <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
-        {HOURS.map(h => (
+        {hoursGrid.map(h => (
           <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
             <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
               {String(h).padStart(2, '0')}:00
@@ -872,6 +913,7 @@ export default function ClientAgendaScreen() {
                     borderLeftColor: colors.border,
                     borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
                     backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
+                    height: (endHour - startHour) * HOUR_HEIGHT,
                   },
                 ]}
               >
@@ -884,6 +926,7 @@ export default function ClientAgendaScreen() {
                       columnWidth={weekColWidth}
                       onPress={() => openSheet(appt)}
                       colors={colors}
+                      startHour={startHour}
                     />
                   ))}
               </View>
@@ -1047,6 +1090,8 @@ export default function ClientAgendaScreen() {
         colors={{ ...colors, workersList: workers }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
         showAlert={showAlert}
+        openingTime={business?.opening_time}
+        closingTime={business?.closing_time}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1246,7 +1291,6 @@ const styles = StyleSheet.create({
   workerColumn: {
     position: 'absolute',
     top: 0,
-    height: (END_HOUR - START_HOUR) * HOUR_HEIGHT,
   },
 
   // Tarjeta de cita

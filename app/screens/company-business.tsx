@@ -36,6 +36,8 @@ export default function CompanyBusinessScreen() {
   const [description, setDescription] = useState(business?.description || '');
   const [mapsUrl, setMapsUrl] = useState(business?.maps_url || '');
   const [avatarUrl, setAvatarUrl] = useState(business?.avatar_url || '');
+  const [openingTime, setOpeningTime] = useState(business?.opening_time?.substring(0, 5) || '07:00');
+  const [closingTime, setClosingTime] = useState(business?.closing_time?.substring(0, 5) || '22:00');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,6 +61,8 @@ export default function CompanyBusinessScreen() {
       setDescription(business.description || '');
       setMapsUrl(business.maps_url || '');
       setAvatarUrl(business.avatar_url || '');
+      setOpeningTime(business.opening_time?.substring(0, 5) || '07:00');
+      setClosingTime(business.closing_time?.substring(0, 5) || '22:00');
     }
   }, [business]);
 
@@ -137,6 +141,8 @@ export default function CompanyBusinessScreen() {
           description,
           maps_url: mapsUrl,
           avatar_url: avatarUrl,
+          opening_time: `${openingTime}:00`,
+          closing_time: `${closingTime}:00`,
         })
         .eq('id', business.id);
 
@@ -224,6 +230,8 @@ export default function CompanyBusinessScreen() {
           {/* Info cards */}
           {[
             { label: 'DIRECCIÓN MAPS', value: business?.maps_url || 'No agregada', isLink: !!business?.maps_url },
+            { label: 'HORARIO APERTURA', value: business?.opening_time?.substring(0, 5) || '07:00' },
+            { label: 'HORARIO CIERRE', value: business?.closing_time?.substring(0, 5) || '22:00' },
           ].map((item, i) => (
             <View key={i} style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>{item.label}</Text>
@@ -303,6 +311,27 @@ export default function CompanyBusinessScreen() {
                 placeholder="https://maps.app.goo.gl/..."
                 placeholderTextColor={colors.textSecondary}
               />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Apertura</Text>
+                  <TextInput
+                    style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                    value={openingTime}
+                    onChangeText={setOpeningTime}
+                    placeholder="09:00"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Cierre</Text>
+                  <TextInput
+                    style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                    value={closingTime}
+                    onChangeText={setClosingTime}
+                    placeholder="18:00"
+                  />
+                </View>
+              </View>
 
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
                 <TouchableOpacity

@@ -21,7 +21,12 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 
-type Category = { id: string; name: string; icon: string };
+type Category = { 
+  id: string; 
+  name: string; 
+  icon: string; 
+  parent_id: string | null;
+};
 
 export default function BusinessSetupScreen() {
   const { profile, refreshProfile } = useAuth();
@@ -29,11 +34,14 @@ export default function BusinessSetupScreen() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [parentCategoryId, setParentCategoryId] = useState('');
+  const [subCategoryId, setSubCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [logoUri, setLogoUri] = useState<string | null>(null);
+  const [openingTime, setOpeningTime] = useState('07:00');
+  const [closingTime, setClosingTime] = useState('22:00');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,10 +54,13 @@ export default function BusinessSetupScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
 
-    supabase.from('service_categories').select('id, name, icon').eq('is_active', true).then(({ data }) => {
+    supabase.from('service_categories').select('*').eq('is_active', true).then(({ data }) => {
       if (data) setCategories(data);
     });
   }, []);
+
+  const parentCategories = categories.filter(c => !c.parent_id);
+  const subCategories = categories.filter(c => c.parent_id === parentCategoryId);
 
   const pickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -108,7 +119,8 @@ export default function BusinessSetupScreen() {
   const handleSubmit = async () => {
     setError('');
     if (!name.trim()) return setError('El nombre del negocio es obligatorio.');
-    if (!categoryId) return setError('Selecciona una categoría.');
+    if (!parentCategoryId) return setError('Selecciona un sector principal.');
+    if (!subCategoryId) return setError('Selecciona una especialidad.');
     if (!address.trim()) return setError('La dirección es obligatoria.');
 
     setSaving(true);
@@ -121,12 +133,14 @@ export default function BusinessSetupScreen() {
       const { error: dbError } = await supabase.from('businesses').insert({
         owner_id: userId,
         name: name.trim(),
-        category_id: categoryId,
+        category_id: subCategoryId,
         description: description.trim() || null,
         address: address.trim(),
         phone: phone.trim() || null,
         logo_url,
         status: 'pending',
+        opening_time: `${openingTime}:00`,
+        closing_time: `${closingTime}:00`,
       });
 
       if (dbError) throw dbError;
@@ -184,33 +198,63 @@ export default function BusinessSetupScreen() {
               onChangeText={setName}
             />
 
-            {/* Categoría */}
-            <Text style={[styles.label, { color: colors.textSecondary }]}>CATEGORÍA *</Text>
+            {/* Sector Principal */}
+            <Text style={[styles.label, { color: colors.textSecondary }]}>SECTOR DEL NEGOCIO *</Text>
             <View style={styles.categoryGrid}>
-              {categories.map((cat) => (
+              {parentCategories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
                   activeOpacity={0.7}
-                  onPress={() => setCategoryId(cat.id)}
+                  onPress={() => {
+                    setParentCategoryId(cat.id);
+                    setSubCategoryId('');
+                  }}
                   style={[
                     styles.categoryChip,
                     {
-                      borderColor: categoryId === cat.id ? appColors.primary : colors.border,
-                      backgroundColor: categoryId === cat.id ? `${appColors.primary}18` : colors.surface,
+                      borderColor: parentCategoryId === cat.id ? appColors.primary : colors.border,
+                      backgroundColor: parentCategoryId === cat.id ? `${appColors.primary}18` : colors.surface,
                     },
                   ]}
                 >
                   <Feather
                     name={(cat.icon as any) || 'grid'}
                     size={14}
-                    color={categoryId === cat.id ? appColors.primary : colors.textSecondary}
+                    color={parentCategoryId === cat.id ? appColors.primary : colors.textSecondary}
                   />
-                  <Text style={[styles.chipText, { color: categoryId === cat.id ? appColors.primary : colors.textPrimary }]}>
+                  <Text style={[styles.chipText, { color: parentCategoryId === cat.id ? appColors.primary : colors.textPrimary }]}>
                     {cat.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Subcategoría / Especialidad */}
+            {parentCategoryId ? (
+              <Animated.View style={{ opacity: fadeAnim }}>
+                <Text style={[styles.label, { color: colors.textSecondary, marginTop: 10 }]}>ESPECIALIDAD *</Text>
+                <View style={styles.categoryGrid}>
+                  {subCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      activeOpacity={0.7}
+                      onPress={() => setSubCategoryId(cat.id)}
+                      style={[
+                        styles.subCategoryChip,
+                        {
+                          borderColor: subCategoryId === cat.id ? appColors.primary : colors.border,
+                          backgroundColor: subCategoryId === cat.id ? appColors.primary : colors.surface,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.subChipText, { color: subCategoryId === cat.id ? '#fff' : colors.textPrimary }]}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Animated.View>
+            ) : null}
 
             {/* Descripción */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>DESCRIPCIÓN</Text>
@@ -223,6 +267,30 @@ export default function BusinessSetupScreen() {
               multiline
               numberOfLines={3}
             />
+
+            {/* Horarios */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>APERTURA *</Text>
+                <TextInput
+                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border }]}
+                  placeholder="09:00"
+                  placeholderTextColor={colors.textSecondary}
+                  value={openingTime}
+                  onChangeText={setOpeningTime}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>CIERRE *</Text>
+                <TextInput
+                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border }]}
+                  placeholder="18:00"
+                  placeholderTextColor={colors.textSecondary}
+                  value={closingTime}
+                  onChangeText={setClosingTime}
+                />
+              </View>
+            </View>
 
             {/* Dirección */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>DIRECCIÓN *</Text>
@@ -288,5 +356,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 4,
     paddingHorizontal: 12, paddingVertical: 8,
   },
-  chipText: { fontSize: 12, letterSpacing: 0.5 },
+  subCategoryChip: {
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  chipText: { fontSize: 11, letterSpacing: 0.5, fontWeight: '600' },
+  subChipText: { fontSize: 12, fontWeight: '500' },
 });

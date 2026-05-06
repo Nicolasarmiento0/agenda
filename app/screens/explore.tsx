@@ -18,21 +18,26 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
-const CATEGORIES = [
-  { icon: 'scissors', label: 'BARBERÍA' },
-  { icon: 'heart', label: 'SPA' },
-  { icon: 'star', label: 'UÑAS' },
-  { icon: 'zap', label: 'TATUAJES' },
-  { icon: 'sun', label: 'BRONCEADO' },
-  { icon: 'smile', label: 'ESTÉTICA' },
-];
+type Category = {
+  id: string;
+  name: string;
+  icon: string;
+  parent_id: string | null;
+};
+
+type BusinessWithCategory = SelectedBusiness & {
+  category_id: string;
+};
 
 export default function ExploreScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { setSelectedBusiness } = useBusiness();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [search, setSearch] = useState('');
-  const [businesses, setBusinesses] = useState<SelectedBusiness[]>([]);
+  const [businesses, setBusinesses] = useState<BusinessWithCategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,38 +54,63 @@ export default function ExploreScreen() {
     ]).start();
   }, []);
 
-  const fetchBusinesses = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('id, name, description, address, phone, avatar_url, status')
-      .in('status', ['approved', 'suspended'])
-      .order('name');
-    if (!error && data) {
-      setBusinesses(data as SelectedBusiness[]);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const [bizRes, catRes] = await Promise.all([
+      supabase
+        .from('businesses')
+        .select('id, name, description, address, phone, avatar_url, status, category_id')
+        .in('status', ['approved', 'suspended'])
+        .order('name'),
+      supabase
+        .from('service_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+    ]);
+
+    if (!bizRes.error && bizRes.data) {
+      setBusinesses(bizRes.data as BusinessWithCategory[]);
+    }
+    if (!catRes.error && catRes.data) {
+      setCategories(catRes.data as Category[]);
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchBusinesses(); }, [fetchBusinesses]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchBusinesses();
+    await fetchData();
     setRefreshing(false);
-  }, [fetchBusinesses]);
+  }, [fetchData]);
 
   const handleSelectBusiness = (b: SelectedBusiness) => {
     setSelectedBusiness(b);
     router.push('/screens/client-agenda' as any);
   };
 
-  const filtered = search.trim()
-    ? businesses.filter(b =>
-        b.name.toLowerCase().includes(search.toLowerCase()) ||
-        b.description?.toLowerCase().includes(search.toLowerCase()) ||
-        b.address?.toLowerCase().includes(search.toLowerCase())
-      )
-    : businesses;
+  const parentCategories = categories.filter(c => !c.parent_id);
+  const subCategories = categories.filter(c => c.parent_id === selectedParentId);
+
+  const filtered = businesses.filter(b => {
+    const matchesSearch = !search.trim() || 
+      b.name.toLowerCase().includes(search.toLowerCase()) ||
+      b.description?.toLowerCase().includes(search.toLowerCase()) ||
+      b.address?.toLowerCase().includes(search.toLowerCase());
+    
+    let matchesCategory = true;
+    if (selectedSubId) {
+      matchesCategory = b.category_id === selectedSubId;
+    } else if (selectedParentId) {
+      // Si solo hay un padre seleccionado, buscar todos los hijos de ese padre
+      const validSubIds = categories.filter(c => c.parent_id === selectedParentId).map(c => c.id);
+      matchesCategory = validSubIds.includes(b.category_id);
+    }
+
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -122,22 +152,70 @@ export default function ExploreScreen() {
             )}
           </View>
 
-          {/* ── Categorías ───────────────────────────────────────────── */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CATEGORÍAS</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }}>
-            <View style={styles.categoriesRow}>
-              {CATEGORIES.map((cat, i) => (
-                <TouchableOpacity
-                  key={i}
-                  activeOpacity={0.7}
-                  style={[styles.categoryChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                >
-                  <Feather name={cat.icon as any} size={16} color={appColors.primary} />
-                  <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>{cat.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* ── Sectores Principales ─────────────────────────────────────── */}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SECTORES</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 10 }}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setSelectedParentId(null);
+                setSelectedSubId(null);
+              }}
+              style={[
+                styles.categoryChip, 
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                !selectedParentId && { backgroundColor: appColors.primary, borderColor: appColors.primary }
+              ]}
+            >
+              <Feather name="grid" size={16} color={!selectedParentId ? '#fff' : appColors.primary} />
+              <Text style={[styles.categoryLabel, { color: !selectedParentId ? '#fff' : colors.textPrimary }]}>TODOS</Text>
+            </TouchableOpacity>
+
+            {parentCategories.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setSelectedParentId(cat.id === selectedParentId ? null : cat.id);
+                  setSelectedSubId(null);
+                }}
+                style={[
+                  styles.categoryChip, 
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  selectedParentId === cat.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                ]}
+              >
+                <Feather name={(cat.icon || 'tag') as any} size={16} color={selectedParentId === cat.id ? '#fff' : appColors.primary} />
+                <Text style={[styles.categoryLabel, { color: selectedParentId === cat.id ? '#fff' : colors.textPrimary }]}>
+                  {cat.name.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
+
+          {/* ── Especialidades (Subcategorías) ─────────────────────────── */}
+          {selectedParentId && subCategories.length > 0 && (
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }} contentContainerStyle={{ gap: 8 }}>
+                {subCategories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    activeOpacity={0.7}
+                    onPress={() => setSelectedSubId(cat.id === selectedSubId ? null : cat.id)}
+                    style={[
+                      styles.subCategoryChip, 
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      selectedSubId === cat.id && { backgroundColor: appColors.primary, borderColor: 'transparent' }
+                    ]}
+                  >
+                    <Text style={[styles.subCategoryLabel, { color: selectedSubId === cat.id ? '#fff' : colors.textSecondary }]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animated.View>
+          )}
 
           {/* ── Lista de negocios ────────────────────────────────────── */}
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
@@ -283,8 +361,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   categoryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 1.5,
+    fontWeight: '700',
+  },
+  subCategoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  subCategoryLabel: {
+    fontSize: 12,
     fontWeight: '500',
   },
 
