@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -100,8 +100,7 @@ export default function ProfileScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.3,
-        base64: true,
+        quality: 0.7,
       });
 
       if (result.canceled || !result.assets[0].uri) return;
@@ -109,18 +108,40 @@ export default function ProfileScreen() {
       setUploadingAvatar(true);
       const image = result.assets[0];
 
-      if (!image.base64) {
-        throw new Error('No se pudo obtener el contenido de la imagen');
-      }
 
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
+      let body: any;
+      let contentType: string | undefined;
+
+      if (Platform.OS === 'web') {
+        // En web, intentamos usar el objeto File si existe, o fetch del blob
+        const asset = result.assets[0];
+        if (asset.file) {
+          body = asset.file;
+        } else {
+          const response = await fetch(image.uri);
+          body = await response.blob();
+        }
+        contentType = image.mimeType || `image/${fileExt}`;
+      } else {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: image.uri,
+          name: fileName.split('/')[1],
+          type: image.mimeType || `image/${fileExt}`,
+        } as any);
+        body = formData;
+        // En nativo NO enviamos contentType si usamos FormData para que el boundary se genere solo
+        contentType = undefined;
+      }
+
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, new Uint8Array(decode(image.base64)), {
-          contentType: 'image/jpeg',
+        .upload(fileName, body, {
           upsert: true,
+          contentType,
         });
 
 

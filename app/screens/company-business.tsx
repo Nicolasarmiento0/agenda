@@ -72,24 +72,45 @@ export default function CompanyBusinessScreen() {
         base64: true,
       });
 
-      if (!result.canceled && result.assets[0].base64) {
-        uploadImage(result.assets[0].base64);
+      if (!result.canceled) {
+        uploadImage(result.assets[0].uri);
       }
     } catch (error) {
       showAlert({ title: 'Error', message: 'No se pudo abrir la galería' });
     }
   };
 
-  const uploadImage = async (base64File: string) => {
+  const uploadImage = async (imageUri: string) => {
     if (!profile?.id) return;
     setIsUploading(true);
     try {
-      // Usaremos el bucket de avatars para guardar el logo de la empresa.
-      const filePath = `${profile.id}/business_${Date.now()}.jpg`;
+      const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const filePath = `${profile.id}/business_${Date.now()}.${ext}`;
+
+      let body: any;
+      let contentType: string | undefined;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(imageUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
+      } else {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: imageUri,
+          name: filePath.split('/')[1],
+          type: `image/${ext}`,
+        } as any);
+        body = formData;
+        contentType = undefined;
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, decode(base64File), { contentType: 'image/jpeg' });
+        .upload(filePath, body, {
+          upsert: true,
+          contentType,
+        });
 
       if (uploadError) throw uploadError;
 

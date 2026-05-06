@@ -34,7 +34,6 @@ export default function BusinessSetupScreen() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [logoUri, setLogoUri] = useState<string | null>(null);
-  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -57,24 +56,40 @@ export default function BusinessSetupScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.4,
-      base64: true,
+      quality: 0.8,
     });
     if (!result.canceled) {
       setLogoUri(result.assets[0].uri);
-      setLogoBase64(result.assets[0].base64 || null);
     }
   };
 
   const uploadLogo = async (userId: string): Promise<string | null> => {
-    if (!logoBase64) return null;
+    if (!logoUri) return null;
     try {
-      const ext = logoUri?.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const ext = logoUri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${userId}/logo.${ext}`;
       
-      const { error } = await supabase.storage.from('business-logos').upload(path, new Uint8Array(decode(logoBase64)), {
-        contentType: 'image/jpeg',
+      let body: any;
+      let contentType: string | undefined;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(logoUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
+      } else {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: logoUri,
+          name: path.split('/')[1],
+          type: `image/${ext}`,
+        } as any);
+        body = formData;
+        contentType = undefined;
+      }
+
+      const { error } = await supabase.storage.from('business-logos').upload(path, body, {
         upsert: true,
+        contentType,
       });
       
       if (error) {
