@@ -39,7 +39,7 @@ export default function RoleSelectScreen() {
             if (selected === 'company') {
                 router.replace('/screens/business-setup' as any);
             } else {
-                router.replace('/screens/dashboard' as any);
+                router.replace('/screens/client-agenda' as any);
             }
         } catch (error: any) {
             showAlert({ title: 'Error', message: error.message });

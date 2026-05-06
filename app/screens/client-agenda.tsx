@@ -249,7 +249,13 @@ function AppointmentSheet({
   ] : [];
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
+    <View 
+      style={[
+        StyleSheet.absoluteFill, 
+        { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
+        !visible && { opacity: 0 }
+      ]}
+    >
       <Animated.View style={[styles.sheetOverlay, { opacity: overlayOpacity }]}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
       </Animated.View>
@@ -303,7 +309,7 @@ function AppointmentSheet({
           ))}
         </View>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 
@@ -423,8 +429,10 @@ function AppointmentFormModal({
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -538,7 +546,7 @@ function AppointmentFormModal({
           </View>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </View>
   );
 }
 

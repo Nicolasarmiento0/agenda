@@ -63,31 +63,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (data) {
+        console.log('AUTH: Profile fetched:', data.role);
         setProfile(data);
 
-        let businessData = null;
         if (data.role === 'company') {
-          const { data: bData } = await supabase
+          console.log('AUTH: Fetching business for company user...');
+          const { data: bData, error: bError } = await supabase
             .from('businesses')
             .select('*')
             .eq('owner_id', userId)
-            .single();
+            .maybeSingle(); 
 
           if (bData) {
-            businessData = bData;
-            setBusiness(businessData);
+            console.log('AUTH: Business found:', bData.id);
+            setBusiness(bData);
           } else {
+            console.log('AUTH: No business found for this company user');
             setBusiness(null);
           }
+          if (bError) console.error('AUTH: Error fetching business:', bError);
         }
+      } else {
+        console.log('AUTH: No profile found for userId:', userId);
       }
+    } catch (error: any) {
+      console.error('AUTH: Critical error in fetchProfile:', error);
     } finally {
       setProfileLoaded(true);
     }
   }, []);
 
   // Solo actualiza el perfil en el estado, sin redirigir.
-  // Usar esto cuando el usuario ya está autenticado y solo queremos refrescar datos (ej: tras cambiar avatar).
   const refreshProfile = useCallback(async () => {
     const { data } = await supabase.auth.getUser();
     if (!data?.user?.id) return;
@@ -104,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from('businesses')
           .select('*')
           .eq('owner_id', data.user.id)
-          .single();
+          .maybeSingle();
         if (bData) {
           setBusiness(bData);
         } else {
@@ -127,14 +133,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (error) {
+        console.error('AUTH: getSession error:', error);
+        if (error.message.includes('Refresh Token Not Found')) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfileLoaded(true);
+          setLoading(false);
+          return;
+        }
+      }
       setSession(session);
       if (session) {
         fetchedRef.current = true;
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
       }
+      setLoading(false);
+    }).catch(err => {
+      console.error('AUTH: getSession catch:', err);
+      setProfileLoaded(true);
       setLoading(false);
     });
 
