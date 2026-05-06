@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -10,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
+import { appColors } from '../../styles/appStyles';
 
 export default function RoleSelectScreen() {
     const { user, updateProfileState } = useAuth();
@@ -63,12 +65,14 @@ export default function RoleSelectScreen() {
                     style={[
                         styles.card,
                         { backgroundColor: colors.surface, borderColor: colors.border },
-                        selected === 'client' && { borderColor: '#E63946', borderWidth: 2 },
+                        selected === 'client' && { borderColor: appColors.primary, borderWidth: 2 },
                     ]}
                     onPress={() => setSelected('client')}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.cardIcon}>👤</Text>
+                    <View style={[styles.iconWrapper, { backgroundColor: selected === 'client' ? appColors.primary + '15' : colors.background }]}>
+                        <Feather name="user" size={32} color={selected === 'client' ? appColors.primary : colors.textSecondary} />
+                    </View>
                     <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                         CLIENTE
                     </Text>
@@ -76,8 +80,8 @@ export default function RoleSelectScreen() {
                         Busco y contrato servicios
                     </Text>
                     {selected === 'client' && (
-                        <View style={styles.checkBadge}>
-                            <Text style={styles.checkText}>✓</Text>
+                        <View style={[styles.checkBadge, { backgroundColor: appColors.primary }]}>
+                            <Feather name="check" size={12} color="#fff" />
                         </View>
                     )}
                 </TouchableOpacity>
@@ -87,12 +91,14 @@ export default function RoleSelectScreen() {
                     style={[
                         styles.card,
                         { backgroundColor: colors.surface, borderColor: colors.border },
-                        selected === 'company' && { borderColor: '#E63946', borderWidth: 2 },
+                        selected === 'company' && { borderColor: appColors.primary, borderWidth: 2 },
                     ]}
                     onPress={() => setSelected('company')}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.cardIcon}>🏢</Text>
+                    <View style={[styles.iconWrapper, { backgroundColor: selected === 'company' ? appColors.primary + '15' : colors.background }]}>
+                        <Feather name="briefcase" size={32} color={selected === 'company' ? appColors.primary : colors.textSecondary} />
+                    </View>
                     <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                         EMPRESA
                     </Text>
@@ -100,8 +106,8 @@ export default function RoleSelectScreen() {
                         Ofrezco mis servicios
                     </Text>
                     {selected === 'company' && (
-                        <View style={styles.checkBadge}>
-                            <Text style={styles.checkText}>✓</Text>
+                        <View style={[styles.checkBadge, { backgroundColor: appColors.primary }]}>
+                            <Feather name="check" size={12} color="#fff" />
                         </View>
                     )}
                 </TouchableOpacity>
@@ -168,21 +174,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         letterSpacing: 0.3,
     },
+    iconWrapper: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
     checkBadge: {
         position: 'absolute',
         top: 12,
         right: 12,
-        backgroundColor: '#E63946',
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    checkText: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '700',
     },
     button: {
         paddingVertical: 16,
