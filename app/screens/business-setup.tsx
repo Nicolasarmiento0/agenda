@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -33,6 +34,7 @@ export default function BusinessSetupScreen() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [logoUri, setLogoUri] = useState<string | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,25 +58,34 @@ export default function BusinessSetupScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled) setLogoUri(result.assets[0].uri);
+    if (!result.canceled) {
+      setLogoUri(result.assets[0].uri);
+      setLogoBase64(result.assets[0].base64 || null);
+    }
   };
 
   const uploadLogo = async (userId: string): Promise<string | null> => {
-    if (!logoUri) return null;
+    if (!logoBase64) return null;
     try {
-      const ext = logoUri.split('.').pop() ?? 'jpg';
+      const ext = logoUri?.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${userId}/logo.${ext}`;
-      const response = await fetch(logoUri);
-      const blob = await response.blob();
-      const { error } = await supabase.storage.from('business-logos').upload(path, blob, {
+      
+      const { error } = await supabase.storage.from('business-logos').upload(path, decode(logoBase64), {
         contentType: `image/${ext}`,
         upsert: true,
       });
-      if (error) return null;
+      
+      if (error) {
+        console.error('Error uploading logo:', error);
+        return null;
+      }
+      
       const { data } = supabase.storage.from('business-logos').getPublicUrl(path);
       return `${data.publicUrl}?t=${Date.now()}`;
-    } catch {
+    } catch (e) {
+      console.error('Upload catch error:', e);
       return null;
     }
   };

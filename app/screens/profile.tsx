@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { decode } from 'base64-arraybuffer';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
@@ -100,6 +101,7 @@ export default function ProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
+        base64: true,
       });
 
       if (result.canceled || !result.assets[0].uri) return;
@@ -107,19 +109,16 @@ export default function ProfileScreen() {
       setUploadingAvatar(true);
       const image = result.assets[0];
 
+      if (!image.base64) {
+        throw new Error('No se pudo obtener el contenido de la imagen');
+      }
+
       const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
-      const formData = new FormData();
-      formData.append('file', {
-        uri: image.uri,
-        name: fileName.split('/')[1],
-        type: image.mimeType || `image/${fileExt}`,
-      } as any);
-
       const { error: storageError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, formData, {
+        .upload(fileName, decode(image.base64), {
           contentType: image.mimeType || `image/${fileExt}`,
           upsert: true,
         });
