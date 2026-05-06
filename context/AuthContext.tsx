@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  // Ref para evitar doble llamada a fetchProfile entre getSession y onAuthStateChange
   const fetchedRef = React.useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -72,36 +71,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .from('businesses')
             .select('*')
             .eq('owner_id', userId)
-            .maybeSingle(); 
+            .maybeSingle();
 
           if (bData) {
-            console.log('AUTH: Business found:', bData.id);
+            console.log('AUTH: Business found:', bData.id, '| Status:', bData.status);
             setBusiness(bData);
           } else {
             console.log('AUTH: No business found for this company user');
             setBusiness(null);
           }
           if (bError) console.error('AUTH: Error fetching business:', bError);
+        } else {
+          // Si el rol no es company, aseguramos que business quede en null
+          setBusiness(null);
         }
       } else {
         console.log('AUTH: No profile found for userId:', userId);
+        setProfile(null);
+        setBusiness(null);
       }
     } catch (error: any) {
       console.error('AUTH: Critical error in fetchProfile:', error);
     } finally {
+      // ✅ profileLoaded siempre se activa al final, sin importar el resultado
       setProfileLoaded(true);
     }
   }, []);
 
-  // Solo actualiza el perfil en el estado, sin redirigir.
   const refreshProfile = useCallback(async () => {
     const { data } = await supabase.auth.getUser();
     if (!data?.user?.id) return;
+
     const { data: profileData } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .single();
+
     if (profileData) {
       setProfile(profileData);
 
@@ -111,11 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .eq('owner_id', data.user.id)
           .maybeSingle();
-        if (bData) {
-          setBusiness(bData);
-        } else {
-          setBusiness(null);
-        }
+        setBusiness(bData ?? null);
+      } else {
+        setBusiness(null);
       }
     }
   }, []);
@@ -133,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // ─── Flujo 1: sesión existente al abrir la app ───────────────────────────
     supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         console.error('AUTH: getSession error:', error);
@@ -144,13 +149,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
+
       setSession(session);
+
       if (session) {
         fetchedRef.current = true;
         await fetchProfile(session.user.id);
       } else {
         setProfileLoaded(true);
       }
+
       setLoading(false);
     }).catch(err => {
       console.error('AUTH: getSession catch:', err);
@@ -158,19 +166,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // ─── Flujo 2: cambios de sesión en tiempo real (login, logout, refresh) ──
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
 
       if (_event === 'SIGNED_OUT') {
-        // Solo reseteamos el estado cuando el usuario cierra sesión explícitamente
         setProfile(null);
         setBusiness(null);
         setProfileLoaded(false);
         fetchedRef.current = false;
+        // loading ya debería estar en false, pero lo aseguramos
+        setLoading(false);
       } else if (session && !fetchedRef.current) {
-        // Sesión activa pero fetchProfile aún no corrió (ej: INITIAL_SESSION tardío)
+        // ✅ BUG FIX #1: await para que profileLoaded y loading se actualicen correctamente
         fetchedRef.current = true;
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
+        // ✅ BUG FIX #2: setLoading(false) también en este flujo
+        setLoading(false);
       }
     });
 
