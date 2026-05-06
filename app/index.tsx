@@ -18,6 +18,9 @@ export default function Index() {
 
     if (loading) return;
     if (!profileLoaded) return;
+    
+    // Si hay sesión pero el perfil aún no se ha mapeado al estado, esperamos un ciclo más
+    if (session && !profile) return;
 
     if (!session) {
       // Usuario no autenticado -> Home
