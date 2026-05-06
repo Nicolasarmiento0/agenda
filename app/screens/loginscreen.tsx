@@ -80,7 +80,17 @@ export default function LoginScreen() {
     } else if (profileData.role === 'company') {
       router.replace('/screens/dashboard-company');
     } else {
-      router.replace('/screens/dashboard');
+      router.replace('/screens/company-agenda');
+    }
+    if (!profileData?.role) {
+      router.replace('/screens/role-select');
+    } else if (profileData.role === 'client') {
+      router.replace('/screens/client-agenda');
+    }
+    if (!profileData?.role) {
+      router.replace('/screens/role-select');
+    } else if (profileData.role === 'admin') {
+      router.replace('/screens/admin-dashboard');
     }
   };
   return (

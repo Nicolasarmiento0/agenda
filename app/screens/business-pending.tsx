@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -38,16 +40,17 @@ export default function BusinessPendingScreen() {
     ).start();
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshProfile();
+    setRefreshing(false);
+  }, [refreshProfile]);
+
   // Refrescar perfil/negocio cada vez que se vuelve a esta pantalla
   useFocusEffect(
     useCallback(() => {
-      const check = async () => {
-        setRefreshing(true);
-        await refreshProfile();
-        setRefreshing(false);
-      };
-      check();
-    }, [refreshProfile])
+      onRefresh();
+    }, [onRefresh])
   );
 
   // Cuando el admin aprueba, business.status cambia a 'approved' -> redirigir al dashboard
@@ -74,75 +77,81 @@ export default function BusinessPendingScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center' }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+      >
+        <View style={styles.content}>
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center' }}>
 
-          {/* Ícono animado */}
-          <Animated.View
-            style={[
-              styles.iconCircle,
-              {
-                backgroundColor: isRejected ? '#FF3B3020' : `${appColors.primary}18`,
-                borderColor: isRejected ? '#FF3B30' : appColors.primary,
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <Feather
-              name={isRejected ? 'x-circle' : 'clock'}
-              size={48}
-              color={isRejected ? '#FF3B30' : appColors.primary}
-            />
-          </Animated.View>
-
-          {/* Título */}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {isRejected ? 'SOLICITUD\nRECHAZADA' : 'EN\nREVISIÓN'}
-          </Text>
-
-          {/* Subtítulo */}
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isRejected
-              ? 'Tu solicitud fue rechazada. Puedes crear un nuevo negocio con la información corregida.'
-              : 'Estamos verificando la información de tu negocio. Te notificaremos cuando sea aprobado.'}
-          </Text>
-
-          {/* Card del negocio */}
-          {business?.name && (
-            <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>NEGOCIO REGISTRADO</Text>
-              <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{business.name}</Text>
-            </View>
-          )}
-
-          <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>PROPIETARIO</Text>
-            <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{profile?.nickname ?? '—'}</Text>
-          </View>
-
-          {/* Info de estado pendiente */}
-          {!isRejected && (
-            <View style={[styles.infoBox, { backgroundColor: `${appColors.primary}10`, borderColor: `${appColors.primary}40` }]}>
-              <Feather name="info" size={14} color={appColors.primary} />
-              <Text style={[styles.infoText, { color: appColors.primary }]}>
-                Al abrir la app después de la aprobación, serás redirigido automáticamente a tu panel.
-              </Text>
-            </View>
-          )}
-
-          {/* Botón volver a registrar (solo si rechazado) */}
-          {isRejected && (
-            <TouchableOpacity
-              style={[appStyles.primaryButton, { marginTop: 24 }]}
-              activeOpacity={0.8}
-              onPress={() => router.replace('/screens/business-setup' as any)}
+            {/* Ícono animado */}
+            <Animated.View
+              style={[
+                styles.iconCircle,
+                {
+                  backgroundColor: isRejected ? '#FF3B3020' : `${appColors.primary}18`,
+                  borderColor: isRejected ? '#FF3B30' : appColors.primary,
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
             >
-              <Text style={appStyles.primaryButtonText}>REGISTRAR NUEVO NEGOCIO</Text>
-            </TouchableOpacity>
-          )}
+              <Feather
+                name={isRejected ? 'x-circle' : 'clock'}
+                size={48}
+                color={isRejected ? '#FF3B30' : appColors.primary}
+              />
+            </Animated.View>
 
-        </Animated.View>
-      </View>
+            {/* Título */}
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {isRejected ? 'SOLICITUD\nRECHAZADA' : 'EN\nREVISIÓN'}
+            </Text>
+
+            {/* Subtítulo */}
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {isRejected
+                ? 'Tu solicitud fue rechazada. Puedes crear un nuevo negocio con la información corregida.'
+                : 'Estamos verificando la información de tu negocio. Te notificaremos cuando sea aprobado.'}
+            </Text>
+
+            {/* Card del negocio */}
+            {business?.name && (
+              <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>NEGOCIO REGISTRADO</Text>
+                <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{business.name}</Text>
+              </View>
+            )}
+
+            <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>PROPIETARIO</Text>
+              <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{profile?.nickname ?? '—'}</Text>
+            </View>
+
+            {/* Info de estado pendiente */}
+            {!isRejected && (
+              <View style={[styles.infoBox, { backgroundColor: `${appColors.primary}10`, borderColor: `${appColors.primary}40` }]}>
+                <Feather name="info" size={14} color={appColors.primary} />
+                <Text style={[styles.infoText, { color: appColors.primary }]}>
+                  Al abrir la app después de la aprobación, serás redirigido automáticamente a tu panel.
+                </Text>
+              </View>
+            )}
+
+            {/* Botón volver a registrar (solo si rechazado) */}
+            {isRejected && (
+              <TouchableOpacity
+                style={[appStyles.primaryButton, { marginTop: 24 }]}
+                activeOpacity={0.8}
+                onPress={() => router.replace('/screens/business-setup' as any)}
+              >
+                <Text style={appStyles.primaryButtonText}>REGISTRAR NUEVO NEGOCIO</Text>
+              </TouchableOpacity>
+            )}
+
+          </Animated.View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
