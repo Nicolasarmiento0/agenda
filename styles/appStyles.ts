@@ -90,10 +90,11 @@ export const appStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   primaryButton: {
-    alignSelf: 'stretch',
+    alignSelf: 'center',
     backgroundColor: appColors.primary,
     paddingVertical: 16,
-    borderRadius: 4,
+    paddingHorizontal: 60,
+    borderRadius: 8,
     marginTop: 8,
   },
   primaryButton2: {
