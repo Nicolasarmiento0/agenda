@@ -49,8 +49,9 @@ type Appointment = {
   workerColor: string;
   startHour: number; // ej: 9.5 = 9:30
   durationHours: number; // ej: 1.5 = 90 min
-  status: 'confirmed' | 'pending' | 'completed' | 'no-show';
+  status: 'confirmed' | 'pending' | 'completed' | 'no-show' | 'rescheduled' | 'cancelled';
   date?: string;
+  price?: number;
 };
 
 type Worker = {
@@ -71,7 +72,9 @@ const STATUS_CONFIG = {
   confirmed: { label: 'Confirmado', bg: '#EEF8F0', text: '#2E7D45', dot: '#3D9E5A' },
   pending: { label: 'Pendiente', bg: '#FFF5E5', text: '#A0660A', dot: '#F0A030' },
   completed: { label: 'Completado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
+  rescheduled: { label: 'Reprogramado', bg: '#FFF5E5', text: '#F39C12', dot: '#F39C12' },
   'no-show': { label: 'No Show', bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
+  cancelled: { label: 'Cancelado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
 };
 
 // ─── Datos mock ───────────────────────────────────────────────────────────────
@@ -144,7 +147,7 @@ function AppointmentCard({
 }) {
   const top = (appt.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
-  const status = STATUS_CONFIG[appt.status];
+  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const isShort = height < 48;
 
   return (
@@ -185,12 +188,14 @@ function AppointmentSheet({
   onClose,
   onAction,
   colors,
+  isGym,
 }: {
   appt: Appointment | null;
   visible: boolean;
   onClose: () => void;
   onAction: (action: string, appt: Appointment) => void;
   colors: any;
+  isGym: boolean;
 }) {
   const slideY = useRef(new Animated.Value(400)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -224,13 +229,15 @@ function AppointmentSheet({
 
   if (!appt) return null;
 
-  const status = STATUS_CONFIG[appt.status];
+  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const endHour = appt.startHour + appt.durationHours;
 
   const ACTIONS = [
     { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
+    { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
+    { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
     { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
-    { id: 'no-show', icon: 'user-x', label: 'No Show', color: '#D00024' },
+    { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
     { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
   ];
 
@@ -358,28 +365,28 @@ function AppointmentFormModal({
               .eq('category_id', bizData.category_id);
             
             if (catServices && catServices.length > 0) {
-              setServices(catServices.map(s => ({ name: s.name, price: 0 })));
+              setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
             } else {
               setServices([
-                { name: 'Servicio 1', price: 0 },
-                { name: 'Servicio 2', price: 0 },
-                { name: 'Servicio 3', price: 0 }
+                { id: 'p1', name: 'Servicio 1', price: 0 },
+                { id: 'p2', name: 'Servicio 2', price: 0 },
+                { id: 'p3', name: 'Servicio 3', price: 0 }
               ]);
             }
           } else {
             setServices([
-              { name: 'Servicio 1', price: 0 },
-              { name: 'Servicio 2', price: 0 },
-              { name: 'Servicio 3', price: 0 }
+              { id: 'p1', name: 'Servicio 1', price: 0 },
+              { id: 'p2', name: 'Servicio 2', price: 0 },
+              { id: 'p3', name: 'Servicio 3', price: 0 }
             ]);
           }
         }
       } catch (err) {
         console.error('Error fetching services:', err);
         setServices([
-          { name: 'Servicio 1', price: 0 },
-          { name: 'Servicio 2', price: 0 },
-          { name: 'Servicio 3', price: 0 }
+          { id: 'p1', name: 'Servicio 1', price: 0 },
+          { id: 'p2', name: 'Servicio 2', price: 0 },
+          { id: 'p3', name: 'Servicio 3', price: 0 }
         ]);
       }
     };
@@ -457,6 +464,9 @@ function AppointmentFormModal({
     }
 
     setLoading(true);
+    const selectedServiceObj = services.find(s => s.name === (service || 'Servicio'));
+    const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
+
     const success = await onSave({
       clientName,
       service,
@@ -464,6 +474,7 @@ function AppointmentFormModal({
       startHour,
       durationHours: durationMinutes / 60,
       date: dateText,
+      price,
     });
     setLoading(false);
 
@@ -494,9 +505,9 @@ function AppointmentFormModal({
 
             <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
             <View style={[styles.modalRow, { marginBottom: 16 }]}>
-              {services.map((s) => (
+              {services.map((s, index) => (
                 <TouchableOpacity
-                  key={s.name}
+                  key={s.id || `${s.name}-${index}`}
                   onPress={() => setService(s.name)}
                   style={[
                     styles.modalChip,
@@ -618,6 +629,24 @@ export default function CompanyAgendaScreen() {
   const { business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
+  const [isGym, setIsGym] = useState(false);
+
+  useEffect(() => {
+    const checkGym = async () => {
+      if (!business?.category_id) return;
+      const { data } = await supabase
+        .from('service_categories')
+        .select('name, parent_id')
+        .eq('id', business.category_id)
+        .single();
+      
+      if (data) {
+        const isGymCategory = data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS');
+        setIsGym(isGymCategory);
+      }
+    };
+    checkGym();
+  }, [business?.category_id]);
 
   // Horas dinámicas
   const startHour = useMemo(() => {
@@ -690,6 +719,7 @@ export default function CompanyAgendaScreen() {
         durationHours: Number(a.duration_hours),
         status: a.status as any,
         date: a.date,
+        price: a.price || 0,
       })));
     }
   }, [business?.id, weekDays]);
@@ -744,6 +774,12 @@ export default function CompanyAgendaScreen() {
   const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
     if (actionId === 'confirm') {
       const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
+    } else if (actionId === 'complete') {
+      const { error } = await supabase.from('appointments').update({ status: 'completed' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
+    } else if (actionId === 'rescheduled') {
+      const { error } = await supabase.from('appointments').update({ status: 'rescheduled' }).eq('id', appt.id);
       if (!error) fetchAppointments();
     } else if (actionId === 'no-show') {
       const { error } = await supabase.from('appointments').update({ status: 'no-show' }).eq('id', appt.id);
@@ -805,6 +841,7 @@ export default function CompanyAgendaScreen() {
         worker_id: data.worker_id,
         client_name: data.clientName || 'Sin nombre',
         service: data.service || 'Servicio',
+        price: data.price || 0, // El precio ya viene calculado del modal
         date: dateStr,
         start_hour: newStart,
         duration_hours: data.durationHours || 0.5,
@@ -1144,6 +1181,7 @@ export default function CompanyAgendaScreen() {
         onClose={() => setSheetVisible(false)}
         onAction={handleSheetAction}
         colors={colors}
+        isGym={isGym}
       />
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />

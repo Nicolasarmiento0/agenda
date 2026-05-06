@@ -112,6 +112,17 @@ export default function CompanyServicesScreen() {
           })
           .eq('id', editingService.id);
         if (error) throw error;
+
+        // Si el nombre cambió, actualizar todas las citas existentes que usaban el nombre antiguo
+        if (editingService.name && editingService.name !== editName && business?.id) {
+          const { error: apptError } = await supabase
+            .from('appointments')
+            .update({ service: editName })
+            .eq('business_id', business.id)
+            .eq('service', editingService.name);
+          
+          if (apptError) console.error('Error updating appointments service name:', apptError);
+        }
       }
       
       setEditingService(null);

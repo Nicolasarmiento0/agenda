@@ -153,6 +153,10 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPLEADOS</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-history')}>
+                  <Feather name="bar-chart-2" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>HISTORIAL</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-business')}>
                   <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>

@@ -19,6 +19,7 @@ export type Business = {
   maps_url?: string;
   opening_time?: string;
   closing_time?: string;
+  category_id?: string;
 };
 
 type AuthContextType = {

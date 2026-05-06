@@ -50,8 +50,9 @@ type Appointment = {
   workerColor: string;
   startHour: number; // ej: 9.5 = 9:30
   durationHours: number; // ej: 1.5 = 90 min
-  status: 'confirmed' | 'pending' | 'completed' | 'no-show';
+  status: 'confirmed' | 'pending' | 'completed' | 'no-show' | 'rescheduled' | 'cancelled';
   date?: string;
+  price?: number;
   isMine?: boolean;
 };
 
@@ -82,7 +83,9 @@ const STATUS_CONFIG = {
   confirmed: { label: 'Confirmado', bg: '#EEF8F0', text: '#2E7D45', dot: '#3D9E5A' },
   pending: { label: 'Pendiente', bg: '#FFF5E5', text: '#A0660A', dot: '#F0A030' },
   completed: { label: 'Completado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
+  rescheduled: { label: 'Reprogramado', bg: '#FFF5E5', text: '#F39C12', dot: '#F39C12' },
   'no-show': { label: 'No Show', bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
+  cancelled: { label: 'Cancelado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -151,7 +154,7 @@ function AppointmentCard({
 }) {
   const top = (appt.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
-  const status = STATUS_CONFIG[appt.status];
+  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const isShort = height < 48;
 
   return (
@@ -231,7 +234,7 @@ function AppointmentSheet({
 
   if (!appt) return null;
 
-  const status = STATUS_CONFIG[appt.status];
+  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const endHour = appt.startHour + appt.durationHours;
 
   const isMine = appt.isMine;
@@ -376,29 +379,29 @@ function AppointmentFormModal({
               .eq('category_id', bizData.category_id);
             
             if (catServices && catServices.length > 0) {
-              setServices(catServices.map(s => ({ name: s.name, price: 0 })));
+              setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
             } else {
               // Último recurso: hardcoded placeholders
               setServices([
-                { name: 'Servicio 1', price: 0 },
-                { name: 'Servicio 2', price: 0 },
-                { name: 'Servicio 3', price: 0 }
+                { id: 'p1', name: 'Servicio 1', price: 0 },
+                { id: 'p2', name: 'Servicio 2', price: 0 },
+                { id: 'p3', name: 'Servicio 3', price: 0 }
               ]);
             }
           } else {
             setServices([
-              { name: 'Servicio 1', price: 0 },
-              { name: 'Servicio 2', price: 0 },
-              { name: 'Servicio 3', price: 0 }
+              { id: 'p1', name: 'Servicio 1', price: 0 },
+              { id: 'p2', name: 'Servicio 2', price: 0 },
+              { id: 'p3', name: 'Servicio 3', price: 0 }
             ]);
           }
         }
       } catch (err) {
         console.error('Error fetching services:', err);
         setServices([
-          { name: 'Servicio 1', price: 0 },
-          { name: 'Servicio 2', price: 0 },
-          { name: 'Servicio 3', price: 0 }
+          { id: 'p1', name: 'Servicio 1', price: 0 },
+          { id: 'p2', name: 'Servicio 2', price: 0 },
+          { id: 'p3', name: 'Servicio 3', price: 0 }
         ]);
       }
     };
@@ -490,6 +493,9 @@ function AppointmentFormModal({
     }
 
     setLoading(true);
+    const selectedServiceObj = services.find(s => s.name === (service || 'Servicio'));
+    const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
+
     const success = await onSave({
       clientName,
       service,
@@ -497,6 +503,7 @@ function AppointmentFormModal({
       startHour,
       durationHours: durationMinutes / 60,
       date: dateText,
+      price,
     });
     setLoading(false);
 
@@ -518,9 +525,9 @@ function AppointmentFormModal({
 
             <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
             <View style={[styles.modalRow, { marginBottom: 16 }]}>
-              {services.map((s) => (
+              {services.map((s, index) => (
                 <TouchableOpacity
-                  key={s.name}
+                  key={s.id || `${s.name}-${index}`}
                   onPress={() => setService(s.name)}
                   style={[
                     styles.modalChip,
@@ -718,6 +725,7 @@ export default function ClientAgendaScreen() {
           durationHours: Number(a.duration_hours),
           status: a.status as any,
           date: a.date,
+          price: a.price || 0,
         };
       }));
     }
@@ -835,6 +843,7 @@ export default function ClientAgendaScreen() {
         client_id: profile?.id,
         client_name: profile?.nickname || 'Cliente',
         service: data.service || 'Servicio',
+        price: data.price || 0, // El precio ya viene calculado del modal
         date: dateStr,
         start_hour: newStart,
         duration_hours: data.durationHours || 0.5,
