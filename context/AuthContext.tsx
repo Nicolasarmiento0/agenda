@@ -101,8 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    setLoading(true);
-    setProfileLoaded(false);
     try {
       const { data } = await supabase.auth.getUser();
       if (!data?.user?.id) return;
@@ -127,9 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setBusiness(null);
         }
       }
-    } finally {
-      setProfileLoaded(true);
-      setLoading(false);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
     }
   }, []);
 
