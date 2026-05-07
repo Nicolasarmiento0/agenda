@@ -68,33 +68,7 @@ export default function Index() {
     }
   }, [loading, session, profile, business, profileLoaded, rootNavigationState?.key]);
 
-  useEffect(() => {
-    if (session && profileLoaded && !profile && !loading) {
-      showAlert({
-        title: 'Error de Conexión',
-        message: 'No pudimos cargar tu perfil. Verifica tu conexión a internet.',
-        buttons: [
-          { 
-            text: 'CERRAR SESIÓN', 
-            style: 'cancel',
-            onPress: () => signOut() 
-          },
-          { 
-            text: 'RECARGAR', 
-            onPress: () => {
-              if (Platform.OS === 'web') {
-                window.location.reload();
-              } else {
-                refreshProfile();
-              }
-            } 
-          }
-        ]
-      });
-    }
-  }, [session, profileLoaded, profile, loading]);
-
-  // Si hay error, mostramos el indicador mientras el usuario decide en la alerta
+  // Si hay error (y GlobalGuard dejó pasar por alguna razón), mostramos el indicador
   if (session && profileLoaded && !profile && !loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
