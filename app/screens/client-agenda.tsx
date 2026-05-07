@@ -145,12 +145,14 @@ function AppointmentCard({
   onPress,
   colors,
   startHour,
+  isDarkMode,
 }: {
   appt: Appointment;
   columnWidth: number;
   onPress: () => void;
   colors: any;
   startHour: number;
+  isDarkMode: boolean;
 }) {
   const top = (appt.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
@@ -169,15 +171,15 @@ function AppointmentCard({
           top,
           height,
           width: columnWidth - 6,
-          borderLeftColor: isBlocked ? '#999999' : appt.workerColor,
-          backgroundColor: isBlocked ? '#F0F0F0' : colors.surface,
+          borderLeftColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : appt.workerColor,
+          backgroundColor: isBlocked ? (isDarkMode ? '#222222' : '#F0F0F0') : colors.surface,
         },
       ]}
     >
-      <View style={[styles.apptDot, { backgroundColor: isBlocked ? '#999999' : status.dot }]} />
+      <View style={[styles.apptDot, { backgroundColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : status.dot }]} />
       <View style={{ flex: 1, overflow: 'hidden' }}>
-        <Text style={[styles.apptTitle, { color: isBlocked ? '#999999' : colors.textPrimary }]} numberOfLines={1}>
-          {isBlocked ? 'No disponible' : appt.service}
+        <Text style={[styles.apptTitle, { color: isBlocked ? (isDarkMode ? '#AAAAAA' : '#999999') : colors.textPrimary }]} numberOfLines={1}>
+          {isBlocked ? (appt.clientName || 'No disponible') : appt.service}
         </Text>
         {!isShort && !isBlocked && (
           <Text style={[styles.apptSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -479,12 +481,22 @@ function AppointmentFormModal({
     // Si la hora de inicio solicitada es muy cercana a la de apertura (consideramos un bloque de primera hora si está dentro de los primeros 15 min de apertura)
     const isFirstBlock = Math.abs(startHour - openingTimeHour) <= 0.25;
 
-    if (dateText === todayStr) {
-      if (isFirstBlock) {
-        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta el día anterior.' });
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = toLocalISOString(tomorrow);
+
+    if (isFirstBlock) {
+      if (dateText === todayStr) {
+        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
         return;
       }
-      
+      if (dateText === tomorrowStr && currentHour >= 22) {
+        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+        return;
+      }
+    }
+
+    if (dateText === todayStr) {
       // Margen de 1 hora mínimo de anticipación
       if (startHour <= currentHour + 1) {
         showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
@@ -727,11 +739,12 @@ export default function ClientAgendaScreen() {
     if (!error && data) {
       setAppointments(data.map(a => {
         const isMine = a.client_name === profile?.nickname || a.client_id === profile?.id;
+        const isBlocked = a.service === 'BLOQUEO';
         return {
           id: a.id,
           isMine,
-          clientName: isMine ? a.client_name : '',
-          service: isMine ? a.service : 'Reservado',
+          clientName: (isMine || isBlocked) ? a.client_name : '',
+          service: (isMine || isBlocked) ? a.service : 'Reservado',
           worker_id: a.worker_id,
           worker: a.workers?.name || 'Desconocido',
           workerColor: a.workers?.color || '#000',
@@ -959,6 +972,7 @@ export default function ClientAgendaScreen() {
                     columnWidth={colWidth}
                     onPress={() => openSheet(appt)}
                     colors={colors}
+                    isDarkMode={isDarkMode}
                     startHour={startHour}
                   />
                 ))}
@@ -1044,6 +1058,7 @@ export default function ClientAgendaScreen() {
                       columnWidth={weekColWidth}
                       onPress={() => openSheet(appt)}
                       colors={colors}
+                      isDarkMode={isDarkMode}
                       startHour={startHour}
                     />
                   ))}

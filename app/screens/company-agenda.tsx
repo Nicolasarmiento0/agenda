@@ -138,12 +138,14 @@ function AppointmentCard({
   onPress,
   colors,
   startHour,
+  isDarkMode,
 }: {
   appt: Appointment;
   columnWidth: number;
   onPress: () => void;
   colors: any;
   startHour: number;
+  isDarkMode: boolean;
 }) {
   const top = (appt.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
@@ -162,15 +164,15 @@ function AppointmentCard({
           top,
           height,
           width: columnWidth - 6,
-          borderLeftColor: isBlocked ? '#999999' : appt.workerColor,
-          backgroundColor: isBlocked ? '#F0F0F0' : colors.surface,
+          borderLeftColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : appt.workerColor,
+          backgroundColor: isBlocked ? (isDarkMode ? '#222222' : '#F0F0F0') : colors.surface,
         },
       ]}
     >
-      <View style={[styles.apptDot, { backgroundColor: isBlocked ? '#999999' : status.dot }]} />
+      <View style={[styles.apptDot, { backgroundColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : status.dot }]} />
       <View style={{ flex: 1, overflow: 'hidden' }}>
-        <Text style={[styles.apptTitle, { color: isBlocked ? '#999999' : colors.textPrimary }]} numberOfLines={1}>
-          {isBlocked ? 'Bloqueo' : appt.service}
+        <Text style={[styles.apptTitle, { color: isBlocked ? (isDarkMode ? '#AAAAAA' : '#999999') : colors.textPrimary }]} numberOfLines={1}>
+          {isBlocked ? (appt.clientName || 'No disponible') : appt.service}
         </Text>
         {!isShort && !isBlocked && (
           <Text style={[styles.apptSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -479,7 +481,7 @@ function AppointmentFormModal({
     const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
 
     const success = await onSave({
-      clientName: isBlocking ? 'BLOQUEADO' : clientName,
+      clientName: isBlocking ? (clientName || 'No disponible') : clientName,
       service: isBlocking ? 'BLOQUEO' : service,
       worker_id: workerId,
       startHour,
@@ -507,7 +509,10 @@ function AppointmentFormModal({
 
             {!initialData && (
               <TouchableOpacity 
-                onPress={() => setIsBlocking(!isBlocking)}
+                onPress={() => {
+                  setIsBlocking(!isBlocking);
+                  if (!isBlocking) setClientName(''); // Limpiar si entra a modo bloqueo
+                }}
                 style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 }}
                 activeOpacity={0.7}
               >
@@ -516,6 +521,19 @@ function AppointmentFormModal({
                 </View>
                 <Text style={{ color: colors.textPrimary }}>Bloquear este horario</Text>
               </TouchableOpacity>
+            )}
+
+            {isBlocking && (
+              <>
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Razón del bloqueo (Opcional)</Text>
+                <TextInput
+                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={clientName}
+                  onChangeText={setClientName}
+                  placeholderTextColor={colors.textSecondary}
+                  placeholder="Ej: Colación, Descanso..."
+                />
+              </>
             )}
 
             {!isBlocking && (
@@ -970,6 +988,7 @@ export default function CompanyAgendaScreen() {
                     columnWidth={colWidth}
                     onPress={() => openSheet(appt)}
                     colors={colors}
+                    isDarkMode={isDarkMode}
                     startHour={startHour}
                   />
                 ))}
@@ -1052,6 +1071,7 @@ export default function CompanyAgendaScreen() {
                       columnWidth={weekColWidth}
                       onPress={() => openSheet(appt)}
                       colors={colors}
+                      isDarkMode={isDarkMode}
                       startHour={startHour}
                     />
                   ))}
