@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -18,9 +17,9 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../components/Sidebar';
+import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 
@@ -35,6 +34,7 @@ export default function CompanyBusinessScreen() {
   const [name, setName] = useState(business?.name || '');
   const [description, setDescription] = useState(business?.description || '');
   const [mapsUrl, setMapsUrl] = useState(business?.maps_url || '');
+  const [instagramUrl, setInstagramUrl] = useState(business?.instagram_url || '');
   const [avatarUrl, setAvatarUrl] = useState(business?.avatar_url || '');
   const [openingTime, setOpeningTime] = useState(business?.opening_time?.substring(0, 5) || '07:00');
   const [closingTime, setClosingTime] = useState(business?.closing_time?.substring(0, 5) || '22:00');
@@ -60,6 +60,7 @@ export default function CompanyBusinessScreen() {
       setName(business.name);
       setDescription(business.description || '');
       setMapsUrl(business.maps_url || '');
+      setInstagramUrl(business.instagram_url || '');
       setAvatarUrl(business.avatar_url || '');
       setOpeningTime(business.opening_time?.substring(0, 5) || '07:00');
       setClosingTime(business.closing_time?.substring(0, 5) || '22:00');
@@ -140,6 +141,7 @@ export default function CompanyBusinessScreen() {
           name,
           description,
           maps_url: mapsUrl,
+          instagram_url: instagramUrl,
           avatar_url: avatarUrl,
           opening_time: `${openingTime}:00`,
           closing_time: `${closingTime}:00`,
@@ -229,7 +231,8 @@ export default function CompanyBusinessScreen() {
 
           {/* Info cards */}
           {[
-            { label: 'DIRECCIÓN MAPS', value: business?.maps_url || 'No agregada', isLink: !!business?.maps_url },
+            { label: 'DIRECCIÓN MAPS', value: business?.maps_url || 'No agregada', isLink: !!business?.maps_url, linkText: 'Abrir en Maps' },
+            { label: 'INSTAGRAM', value: business?.instagram_url || 'No agregado', isLink: !!business?.instagram_url, linkText: 'Abrir en Instagram' },
             { label: 'HORARIO APERTURA', value: business?.opening_time?.substring(0, 5) || '07:00' },
             { label: 'HORARIO CIERRE', value: business?.closing_time?.substring(0, 5) || '22:00' },
           ].map((item, i) => (
@@ -241,7 +244,7 @@ export default function CompanyBusinessScreen() {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}
                 >
                   <Text style={[localStyles.cardValue, { color: appColors.primary, textDecorationLine: 'underline' }]}>
-                    Abrir en Maps
+                    {item.linkText}
                   </Text>
                   <Feather name="external-link" size={14} color={appColors.primary} />
                 </TouchableOpacity>
@@ -309,6 +312,14 @@ export default function CompanyBusinessScreen() {
                 value={mapsUrl}
                 onChangeText={setMapsUrl}
                 placeholder="https://maps.app.goo.gl/..."
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Enlace de Instagram</Text>
+              <TextInput
+                style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                value={instagramUrl}
+                onChangeText={setInstagramUrl}
+                placeholder="https://instagram.com/..."
                 placeholderTextColor={colors.textSecondary}
               />
 

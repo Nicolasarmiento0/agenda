@@ -17,6 +17,7 @@ export type Business = {
   avatar_url?: string;
   description?: string;
   maps_url?: string;
+  instagram_url?: string;
   opening_time?: string;
   closing_time?: string;
   category_id?: string;

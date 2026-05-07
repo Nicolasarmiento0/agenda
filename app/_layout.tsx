@@ -55,6 +55,7 @@ export default function RootLayout() {
               {/* Cliente */}
               <Stack.Screen name="screens/explore" />
               <Stack.Screen name="screens/my-appointments" />
+              <Stack.Screen name="screens/client-business-profile" />
               <Stack.Screen name="screens/client-agenda" />
               {/* Empresa */}
               <Stack.Screen name="screens/company-agenda" />

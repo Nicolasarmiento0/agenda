@@ -11,6 +11,8 @@ export type SelectedBusiness = {
   category_id?: string;
   opening_time?: string; // Formato 'HH:mm:ss'
   closing_time?: string; // Formato 'HH:mm:ss'
+  maps_url?: string;
+  instagram_url?: string;
 };
 
 type BusinessContextType = {

@@ -59,7 +59,7 @@ export default function ExploreScreen() {
     const [bizRes, catRes] = await Promise.all([
       supabase
         .from('businesses')
-        .select('id, name, description, address, phone, avatar_url, status, category_id')
+        .select('*')
         .in('status', ['approved', 'suspended'])
         .order('name'),
       supabase
@@ -88,7 +88,7 @@ export default function ExploreScreen() {
 
   const handleSelectBusiness = (b: SelectedBusiness) => {
     setSelectedBusiness(b);
-    router.push('/screens/client-agenda' as any);
+    router.push('/screens/client-business-profile' as any);
   };
 
   const parentCategories = categories.filter(c => !c.parent_id);
