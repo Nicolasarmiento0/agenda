@@ -217,6 +217,14 @@ export default function ProfileScreen() {
     showAlert({ title: 'Foto de perfil', message: '¿Qué deseas hacer?', buttons: options });
   };
 
+  // ─── LÓGICA DE MENÚ ───
+  const handleNotifications = () => {
+    showAlert({
+      title: 'Notificaciones',
+      message: 'Próximamente podrás activar o desactivar las notificaciones push para la app.'
+    });
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Sidebar visible={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
@@ -317,9 +325,45 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <TouchableOpacity style={localStyles.logoutButton} onPress={async () => { await signOut(); router.replace('/screens/home'); }}>
-            <Text style={localStyles.logoutText}>CERRAR SESIÓN</Text>
-          </TouchableOpacity>
+          {/* Menú de opciones */}
+          <View style={localStyles.menuContainer}>
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleNotifications}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="bell" size={18} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: colors.textPrimary }]}>Notificaciones</Text>
+                  <Text style={[localStyles.menuItemSubtitle, { color: colors.textSecondary }]}>Alertas y actividad</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/privacy' as any)}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="lock" size={18} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: colors.textPrimary }]}>Privacidad</Text>
+                  <Text style={[localStyles.menuItemSubtitle, { color: colors.textSecondary }]}>Seguridad y acceso</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={async () => { await signOut(); router.replace('/screens/home'); }}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="log-out" size={18} color="#FF4B4B" />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: '#FF4B4B' }]}>Cerrar sesión</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -373,6 +417,10 @@ const localStyles = StyleSheet.create({
   statItem: { flex: 1 },
   statLabel: { fontSize: 10, fontWeight: '700', marginBottom: 6 },
   statValue: { fontSize: 20, fontWeight: '800' },
-  logoutButton: { marginTop: 20, paddingBottom: 40, alignItems: 'center' },
-  logoutText: { color: '#FF4B4B', fontWeight: '800', fontSize: 12, letterSpacing: 1 },
+  menuContainer: { marginTop: 10, paddingBottom: 40, gap: 12 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 20, borderWidth: 1 },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  menuIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  menuItemTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  menuItemSubtitle: { fontSize: 12, fontWeight: '500', opacity: 0.8 },
 });
