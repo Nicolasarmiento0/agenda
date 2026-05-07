@@ -332,6 +332,7 @@ function AppointmentFormModal({
   showAlert,
   openingTime,
   closingTime,
+  isGym,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -342,6 +343,7 @@ function AppointmentFormModal({
   showAlert: (opts: { title: string; message: string }) => void;
   openingTime?: string;
   closingTime?: string;
+  isGym: boolean;
 }) {
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
@@ -475,6 +477,19 @@ function AppointmentFormModal({
     if (dateText < todayStr) {
       showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
       return;
+    }
+
+    if (isGym) {
+      const paddedHh = hhStr.padStart(2, '0');
+      const paddedMm = (mmStr || '0').padStart(2, '0');
+      const selectedDateObj = new Date(`${dateText}T${paddedHh}:${paddedMm}:00`);
+      const diffMs = selectedDateObj.getTime() - now.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      if (diffHours < 48) {
+        showAlert({ title: 'Reserva no permitida', message: 'Para gimnasios, debes agendar con al menos 48 horas de anticipación.' });
+        return;
+      }
     }
 
     const openingTimeHour = openingTime ? parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60 : DEFAULT_START_HOUR;
@@ -676,6 +691,18 @@ export default function ClientAgendaScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
   const { selectedBusiness: business } = useBusiness();
+  const [isGym, setIsGym] = useState(false);
+
+  useEffect(() => {
+    async function checkGym() {
+      if (!business?.category_id) return;
+      const { data } = await supabase.from('service_categories').select('name').eq('id', business.category_id).single();
+      if (data) {
+        setIsGym(data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS'));
+      }
+    }
+    checkGym();
+  }, [business?.category_id]);
 
   // Horas dinámicas
   const startHour = useMemo(() => {
@@ -1225,6 +1252,7 @@ export default function ClientAgendaScreen() {
         showAlert={showAlert}
         openingTime={business?.opening_time}
         closingTime={business?.closing_time}
+        isGym={isGym}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
