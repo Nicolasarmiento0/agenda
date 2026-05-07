@@ -1,6 +1,7 @@
 import { router, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { appStyles } from '../styles/appStyles';
@@ -8,6 +9,7 @@ import { appStyles } from '../styles/appStyles';
 export default function Index() {
   const { session, profile, business, loading, profileLoaded, refreshProfile, signOut } = useAuth();
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
@@ -31,7 +33,9 @@ export default function Index() {
 
     if (!session) {
       console.log('INDEX: No session, redirecting to Home');
-      router.replace('/screens/global/home' as any);
+      setTimeout(() => {
+        router.replace('/screens/global/home' as any);
+      }, 0);
       return;
     }
 
@@ -40,52 +44,55 @@ export default function Index() {
 
     if (!profile?.role) {
       console.log('INDEX: No role found, redirecting to Role Select');
-      router.replace('/screens/global/role-select' as any);
+      setTimeout(() => router.replace('/screens/global/role-select' as any), 0);
     } else if (profile.role === 'admin') {
       console.log('INDEX: Admin role, redirecting to Admin Dashboard');
-      router.replace('/screens/roles/admin/admin-dashboard' as any);
+      setTimeout(() => router.replace('/screens/roles/admin/admin-dashboard' as any), 0);
     } else if (profile.role === 'client') {
       console.log('INDEX: Client role, redirecting to Explore');
-      router.replace('/screens/global/explore' as any);
+      setTimeout(() => router.replace('/screens/global/explore' as any), 0);
     } else if (profile.role === 'company') {
       if (!business) {
         console.log('INDEX: Company role but NO business found, redirecting to Business Setup');
-        router.replace('/screens/roles/company/business-setup' as any);
+        setTimeout(() => router.replace('/screens/roles/company/business-setup' as any), 0);
       } else if (business.status === 'pending' || business.status === 'rejected') {
         console.log('INDEX: Company role, business is pending/rejected, redirecting to Business Pending');
-        router.replace('/screens/roles/company/business-pending' as any);
+        setTimeout(() => router.replace('/screens/roles/company/business-pending' as any), 0);
       } else {
         console.log('INDEX: Company role, business is approved, redirecting to Company Agenda');
-        router.replace('/screens/roles/company/company-agenda' as any);
+        setTimeout(() => router.replace('/screens/roles/company/company-agenda' as any), 0);
       }
     } else {
       console.log('INDEX: Unknown role, redirecting to Home');
-      router.replace('/screens/global/home' as any);
+      setTimeout(() => router.replace('/screens/global/home' as any), 0);
     }
   }, [loading, session, profile, business, profileLoaded, rootNavigationState?.key]);
 
+  useEffect(() => {
+    if (session && profileLoaded && !profile && !loading) {
+      showAlert({
+        title: 'Error de Conexión',
+        message: 'No pudimos cargar tu perfil. Verifica tu conexión a internet.',
+        buttons: [
+          { 
+            text: 'CERRAR SESIÓN', 
+            style: 'cancel',
+            onPress: () => signOut() 
+          },
+          { 
+            text: 'RECARGAR', 
+            onPress: () => refreshProfile() 
+          }
+        ]
+      });
+    }
+  }, [session, profileLoaded, profile, loading]);
+
+  // Si hay error, mostramos el indicador mientras el usuario decide en la alerta
   if (session && profileLoaded && !profile && !loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: colors.background }}>
-        <Text style={[appStyles.title, { color: colors.textPrimary, textAlign: 'center', fontSize: 20 }]}>
-          Error de Conexión
-        </Text>
-        {/* ✅ Corregido: appStyles.subtitle no existe, se usa subtitleCentered */}
-        <Text style={[appStyles.subtitleCentered, { color: colors.textSecondary, marginBottom: 24 }]}>
-          No pudimos cargar tu perfil. Verifica tu conexión a internet.
-        </Text>
-        <TouchableOpacity
-          style={[appStyles.primaryButton, { width: '100%', marginBottom: 12 }]}
-          onPress={() => refreshProfile()}
-        >
-          <Text style={appStyles.primaryButtonText}>REINTENTAR</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[appStyles.secondaryButton, { width: '100%' }]}
-          onPress={() => signOut()}
-        >
-          <Text style={appStyles.secondaryButtonText}>CERRAR SESIÓN</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.textPrimary} />
       </View>
     );
   }
