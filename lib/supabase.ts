@@ -6,13 +6,19 @@ import 'react-native-url-polyfill/auto'
 const supabaseUrl = 'https://qkciuhruwwrsikmkhlqm.supabase.co'
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrY2l1aHJ1d3dyc2lrbWtobHFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNjc2OTEsImV4cCI6MjA5Mjg0MzY5MX0.s8IgScQ-79kZTtA1Mx7XLVjUcNI-W_fbkJw-M7xtOIY'
 
-const storage = Platform.OS === 'web'
-  ? undefined  // En web usa localStorage automáticamente
+// En web usamos localStorage explícito para garantizar persistencia de sesión
+// al recargar desde cualquier ruta de la app.
+const webStorage = Platform.OS === 'web'
+  ? {
+      getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+      setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
+      removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key)),
+    }
   : AsyncStorage
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage,
+    storage: webStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',

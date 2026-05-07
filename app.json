@@ -2,7 +2,7 @@
   "expo": {
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single-page",
       "favicon": "./assets/images/favicon.png"
     },
     "name": "myapp",

@@ -36,8 +36,6 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
     }
   }, [session, profileLoaded, profile, loading]);
 
-  // Si está cargando la sesión inicial (especialmente en Web tras F5), bloqueamos el renderizado de las pantallas
-  // para que no se muestren vacías ni "pierdan la información del user".
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -46,7 +44,6 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si ocurrió un error (sin perfil), mostramos solo el loader de fondo mientras la alerta está visible
   if (session && profileLoaded && !profile && !loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -58,9 +55,19 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function RootLayout() {
-
+function DeepLinkHandler() {
   useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      if (!url.includes('access_token')) return;
+      const params = new URLSearchParams(url.split('#')[1]);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        router.replace('/screens/global/resetPassword' as any);
+      }
+    };
+
     const subscription = Linking.addEventListener('url', ({ url }) => {
       handleDeepLink(url);
     });
@@ -70,22 +77,17 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  const handleDeepLink = async (url: string) => {
-    if (!url.includes('access_token')) return;
-    const params = new URLSearchParams(url.split('#')[1]);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    if (accessToken && refreshToken) {
-      await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      router.replace('/screens/global/resetPassword' as any);
-    }
-  };
+  return null;
+}
 
+export default function RootLayout() {
   return (
     <ThemeProvider>
       <AlertProvider>
         <BusinessProvider>
           <AuthProvider>
+            {/* DeepLinkHandler dentro de AuthProvider para poder setSession */}
+            <DeepLinkHandler />
             <GlobalGuard>
               <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -117,9 +119,9 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/roles/company/company-business" />
               </Stack>
             </GlobalGuard>
+            <TeslaAlert />
             <StatusBar style="auto" />
           </AuthProvider>
-          <TeslaAlert />
         </BusinessProvider>
       </AlertProvider>
     </ThemeProvider>

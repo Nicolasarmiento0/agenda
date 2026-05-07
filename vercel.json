@@ -1,8 +1,19 @@
 {
-    "rewrites": [
+  "rewrites": [
+    {
+      "source": "/((?!_expo|assets|favicon\\.ico|manifest\\.json).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/_expo/static/(.*)",
+      "headers": [
         {
-            "source": "/(.*)",
-            "destination": "/index.html"
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
         }
-    ]
+      ]
+    }
+  ]
 }

@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const fetchedRef = React.useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -84,7 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (bError) console.error('AUTH: Error fetching business:', bError);
         } else {
-          // Si el rol no es company, aseguramos que business quede en null
           setBusiness(null);
         }
       } else {
@@ -95,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('AUTH: Critical error in fetchProfile:', error);
     } finally {
-      // ✅ profileLoaded siempre se activa al final, sin importar el resultado
       setProfileLoaded(true);
     }
   }, []);
@@ -143,56 +140,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // ─── Flujo 1: sesión existente al abrir la app ───────────────────────────
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (error) {
-        console.error('AUTH: getSession error:', error);
-        if (error.message.includes('Refresh Token Not Found')) {
-          await supabase.auth.signOut();
-          setSession(null);
-          setProfileLoaded(true);
-          setLoading(false);
-          return;
-        }
-      }
+    let mounted = true;
 
-      setSession(session);
+    // onAuthStateChange es la fuente única de verdad.
+    // En web al recargar, Supabase emite INITIAL_SESSION con la sesión guardada en localStorage.
+    // En mobile, getSession() sigue siendo necesario porque onAuthStateChange puede no emitir
+    // INITIAL_SESSION si el token ya venció y no se pudo refrescar.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mounted) return;
+      console.log('AUTH: onAuthStateChange event:', event);
 
-      if (session) {
-        fetchedRef.current = true;
-        await fetchProfile(session.user.id);
-      } else {
-        setProfileLoaded(true);
-      }
-
-      setLoading(false);
-    }).catch(err => {
-      console.error('AUTH: getSession catch:', err);
-      setProfileLoaded(true);
-      setLoading(false);
-    });
-
-    // ─── Flujo 2: cambios de sesión en tiempo real (login, logout, refresh) ──
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-
-      if (_event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
         setProfile(null);
         setBusiness(null);
         setProfileLoaded(false);
-        fetchedRef.current = false;
-        // loading ya debería estar en false, pero lo aseguramos
         setLoading(false);
-      } else if (session && !fetchedRef.current) {
-        fetchedRef.current = true;
-        setProfileLoaded(false);
-        setLoading(true);
-        await fetchProfile(session.user.id);
-        setLoading(false);
+        return;
       }
+
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setSession(newSession);
+
+        if (newSession?.user) {
+          setLoading(true);
+          await fetchProfile(newSession.user.id);
+        } else {
+          // Sin sesión activa (INITIAL_SESSION con null)
+          setProfileLoaded(true);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Para otros eventos (USER_UPDATED, PASSWORD_RECOVERY, etc.)
+      setSession(newSession);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const contextValue = useMemo(() => ({
