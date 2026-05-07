@@ -20,7 +20,7 @@ export default function HomeScreen() {
 
       <Text style={[appStyles.title, { color: colors.textPrimary }]}>Agenda</Text>
       <Text style={[appStyles.subtitle, { color: colors.textSecondary }]}>Bienvenidos</Text>
-      <Pressable style={appStyles.primaryButton} onPress={() => router.push('/screens/loginscreen')}>
+      <Pressable style={appStyles.primaryButton} onPress={() => router.push('/screens/global/loginscreen')}>
         <Text style={appStyles.primaryButtonText}>Iniciar</Text>
       </Pressable>
     </View>

@@ -31,7 +31,7 @@ export default function Index() {
 
     if (!session) {
       console.log('INDEX: No session, redirecting to Home');
-      router.replace('/screens/home' as any);
+      router.replace('/screens/global/home' as any);
       return;
     }
 
@@ -40,27 +40,27 @@ export default function Index() {
 
     if (!profile?.role) {
       console.log('INDEX: No role found, redirecting to Role Select');
-      router.replace('/screens/role-select' as any);
+      router.replace('/screens/global/role-select' as any);
     } else if (profile.role === 'admin') {
       console.log('INDEX: Admin role, redirecting to Admin Dashboard');
-      router.replace('/screens/admin-dashboard' as any);
+      router.replace('/screens/roles/admin/admin-dashboard' as any);
     } else if (profile.role === 'client') {
       console.log('INDEX: Client role, redirecting to Explore');
-      router.replace('/screens/explore' as any);
+      router.replace('/screens/global/explore' as any);
     } else if (profile.role === 'company') {
       if (!business) {
         console.log('INDEX: Company role but NO business found, redirecting to Business Setup');
-        router.replace('/screens/business-setup' as any);
+        router.replace('/screens/roles/company/business-setup' as any);
       } else if (business.status === 'pending' || business.status === 'rejected') {
         console.log('INDEX: Company role, business is pending/rejected, redirecting to Business Pending');
-        router.replace('/screens/business-pending' as any);
+        router.replace('/screens/roles/company/business-pending' as any);
       } else {
         console.log('INDEX: Company role, business is approved, redirecting to Company Agenda');
-        router.replace('/screens/company-agenda' as any);
+        router.replace('/screens/roles/company/company-agenda' as any);
       }
     } else {
       console.log('INDEX: Unknown role, redirecting to Home');
-      router.replace('/screens/home' as any);
+      router.replace('/screens/global/home' as any);
     }
   }, [loading, session, profile, business, profileLoaded, rootNavigationState?.key]);
 

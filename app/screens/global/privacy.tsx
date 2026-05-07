@@ -49,7 +49,7 @@ export default function PrivacyScreen() {
               if (error) throw error;
 
               await signOut();
-              router.replace('/screens/home');
+              router.replace('/screens/global/home');
             } catch (err: any) {
               showAlert({
                 title: 'Atención requerida',

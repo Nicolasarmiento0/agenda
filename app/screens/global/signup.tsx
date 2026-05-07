@@ -97,7 +97,7 @@ export default function SignupScreen() {
 
     // Si tienes confirmación de email activa en Supabase,
     // avisa al usuario que revise su correo
-    router.push('/screens/role-select' as any);
+    router.push('/screens/global/role-select' as any);
   };
 
   return (
@@ -239,7 +239,7 @@ export default function SignupScreen() {
             {/* Ya tengo cuenta */}
             <TouchableOpacity
               style={appStyles.secondaryButton}
-              onPress={() => router.push('/screens/loginscreen')}
+              onPress={() => router.push('/screens/global/loginscreen')}
               activeOpacity={0.8}
             >
               <Text style={appStyles.secondaryButtonText}>Ya tengo cuenta</Text>

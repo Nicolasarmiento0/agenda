@@ -28,7 +28,7 @@ export default function RootLayout() {
     const refreshToken = params.get('refresh_token');
     if (accessToken && refreshToken) {
       await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      router.replace('/screens/resetPassword' as any);
+      router.replace('/screens/global/resetPassword' as any);
     }
   };
 
@@ -39,30 +39,32 @@ export default function RootLayout() {
           <AuthProvider>
             <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
               <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="screens/home" />
-              <Stack.Screen name="screens/loginscreen" />
-              <Stack.Screen name="screens/signup" />
-              <Stack.Screen name="screens/forgotPassword" />
-              <Stack.Screen name="screens/resetPassword" />
-              <Stack.Screen name="screens/role-select" />
-              <Stack.Screen name="screens/dashboard-company" />
-              <Stack.Screen name="screens/profile" />
-              <Stack.Screen name="screens/admin-dashboard" />
-              <Stack.Screen name="screens/admin-businesses" />
-              <Stack.Screen name="screens/admin-business-detail" />
-              <Stack.Screen name="screens/business-setup" />
-              <Stack.Screen name="screens/business-pending" />
+              <Stack.Screen name="screens/dashboard" />
+              <Stack.Screen name="screens/global/home" />
+              <Stack.Screen name="screens/global/loginscreen" />
+              <Stack.Screen name="screens/global/signup" />
+              <Stack.Screen name="screens/global/forgotPassword" />
+              <Stack.Screen name="screens/global/resetPassword" />
+              <Stack.Screen name="screens/global/role-select" />
+              <Stack.Screen name="screens/roles/company/dashboard-company" />
+              <Stack.Screen name="screens/global/profile" />
+              <Stack.Screen name="screens/global/privacy" />
+              <Stack.Screen name="screens/roles/admin/admin-dashboard" />
+              <Stack.Screen name="screens/roles/admin/admin-businesses" />
+              <Stack.Screen name="screens/roles/company/admin-business-detail" />
+              <Stack.Screen name="screens/roles/company/business-setup" />
+              <Stack.Screen name="screens/roles/company/business-pending" />
               {/* Cliente */}
-              <Stack.Screen name="screens/explore" />
-              <Stack.Screen name="screens/my-appointments" />
-              <Stack.Screen name="screens/client-business-profile" />
-              <Stack.Screen name="screens/client-agenda" />
+              <Stack.Screen name="screens/global/explore" />
+              <Stack.Screen name="screens/global/my-appointments" />
+              <Stack.Screen name="screens/roles/client/client-business-profile" />
+              <Stack.Screen name="screens/roles/client/client-agenda" />
               {/* Empresa */}
-              <Stack.Screen name="screens/company-agenda" />
-              <Stack.Screen name="screens/company-services" />
-              <Stack.Screen name="screens/company-employees" />
-              <Stack.Screen name="screens/company-history" />
-              <Stack.Screen name="screens/company-business" />
+              <Stack.Screen name="screens/roles/company/company-agenda" />
+              <Stack.Screen name="screens/roles/company/company-services" />
+              <Stack.Screen name="screens/roles/company/company-employees" />
+              <Stack.Screen name="screens/roles/company/company-history" />
+              <Stack.Screen name="screens/roles/company/company-business" />
             </Stack>
             <StatusBar style="auto" />
           </AuthProvider>

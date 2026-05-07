@@ -102,7 +102,7 @@ export default function ResetPasswordScreen() {
 
         <TouchableOpacity
           style={[appStyles.primaryButton, { marginTop: 24 }]}
-          onPress={() => router.replace('/screens/loginscreen')}
+          onPress={() => router.replace('/screens/global/loginscreen')}
           activeOpacity={0.8}
         >
           <Text style={appStyles.primaryButtonText}>Ir al login</Text>

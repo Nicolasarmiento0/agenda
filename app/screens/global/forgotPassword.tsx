@@ -44,7 +44,7 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'myapp://screens/resetPassword', // cambia 'myapp' por el scheme de tu app
+      redirectTo: 'myapp://screens/global/resetPassword', // cambia 'myapp' por el scheme de tu app
     });
 
     setLoading(false);
@@ -93,7 +93,7 @@ export default function ForgotPasswordScreen() {
 
         <TouchableOpacity
           style={appStyles.secondaryButton}
-          onPress={() => router.replace('/screens/loginscreen')}
+          onPress={() => router.replace('/screens/global/loginscreen')}
           activeOpacity={0.8}
         >
           <Text style={appStyles.secondaryButtonText}>Ir al login</Text>
@@ -176,7 +176,7 @@ export default function ForgotPasswordScreen() {
 
             {/* Volver al login */}
             <TouchableOpacity
-              onPress={() => router.push('/screens/loginscreen')}
+              onPress={() => router.push('/screens/global/loginscreen')}
               activeOpacity={0.7}
             >
               <Text style={appStyles.forgotText}>¿Recordaste tu contraseña? Inicia sesión</Text>

@@ -11,9 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { appColors, appStyles } from '../../styles/appStyles';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 export default function BusinessPendingScreen() {
   const { profile, business, signOut, refreshProfile } = useAuth();
@@ -56,7 +56,7 @@ export default function BusinessPendingScreen() {
   // Cuando el admin aprueba, business.status cambia a 'approved' -> redirigir al dashboard
   useEffect(() => {
     if (business?.status === 'approved') {
-      router.replace('/screens/dashboard-company' as any);
+      router.replace('/screens/roles/company/dashboard-company' as any);
     }
   }, [business?.status]);
 
@@ -143,7 +143,7 @@ export default function BusinessPendingScreen() {
               <TouchableOpacity
                 style={[appStyles.primaryButton, { marginTop: 24 }]}
                 activeOpacity={0.8}
-                onPress={() => router.replace('/screens/business-setup' as any)}
+                onPress={() => router.replace('/screens/roles/company/business-setup' as any)}
               >
                 <Text style={appStyles.primaryButtonText}>REGISTRAR NUEVO NEGOCIO</Text>
               </TouchableOpacity>

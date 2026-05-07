@@ -13,9 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useBusiness } from '../../context/BusinessContext';
-import { useTheme } from '../../context/ThemeContext';
-import { appColors, appStyles } from '../../styles/appStyles';
+import { useBusiness } from '../../../../context/BusinessContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 const { width } = Dimensions.get('window');
 
@@ -148,7 +148,7 @@ export default function ClientBusinessProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           style={[appStyles.primaryButton, { width: '100%' }]}
-          onPress={() => router.push('/screens/client-agenda' as any)}
+          onPress={() => router.push('/screens/roles/client/client-agenda' as any)}
         >
           <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
         </TouchableOpacity>

@@ -90,21 +90,21 @@ export default function AdminDashboardScreen() {
       value: stats?.pending ?? 0,
       icon: 'clock',
       color: '#F59E0B',
-      onPress: () => router.push('/screens/admin-businesses' as any),
+      onPress: () => router.push('/screens/roles/admin/admin-businesses' as any),
     },
     {
       label: 'APROBADAS',
       value: stats?.approved ?? 0,
       icon: 'check-circle',
       color: '#10B981',
-      onPress: () => router.push('/screens/admin-businesses' as any),
+      onPress: () => router.push('/screens/roles/admin/admin-businesses' as any),
     },
     {
       label: 'RECHAZADAS',
       value: stats?.rejected ?? 0,
       icon: 'x-circle',
       color: '#EF4444',
-      onPress: () => router.push('/screens/admin-businesses' as any),
+      onPress: () => router.push('/screens/roles/admin/admin-businesses' as any),
     },
     {
       label: 'CLIENTES',
@@ -184,7 +184,7 @@ export default function AdminDashboardScreen() {
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={[styles.actionCard, { backgroundColor: '#F59E0B18', borderColor: '#F59E0B60' }]}
-                onPress={() => router.push('/screens/admin-businesses' as any)}
+                onPress={() => router.push('/screens/roles/admin/admin-businesses' as any)}
               >
                 <View style={[styles.actionIcon, { backgroundColor: '#F59E0B30' }]}>
                   <Feather name="alert-circle" size={22} color="#F59E0B" />
@@ -202,7 +202,7 @@ export default function AdminDashboardScreen() {
             <TouchableOpacity
               activeOpacity={0.75}
               style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => router.push('/screens/admin-businesses' as any)}
+              onPress={() => router.push('/screens/roles/admin/admin-businesses' as any)}
             >
               <View style={[styles.actionIcon, { backgroundColor: `${appColors.primary}20` }]}>
                 <Feather name="shield" size={22} color={appColors.primary} />

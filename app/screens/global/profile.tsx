@@ -340,7 +340,7 @@ export default function ProfileScreen() {
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/privacy' as any)}>
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/global/privacy' as any)}>
               <View style={localStyles.menuItemLeft}>
                 <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
                   <Feather name="lock" size={18} color={colors.textSecondary} />
@@ -353,7 +353,7 @@ export default function ProfileScreen() {
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={async () => { await signOut(); router.replace('/screens/home'); }}>
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={async () => { await signOut(); router.replace('/screens/global/home'); }}>
               <View style={localStyles.menuItemLeft}>
                 <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
                   <Feather name="log-out" size={18} color="#FF4B4B" />

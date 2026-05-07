@@ -94,7 +94,7 @@ export default function AdminBusinessesScreen() {
     <TouchableOpacity
       activeOpacity={0.75}
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => router.push({ pathname: '/screens/admin-business-detail' as any, params: { id: item.id } })}
+      onPress={() => router.push({ pathname: '/screens/roles/admin/admin-business-detail' as any, params: { id: item.id } })}
     >
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>

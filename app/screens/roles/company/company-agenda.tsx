@@ -16,12 +16,12 @@ import {
   View,
   ActivityIndicator
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useAlert } from '../../context/AlertContext';
-import { supabase } from '../../lib/supabase';
-import { appColors } from '../../styles/appStyles';
+import Sidebar from '../../../../components/Sidebar';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { useAlert } from '../../../../context/AlertContext';
+import { supabase } from '../../../../lib/supabase';
+import { appColors } from '../../../../styles/appStyles';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración de idioma para el calendario

@@ -88,7 +88,7 @@ export default function ExploreScreen() {
 
   const handleSelectBusiness = (b: SelectedBusiness) => {
     setSelectedBusiness(b);
-    router.push('/screens/client-business-profile' as any);
+    router.push('/screens/roles/client/client-business-profile' as any);
   };
 
   const parentCategories = categories.filter(c => !c.parent_id);

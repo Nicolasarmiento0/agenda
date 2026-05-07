@@ -97,7 +97,7 @@ export default function Sidebar({ visible, onClose }: Props) {
           <TouchableOpacity 
             style={styles.profileSection} 
             activeOpacity={0.7}
-            onPress={() => handleNavigate('/screens/profile')}
+            onPress={() => handleNavigate('/screens/global/profile')}
           >
             {profile?.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
@@ -127,15 +127,15 @@ export default function Sidebar({ visible, onClose }: Props) {
             {/* ---- MENU CLIENTE ---- */}
             {profile?.role === 'client' && (
               <>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/explore')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
                   <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/client-agenda')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/client/client-agenda')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/my-appointments')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/my-appointments')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIS CITAS</Text>
                 </TouchableOpacity>
@@ -145,23 +145,23 @@ export default function Sidebar({ visible, onClose }: Props) {
             {/* ---- MENU EMPRESA ---- */}
             {profile?.role === 'company' && (
               <>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-agenda')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-agenda')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-services')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-services')}>
                   <Feather name="list" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>SERVICIOS</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-employees')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-employees')}>
                   <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPLEADOS</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-history')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-history')}>
                   <Feather name="bar-chart-2" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>HISTORIAL</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/company-business')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-business')}>
                   <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>
                 </TouchableOpacity>
@@ -171,11 +171,11 @@ export default function Sidebar({ visible, onClose }: Props) {
             {/* ---- MENU ADMIN ---- */}
             {profile?.role === 'admin' && (
               <>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-dashboard')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/admin/admin-dashboard')}>
                   <Feather name="grid" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>HOME</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/admin-businesses')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/admin/admin-businesses')}>
                   <Feather name="shield" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPRESAS</Text>
                 </TouchableOpacity>

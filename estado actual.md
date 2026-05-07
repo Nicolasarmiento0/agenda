@@ -15,6 +15,7 @@ Redirección de Privacidad: El perfil de usuario cuenta con un submenú para not
 4. Gestión de Cuentas y Seguridad
 Reset de Contraseña: Flujo habilitado nativamente con GoTrue de Supabase para Tier Free.
 Eliminación de Cuenta (GDPR): Sistema preparado para borrar de forma permanente los datos del usuario mediante una función Postgres (delete_user) en Supabase, previniendo así bloqueos por regulaciones.
+
 Recomendaciones y Roadmap Futuro
 La aplicación actual tiene unas bases técnicas sólidas, y ya cumple el rol de un MVP maduro. Aquí tienes algunas vías de mejora para el futuro a corto/mediano plazo:
 

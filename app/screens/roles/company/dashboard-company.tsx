@@ -9,10 +9,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { appColors, appStyles } from '../../styles/appStyles';
+import Sidebar from '../../../../components/Sidebar';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 export default function DashboardCompanyScreen() {
     const { profile, refreshProfile } = useAuth();

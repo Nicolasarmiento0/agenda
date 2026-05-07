@@ -16,12 +16,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAlert } from '../../context/AlertContext';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors, appStyles } from '../../styles/appStyles';
+import Sidebar from '../../../../components/Sidebar';
+import { useAlert } from '../../../../context/AlertContext';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../../lib/supabase';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 export default function CompanyBusinessScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();

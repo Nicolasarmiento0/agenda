@@ -16,10 +16,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors, appStyles } from '../../styles/appStyles';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../../lib/supabase';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 type Category = { 
   id: string; 
@@ -146,7 +146,7 @@ export default function BusinessSetupScreen() {
       if (dbError) throw dbError;
 
       await refreshProfile();
-      router.replace('/screens/business-pending' as any);
+      router.replace('/screens/roles/company/business-pending' as any);
     } catch (e: any) {
       setError(e.message ?? 'Error al guardar. Inténtalo de nuevo.');
     } finally {

@@ -87,7 +87,7 @@ export default function LoginScreen() {
           {/* Back button */}
           <TouchableOpacity
             style={appStyles.back}
-            onPress={() => router.replace('/screens/home')}
+            onPress={() => router.replace('/screens/global/home')}
             activeOpacity={0.7}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
@@ -151,7 +151,7 @@ export default function LoginScreen() {
 
             {/* Olvidé contraseña */}
             <TouchableOpacity
-              onPress={() => router.push('/screens/forgotPassword')}
+              onPress={() => router.push('/screens/global/forgotPassword')}
               activeOpacity={0.7}
             >
               <Text style={appStyles.forgotText}>¿Olvidaste tu contraseña?</Text>
@@ -181,7 +181,7 @@ export default function LoginScreen() {
             {/* Botón secundario */}
             <TouchableOpacity
               style={appStyles.secondaryButton}
-              onPress={() => router.push('/screens/signup')}
+              onPress={() => router.push('/screens/global/signup')}
               activeOpacity={0.8}
             >
               <Text style={appStyles.secondaryButtonText}>Crear cuenta</Text>

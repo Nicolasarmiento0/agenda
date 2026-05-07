@@ -13,11 +13,11 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors } from '../../styles/appStyles';
+import Sidebar from '../../../../components/Sidebar';
+import { useAuth } from '../../../../context/AuthContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../../lib/supabase';
+import { appColors } from '../../../../styles/appStyles';
 
 // ─── Tipos y Datos ────────────────────────────────────────────────────────────
 
