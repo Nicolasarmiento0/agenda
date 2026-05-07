@@ -101,28 +101,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data?.user?.id) return;
+    setLoading(true);
+    setProfileLoaded(false);
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user?.id) return;
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
 
-    if (profileData) {
-      setProfile(profileData);
+      if (profileData) {
+        setProfile(profileData);
 
-      if (profileData.role === 'company') {
-        const { data: bData } = await supabase
-          .from('businesses')
-          .select('*')
-          .eq('owner_id', data.user.id)
-          .maybeSingle();
-        setBusiness(bData ?? null);
-      } else {
-        setBusiness(null);
+        if (profileData.role === 'company') {
+          const { data: bData } = await supabase
+            .from('businesses')
+            .select('*')
+            .eq('owner_id', data.user.id)
+            .maybeSingle();
+          setBusiness(bData ?? null);
+        } else {
+          setBusiness(null);
+        }
       }
+    } finally {
+      setProfileLoaded(true);
+      setLoading(false);
     }
   }, []);
 
@@ -180,10 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // loading ya debería estar en false, pero lo aseguramos
         setLoading(false);
       } else if (session && !fetchedRef.current) {
-        // ✅ BUG FIX #1: await para que profileLoaded y loading se actualicen correctamente
         fetchedRef.current = true;
+        setProfileLoaded(false);
+        setLoading(true);
         await fetchProfile(session.user.id);
-        // ✅ BUG FIX #2: setLoading(false) también en este flujo
         setLoading(false);
       }
     });
