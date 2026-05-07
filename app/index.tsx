@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
@@ -8,8 +8,11 @@ import { appStyles } from '../styles/appStyles';
 export default function Index() {
   const { session, profile, business, loading, profileLoaded, refreshProfile, signOut } = useAuth();
   const { colors } = useTheme();
+  const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
+    if (!rootNavigationState?.key) return;
+
     console.log('=== INDEX DEBUG ===');
     console.log('loading:', loading);
     console.log('profileLoaded:', profileLoaded);
@@ -59,7 +62,7 @@ export default function Index() {
       console.log('INDEX: Unknown role, redirecting to Home');
       router.replace('/screens/home' as any);
     }
-  }, [loading, session, profile, business, profileLoaded]);
+  }, [loading, session, profile, business, profileLoaded, rootNavigationState?.key]);
 
   if (session && profileLoaded && !profile && !loading) {
     return (
