@@ -10,23 +10,35 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { useAppStyles } from '../../styles/appStyles'; // ajusta el path 
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { useAppStyles } from '../../../styles/appStyles'; // ajusta el path
 
-
-export default function LoginScreen() {
+export default function SignupScreen() {
   const { colors } = useTheme();
   const appStyles = useAppStyles();
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
     let valid = true;
+
+    if (!name.trim()) {
+      setNameError('El nombre es requerido.');
+      valid = false;
+    } else {
+      setNameError('');
+    }
 
     if (!email.trim()) {
       setEmailError('El correo es requerido.');
@@ -48,30 +60,46 @@ export default function LoginScreen() {
       setPasswordError('');
     }
 
+    if (!confirmPassword.trim()) {
+      setConfirmPasswordError('Confirma tu contraseña.');
+      valid = false;
+    } else if (confirmPassword !== password) {
+      setConfirmPasswordError('Las contraseñas no coinciden.');
+      valid = false;
+    } else {
+      setConfirmPasswordError('');
+    }
+
     return valid;
   };
 
-  const handleLogin = async () => {
+  const handleSignup = async () => {
     if (!validate()) return;
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: {
+        data: {
+          full_name: name.trim(),
+        },
+      },
     });
 
     setLoading(false);
 
     if (error) {
-      setPasswordError('Correo o contraseña incorrectos.');
+      setEmailError(error.message);
       return;
     }
 
-    // Al iniciar sesión exitosamente, redirigimos al punto de entrada ('/')
-    // donde el Index manejará la distribución por roles.
-    router.replace('/');
+    // Si tienes confirmación de email activa en Supabase,
+    // avisa al usuario que revise su correo
+    router.push('/screens/role-select' as any);
   };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -84,14 +112,14 @@ export default function LoginScreen() {
       >
         <View style={appStyles.screen}>
 
-          {/* Back button */}
+          {/* Back */}
           <TouchableOpacity
             style={appStyles.back}
-            onPress={() => router.replace('/screens/home')}
+            onPress={() => router.back()}
             activeOpacity={0.7}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
-              ← HOME
+              ← VOLVER
             </Text>
           </TouchableOpacity>
 
@@ -99,10 +127,30 @@ export default function LoginScreen() {
 
             {/* Header */}
             <View>
-              <Text style={appStyles.title}>Iniciar{'\n'}Sesión</Text>
+              <Text style={appStyles.title}>Crear{'\n'}Cuenta</Text>
               <Text style={appStyles.subtitle}>
-                Accede a tu cuenta para continuar.
+                Regístrate para comenzar.
               </Text>
+            </View>
+
+            {/* Nombre */}
+            <View style={{ gap: 6 }}>
+              <TextInput
+                style={[
+                  appStyles.input,
+                  nameError ? { borderColor: colors.error } : null,
+                ]}
+                placeholder="Nombre completo"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="words"
+                autoCorrect={false}
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (nameError) setNameError('');
+                }}
+              />
+              {nameError ? <Text style={appStyles.errorText}>{nameError}</Text> : null}
             </View>
 
             {/* Email */}
@@ -123,9 +171,7 @@ export default function LoginScreen() {
                   if (emailError) setEmailError('');
                 }}
               />
-              {emailError ? (
-                <Text style={appStyles.errorText}>{emailError}</Text>
-              ) : null}
+              {emailError ? <Text style={appStyles.errorText}>{emailError}</Text> : null}
             </View>
 
             {/* Password */}
@@ -142,32 +188,44 @@ export default function LoginScreen() {
                 onChangeText={(text) => {
                   setPassword(text);
                   if (passwordError) setPasswordError('');
+                  if (confirmPasswordError && text === confirmPassword) setConfirmPasswordError('');
                 }}
               />
-              {passwordError ? (
-                <Text style={appStyles.errorText}>{passwordError}</Text>
-              ) : null}
+              {passwordError ? <Text style={appStyles.errorText}>{passwordError}</Text> : null}
             </View>
 
-            {/* Olvidé contraseña */}
-            <TouchableOpacity
-              onPress={() => router.push('/screens/forgotPassword')}
-              activeOpacity={0.7}
-            >
-              <Text style={appStyles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
+            {/* Confirm Password */}
+            <View style={{ gap: 6 }}>
+              <TextInput
+                style={[
+                  appStyles.input,
+                  confirmPasswordError ? { borderColor: colors.error } : null,
+                ]}
+                placeholder="Confirmar contraseña"
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (confirmPasswordError) setConfirmPasswordError('');
+                }}
+              />
+              {confirmPasswordError ? (
+                <Text style={appStyles.errorText}>{confirmPasswordError}</Text>
+              ) : null}
+            </View>
 
             {/* Botón primario */}
             <TouchableOpacity
               style={[appStyles.primaryButton, loading ? { opacity: 0.7 } : null]}
-              onPress={handleLogin}
+              onPress={handleSignup}
               disabled={loading}
               activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator color={colors.white} />
               ) : (
-                <Text style={appStyles.primaryButtonText}>Ingresar</Text>
+                <Text style={appStyles.primaryButtonText}>Crear cuenta</Text>
               )}
             </TouchableOpacity>
 
@@ -178,13 +236,13 @@ export default function LoginScreen() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </View>
 
-            {/* Botón secundario */}
+            {/* Ya tengo cuenta */}
             <TouchableOpacity
               style={appStyles.secondaryButton}
-              onPress={() => router.push('/screens/signup')}
+              onPress={() => router.push('/screens/loginscreen')}
               activeOpacity={0.8}
             >
-              <Text style={appStyles.secondaryButtonText}>Crear cuenta</Text>
+              <Text style={appStyles.secondaryButtonText}>Ya tengo cuenta</Text>
             </TouchableOpacity>
 
           </View>

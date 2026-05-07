@@ -14,11 +14,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAlert } from '../../context/AlertContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors, appStyles } from '../../styles/appStyles';
+import Sidebar from '../../../../components/Sidebar';
+import { useAlert } from '../../../../context/AlertContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../../lib/supabase';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 type BusinessDetail = {
   id: string;
@@ -110,9 +110,9 @@ export default function AdminBusinessDetailScreen() {
               showAlert({ title: 'Error', message: 'No se pudo aprobar. Inténtalo de nuevo.' });
             } else {
               setBusiness((prev) => prev ? { ...prev, status: 'approved' } : prev);
-              showAlert({ 
-                title: '✓ Empresa aprobada', 
-                message: 'La empresa puede operar ahora.', 
+              showAlert({
+                title: '✓ Empresa aprobada',
+                message: 'La empresa puede operar ahora.',
                 buttons: [{ text: 'OK', onPress: () => router.back() }]
               });
             }
@@ -135,9 +135,9 @@ export default function AdminBusinessDetailScreen() {
       showAlert({ title: 'Error', message: 'No se pudo rechazar. Inténtalo de nuevo.' });
     } else {
       setBusiness((prev) => prev ? { ...prev, status: 'rejected' } : prev);
-      showAlert({ 
-        title: 'Solicitud rechazada', 
-        message: 'La empresa fue notificada.', 
+      showAlert({
+        title: 'Solicitud rechazada',
+        message: 'La empresa fue notificada.',
         buttons: [{ text: 'OK', onPress: () => router.back() }]
       });
     }

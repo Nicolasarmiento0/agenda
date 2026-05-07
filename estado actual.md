@@ -1,39 +1,35 @@
-# 🚀 Estado Actual de la App (Diagnóstico y Fixes)
+Estado Actual de la App: Gestión y Mejoras Completadas
+Se han realizado avances significativos estabilizando y potenciando la aplicación en diversas áreas de negocio. A continuación, el resumen del estado actual y lo logrado recientemente:
 
-## 🩺 Diagnóstico del Problema de "Cargando Infinitamente"
+1. Lógicas de Agendamiento Avanzadas (Core)
+Restricción de Primera Hora: Los clientes ya no pueden agendar el primer bloque de apertura para el mismo día (deben hacerlo antes de las 22:00 del día anterior).
+Margen de 1 Hora: Se implementó protección anti-reservas de "último minuto". Los clientes deben agendar con al menos 1 hora de anticipación para dar margen de reacción a la empresa.
+Lógica Especial para Gimnasios: Se detectan los negocios de categoría "Gimnasio" o "Fitness" y se les aplica una ventana de agilidad de al menos 48 horas de anticipación para evitar ausentismos (No-Show).
+2. Gestión de Bloqueos para Empresas
+Control Total: Los usuarios company pueden crear bloques de inactividad (ej: "Colación", "Descanso") directamente desde su agenda.
+Privacidad Visual: Los bloques personalizados se muestran grises para la empresa, y en la vista del client ocultan datos sensibles mostrando exactamente el motivo de bloqueo sin que puedan interactuar ni tomar el turno.
+3. UI/UX: Perfiles y Accesibilidad
+Perfil Cliente-Negocio: Se limpió la vista pública de los negocios. Ahora muestra directamente el logo/avatar centrado y la información esencial.
+Integración Google Maps: La sección de dirección se transformó en un botón dinámico y moderno que abre la App nativa de Google Maps utilizando el enlace proporcionado por el dueño (maps_url).
+Redirección de Privacidad: El perfil de usuario cuenta con un submenú para notificaciones (estado "Próximamente") y una nueva pantalla dedicada /screens/privacy.tsx para funciones de GDPR y control de acceso.
+4. Gestión de Cuentas y Seguridad
+Reset de Contraseña: Flujo habilitado nativamente con GoTrue de Supabase para Tier Free.
+Eliminación de Cuenta (GDPR): Sistema preparado para borrar de forma permanente los datos del usuario mediante una función Postgres (delete_user) en Supabase, previniendo así bloqueos por regulaciones.
+Recomendaciones y Roadmap Futuro
+La aplicación actual tiene unas bases técnicas sólidas, y ya cumple el rol de un MVP maduro. Aquí tienes algunas vías de mejora para el futuro a corto/mediano plazo:
 
-El problema de "cargando infinitamente" (Activity Indicator que no desaparecía al iniciar sesión) se debía a dos factores críticos en la navegación y el flujo de la aplicación que acaban de ser solucionados:
+TIP
 
-1. **Pantallas no registradas en el Router (`app/_layout.tsx`)**:
-   Cuando un usuario iniciaba sesión, Expo Router intentaba hacer un `router.replace` a pantallas como `client-agenda` o `company-history` (desde el Sidebar). Como estas pantallas no estaban listadas dentro del `<Stack>` en `app/_layout.tsx`, Expo Router fallaba de forma silenciosa. Al fallar, la navegación no se concretaba y la app se quedaba atascada en la pantalla de carga de `index.tsx`.
-   
-2. **Redirección incorrecta para el rol Cliente (`app/index.tsx`)**:
-   Al iniciar sesión como cliente, la aplicación intentaba redirigir directamente a `client-agenda`. Sin embargo, esta pantalla depende de que haya un negocio seleccionado previamente (`BusinessContext`). Si no hay un negocio seleccionado al iniciar sesión, intentar cargar la agenda falla o se muestra vacía.
-   **Solución Aplicada**: Ahora, los clientes son redirigidos correctamente a `/screens/explore` al iniciar sesión, de modo que primero puedan explorar y seleccionar una empresa antes de ver su agenda.
+1. Notificaciones Push (Engagement) Dado que ya se preparó el espacio en la UI, la integración de Expo Push Notifications conectadas a Triggers de Supabase sería el siguiente gran paso. Permitirá avisar a los clientes: "Recuerda tu cita en 1 hora", y a las empresas: "Tienes una nueva reserva".
 
-Ambos problemas ya fueron **corregidos**.
+IMPORTANT
 
----
+2. Pagos Integrados o Señas (Anti No-Show) Para fortalecer la asistencia y aumentar el valor, considera integrar plataformas de pago (MercadoPago o Stripe). Podrías permitir que los clientes abonen una "reserva parcial" directamente desde la app al tomar un bloque, asegurando el compromiso de asistencia.
 
-## 🏗 MVP Check - Estado de los Módulos
+NOTE
 
-* **Autenticación y Roles**: El sistema de registro y login vía Supabase funciona perfectamente, diferenciando entre Clientes, Empresas y Admin.
-* **Onboarding de Negocios**: El flujo de configuración (`business-setup.tsx`) captura la información crítica: categorías, especialidades, logo y, muy importante, horarios de apertura y cierre.
-* **Agendas Dinámicas**: Tanto la vista de empresa como la de cliente respetan los horarios configurados por el negocio. La lógica de colisiones y validación de fechas pasadas está activa.
-* **Explorador (`explore.tsx`)**: El buscador permite el filtrado por categorías y subcategorías, posibilitando al cliente encontrar negocios y ser redirigido a su agenda.
-* **Gestión de Servicios y Trabajadores**: Las empresas pueden crear su propio catálogo de servicios con precios y asignar trabajadores con colores personalizados.
-* **Interfaz Premium**: La app cuenta con Dark Mode global, sistema de Pull-to-Refresh en todas las pantallas clave y una estética moderna con BottomSheets animados.
+3. Estadísticas para la Empresa (Dashboard Analytics) La pantalla del company podría beneficiarse de gráficos de barras o donas (con bibliotecas como react-native-chart-kit). Mostrando: Días más concurridos, servicios más vendidos, y tasa de inasistencia.
 
----
+TIP
 
-## 🛠 Próximos Pasos Sugeridos (Roadmap Post-MVP)
-Si decides seguir trabajando en ella antes de publicarla o para una Versión 2.0, estos son los puntos que agregarían más valor:
-
-1. **Notificaciones Push**: Implementar avisos automáticos cuando se confirma una cita o como recordatorio 1 hora antes.
-2. **Pagos en Línea**: Integrar Stripe o MercadoPago para que el cliente pueda pagar (o dejar una seña) al momento de reservar.
-3. **Bloqueo de Días Especiales**: Una interfaz para que el dueño del negocio pueda marcar días festivos o vacaciones donde no se pueda agendar.
-4. **Reseñas y Calificaciones**: Permitir que los clientes califiquen el servicio recibido.
-5. **Dashboard de Estadísticas**: Una vista para el dueño del negocio que muestre ingresos mensuales y los servicios más solicitados.
-
-**Conclusión:** 
-Tienes un producto sólido. Con las correcciones de enrutamiento aplicadas, la app ya no debería quedarse cargando de forma infinita y el flujo lógico de Cliente -> Explorar -> Agenda está garantizado.
+4. Lista de Espera o Cancelaciones Dinámicas Si un cliente cancela, que la app envíe un correo o notificación a los que estaban en "Lista de espera" para ese día, llenando el bloque automáticamente y optimizando la agenda de los profesionales.

@@ -14,12 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useAlert } from '../../context/AlertContext';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors, appStyles } from '../../styles/appStyles';
+import Sidebar from '../../../components/Sidebar';
+import { useAlert } from '../../../context/AlertContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { appColors, appStyles } from '../../../styles/appStyles';
 
 export default function ProfileScreen() {
   const { profile, user, signOut, refreshProfile, updateProfileState } = useAuth();
@@ -108,9 +108,9 @@ export default function ProfileScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5, 
+        quality: 0.5,
       });
-      
+
       console.log('Resultado de ImagePicker:', result.canceled ? 'cancelado' : 'imagen seleccionada');
 
       if (result.canceled || !result.assets[0].uri) return;

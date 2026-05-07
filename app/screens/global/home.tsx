@@ -2,7 +2,7 @@ import { appStyles } from '@/styles/appStyles';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();

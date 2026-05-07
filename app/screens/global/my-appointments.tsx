@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { useTheme } from '../../context/ThemeContext';
-import { appColors, appStyles } from '../../styles/appStyles';
+import Sidebar from '../../../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { appColors, appStyles } from '../../../styles/appStyles';
 
-import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabase';
 
 export default function MyAppointmentsScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
@@ -51,7 +51,7 @@ export default function MyAppointmentsScreen() {
       .eq('client_id', profile.id)
       .order('date', { ascending: true })
       .order('start_hour', { ascending: true });
-    
+
     if (data) {
       setAppointments(data);
     }
@@ -78,7 +78,7 @@ export default function MyAppointmentsScreen() {
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
-  
+
   const upcomingApps = appointments.filter(a => a.date >= todayStr && a.status !== 'completed' && a.status !== 'no-show');
   const historyApps = appointments.filter(a => a.date < todayStr || a.status === 'completed' || a.status === 'no-show');
   const displayedApps = activeTab === 'upcoming' ? upcomingApps : historyApps;
@@ -105,13 +105,13 @@ export default function MyAppointmentsScreen() {
 
           {/* Tabs */}
           <View style={[localStyles.tabs, { borderColor: colors.border }]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[localStyles.tab, activeTab === 'upcoming' && localStyles.tabActive, activeTab === 'upcoming' && { borderBottomColor: appColors.primary }]}
               onPress={() => setActiveTab('upcoming')}
             >
               <Text style={[localStyles.tabText, { color: activeTab === 'upcoming' ? appColors.primary : colors.textSecondary }]}>PRÓXIMAS</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[localStyles.tab, activeTab === 'history' && localStyles.tabActive, activeTab === 'history' && { borderBottomColor: appColors.primary }]}
               onPress={() => setActiveTab('history')}
             >
@@ -151,7 +151,7 @@ export default function MyAppointmentsScreen() {
                         </Text>
                       </View>
                     </View>
-                    
+
                     <View style={localStyles.apptDetails}>
                       <View style={localStyles.detailRow}>
                         <Feather name="calendar" size={14} color={colors.textSecondary} />
@@ -168,7 +168,7 @@ export default function MyAppointmentsScreen() {
                     </View>
 
                     {canCancel && (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={localStyles.cancelBtn}
                         onPress={() => handleCancel(appt.id)}
                       >

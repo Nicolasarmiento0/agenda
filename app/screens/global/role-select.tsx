@@ -7,11 +7,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useAlert } from '../../context/AlertContext';
-import { supabase } from '../../lib/supabase';
-import { appColors } from '../../styles/appStyles';
+import { useAlert } from '../../../context/AlertContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { appColors } from '../../../styles/appStyles';
 
 export default function RoleSelectScreen() {
     const { user, updateProfileState } = useAuth();

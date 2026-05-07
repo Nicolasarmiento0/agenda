@@ -8,11 +8,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAlert } from '../../context/AlertContext';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors } from '../../styles/appStyles';
+import { useAlert } from '../../../context/AlertContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { appColors } from '../../../styles/appStyles';
 
 export default function PrivacyScreen() {
   const { user, signOut } = useAuth();
@@ -47,13 +47,13 @@ export default function PrivacyScreen() {
               // Llamar a una función Postgres "delete_user" que el admin debe crear en Supabase
               const { error } = await supabase.rpc('delete_user');
               if (error) throw error;
-              
+
               await signOut();
               router.replace('/screens/home');
             } catch (err: any) {
-              showAlert({ 
-                title: 'Atención requerida', 
-                message: 'Para que esto funcione, debes crear la función "delete_user" en Supabase. Revisa las instrucciones previas.' 
+              showAlert({
+                title: 'Atención requerida',
+                message: 'Para que esto funcione, debes crear la función "delete_user" en Supabase. Revisa las instrucciones previas.'
               });
             }
           }
@@ -76,7 +76,7 @@ export default function PrivacyScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GESTIÓN DE ACCESO</Text>
-          
+
           <TouchableOpacity style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleResetPassword}>
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconBox, { backgroundColor: colors.background }]}>
@@ -93,7 +93,7 @@ export default function PrivacyScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ZONA DE PELIGRO</Text>
-          
+
           <TouchableOpacity style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleDeleteAccount}>
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconBox, { backgroundColor: '#FF4B4B15' }]}>

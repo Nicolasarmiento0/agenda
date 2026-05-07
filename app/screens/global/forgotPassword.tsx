@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { appColors, useAppStyles } from '../../styles/appStyles'; // ajusta el path
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { appColors, useAppStyles } from '../../../styles/appStyles'; // ajusta el path
 
 type Step = 'email' | 'success';
 
@@ -40,20 +40,20 @@ export default function ForgotPasswordScreen() {
 
   const handleSend = async () => {
     if (!validate()) return;
-  
+
     setLoading(true);
-  
+
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: 'myapp://screens/resetPassword', // cambia 'myapp' por el scheme de tu app
     });
-  
+
     setLoading(false);
-  
+
     if (error) {
       setEmailError('No pudimos enviar el correo. Intenta nuevamente.');
       return;
     }
-  
+
     setStep('success');
   };
 

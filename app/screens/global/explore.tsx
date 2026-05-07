@@ -12,11 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Sidebar from '../../components/Sidebar';
-import { SelectedBusiness, useBusiness } from '../../context/BusinessContext';
-import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../../lib/supabase';
-import { appColors } from '../../styles/appStyles';
+import Sidebar from '../../../components/Sidebar';
+import { SelectedBusiness, useBusiness } from '../../../context/BusinessContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { appColors } from '../../../styles/appStyles';
 
 type Category = {
   id: string;
