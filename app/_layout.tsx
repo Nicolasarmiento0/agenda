@@ -21,10 +21,10 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
     console.log('   profileLoaded :', profileLoaded);
     console.log('   session       :', session ? `✅ ${session.user.id}` : '❌ null');
     console.log('   profile       :', profile ? `✅ role=${profile.role}` : '❌ null');
-    if (loading)                                  console.log('   ⏳ BLOQUEADO → esperando loading=false');
-    if (!loading && !profileLoaded)               console.log('   ⏳ BLOQUEADO → esperando profileLoaded=true');
+    if (loading) console.log('   ⏳ BLOQUEADO → esperando loading=false');
+    if (!loading && !profileLoaded) console.log('   ⏳ BLOQUEADO → esperando profileLoaded=true');
     if (!loading && profileLoaded && session && !profile) console.log('   ⏳ BLOQUEADO → sesión sin perfil (error de red o BD)');
-    if (!loading && profileLoaded)                console.log('   ✅ GUARD OK → renderizando hijos');
+    if (!loading && profileLoaded) console.log('   ✅ GUARD OK → renderizando hijos');
     console.log('─────────────────────────────────────');
   }, [loading, profileLoaded, session, profile]);
 

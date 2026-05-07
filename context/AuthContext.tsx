@@ -95,8 +95,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('AUTH: Critical error in fetchProfile:', error);
     } finally {
-      // ✅ Garantizado: loading y profileLoaded se resuelven siempre aquí,
-      // sin importar si hubo error, timeout o excepción.
       console.log('AUTH: fetchProfile FINALLY → loading=false, profileLoaded=true');
       setProfileLoaded(true);
       setLoading(false);
@@ -148,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       console.log('AUTH: onAuthStateChange event:', event);
 
@@ -165,11 +163,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
 
         if (newSession?.user) {
-          // setLoading(true) antes del fetch; setLoading(false) lo hace fetchProfile en su finally
           setLoading(true);
-          await fetchProfile(newSession.user.id);
+          // ✅ setTimeout saca el fetch del hilo interno de Supabase,
+          // evitando que el await quede colgado en el bundle de producción.
+          setTimeout(() => {
+            if (mounted) fetchProfile(newSession.user.id);
+          }, 0);
         } else {
-          // Sin sesión (INITIAL_SESSION null = usuario no logueado)
+          // Sin sesión activa (usuario no logueado)
           setProfileLoaded(true);
           setLoading(false);
         }
