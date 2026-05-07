@@ -44,18 +44,7 @@ export default function ClientBusinessProfileScreen() {
     );
   }
 
-  const { name, description, address, phone, avatar_url, opening_time, closing_time, instagram_url } = selectedBusiness;
-
-  const handleOpenMaps = () => {
-    if (!address) return;
-    const url = Platform.select({
-      ios: `maps:0,0?q=${encodeURIComponent(address)}`,
-      android: `geo:0,0?q=${encodeURIComponent(address)}`,
-      web: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
-    });
-    if (url) Linking.openURL(url);
-  };
-
+  const { name, description, phone, avatar_url, opening_time, closing_time, instagram_url, maps_url } = selectedBusiness;
 
 
   return (
@@ -105,16 +94,16 @@ export default function ClientBusinessProfileScreen() {
               </View>
             )}
 
-            {/* Dirección */}
-            {address && (
-              <TouchableOpacity activeOpacity={0.7} onPress={handleOpenMaps} style={styles.detailRow}>
+            {/* Google Maps */}
+            {maps_url && (
+              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(maps_url)} style={styles.detailRow}>
                 <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Feather name="map-pin" size={16} color={appColors.primary} />
                 </View>
                 <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Dirección</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={2}>
-                    {address}
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Google Maps</Text>
+                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                    Abrir ubicación
                   </Text>
                 </View>
                 <Feather name="external-link" size={14} color={colors.textSecondary} />
