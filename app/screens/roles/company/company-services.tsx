@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   RefreshControl,
@@ -62,9 +63,10 @@ export default function CompanyServicesScreen() {
     }
   }, [business?.id]);
 
-  useEffect(() => {
+  // Refresca servicios cada vez que la pantalla gana foco
+  useFocusEffect(useCallback(() => {
     fetchServices();
-  }, [fetchServices]);
+  }, [fetchServices]));
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);

@@ -13,15 +13,24 @@ export default function Index() {
   const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!rootNavigationState?.key) return;
+    console.log('🏠 INDEX STATE ───────────────────────');
+    console.log('   loading            :', loading);
+    console.log('   profileLoaded      :', profileLoaded);
+    console.log('   rootNavigation.key :', rootNavigationState?.key ?? '❌ null (nav no lista)');
+    console.log('   session            :', session ? `✅ ${session.user.id}` : '❌ null');
+    console.log('   profile.role       :', profile?.role ?? '❌ null');
+    console.log('   business.status    :', business?.status ?? 'N/A');
 
-    console.log('=== INDEX DEBUG ===');
-    console.log('loading:', loading);
-    console.log('profileLoaded:', profileLoaded);
-    console.log('session:', session?.user?.id);
-    console.log('profile:', profile);
-    console.log('role:', profile?.role);
-    console.log('business:', business);
+    if (!rootNavigationState?.key) console.log('   ⏳ BLOQUEADO → navegación no inicializada');
+    else if (loading)              console.log('   ⏳ BLOQUEADO → loading=true');
+    else if (!profileLoaded)       console.log('   ⏳ BLOQUEADO → profileLoaded=false');
+    else if (session && !profile)  console.log('   ⏳ BLOQUEADO → session existe pero profile=null');
+    else                           console.log('   ✅ INDEX LIBRE → procesando redirección...');
+    console.log('─────────────────────────────────────');
+  }, [loading, profileLoaded, session, profile, business, rootNavigationState?.key]);
+
+  useEffect(() => {
+    if (!rootNavigationState?.key) return;
 
     if (loading) return;
     if (!profileLoaded) return;

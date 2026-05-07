@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   RefreshControl,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../../components/Sidebar';
+import { useAlert } from '../../../context/AlertContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { appColors, appStyles } from '../../../styles/appStyles';
 
@@ -19,6 +21,7 @@ import { supabase } from '../../../lib/supabase';
 export default function MyAppointmentsScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { profile } = useAuth();
+  const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -38,9 +41,10 @@ export default function MyAppointmentsScreen() {
     ]).start();
   }, []);
 
-  useEffect(() => {
+  // Refresca citas al cargar y cada vez que el usuario vuelve a esta pantalla
+  useFocusEffect(useCallback(() => {
     fetchAppointments();
-  }, [profile]);
+  }, [profile]));
 
   const fetchAppointments = async () => {
     if (!profile?.id) return;
@@ -64,11 +68,29 @@ export default function MyAppointmentsScreen() {
     setRefreshing(false);
   }, []);
 
-  const handleCancel = async (apptId: string) => {
-    const { error } = await supabase.from('appointments').delete().eq('id', apptId);
-    if (!error) {
-      fetchAppointments();
-    }
+  const handleCancel = (apptId: string) => {
+    showAlert({
+      title: 'CANCELAR CITA',
+      message: '¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer.',
+      buttons: [
+        { text: 'Volver', style: 'cancel' },
+        {
+          text: 'Cancelar cita',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('appointments').delete().eq('id', apptId);
+            if (!error) {
+              fetchAppointments();
+            } else {
+              showAlert({
+                title: 'Error',
+                message: 'No se pudo cancelar la cita. Intenta nuevamente.',
+              });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const formatHour = (h: number) => {

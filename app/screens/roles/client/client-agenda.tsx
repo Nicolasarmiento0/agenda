@@ -1,11 +1,11 @@
 import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
-  Modal,
   PanResponder,
   Platform,
   RefreshControl,
@@ -14,8 +14,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -23,15 +24,14 @@ import { useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors } from '../../../../styles/appStyles';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
   LocaleConfig.locales['es'] = {
-    monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
-    monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
-    dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+    dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+    dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
     today: 'Hoy'
   };
   LocaleConfig.defaultLocale = 'es';
@@ -256,9 +256,9 @@ function AppointmentSheet({
   ] : [];
 
   return (
-    <View 
+    <View
       style={[
-        StyleSheet.absoluteFill, 
+        StyleSheet.absoluteFill,
         { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
         !visible && { opacity: 0 }
       ]}
@@ -383,7 +383,7 @@ function AppointmentFormModal({
               .from('catalog_services')
               .select('name')
               .eq('category_id', bizData.category_id);
-            
+
             if (catServices && catServices.length > 0) {
               setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
             } else {
@@ -525,9 +525,9 @@ function AppointmentFormModal({
       const closeH = parseInt(closingTime.split(':')[0]) + parseInt(closingTime.split(':')[1]) / 60;
 
       if (startHour < openH || endHour > closeH) {
-        showAlert({ 
-          title: 'Fuera de horario', 
-          message: `El negocio atiende de ${openingTime.substring(0,5)} a ${closingTime.substring(0,5)}. Ajusta tu cita.` 
+        showAlert({
+          title: 'Fuera de horario',
+          message: `El negocio atiende de ${openingTime.substring(0, 5)} a ${closingTime.substring(0, 5)}. Ajusta tu cita.`
         });
         return;
       }
@@ -596,7 +596,7 @@ function AppointmentFormModal({
             </View>
 
             <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha de la Cita</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowCalendar(!showCalendar)}
               style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
             >
@@ -690,7 +690,29 @@ export default function ClientAgendaScreen() {
   const { profile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
-  const { selectedBusiness: business } = useBusiness();
+  const { selectedBusiness: contextBusiness, setSelectedBusiness } = useBusiness();
+  const { id: businessIdParam } = useLocalSearchParams<{ id: string }>();
+  const [business, setBusiness] = useState(contextBusiness);
+
+  // Si el contexto está vacío (recarga de página) pero hay id en la URL, fetchear desde Supabase
+  useEffect(() => {
+    if (contextBusiness) {
+      setBusiness(contextBusiness);
+      return;
+    }
+    if (!businessIdParam) return;
+    supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', businessIdParam)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setBusiness(data);
+          setSelectedBusiness(data);
+        }
+      });
+  }, [businessIdParam, contextBusiness]);
   const [isGym, setIsGym] = useState(false);
 
   useEffect(() => {
@@ -1513,10 +1535,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    ...require('react-native').Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0px 3px 6px rgba(0,0,0,0.25)' },
+    }),
   },
 
   // Bottom sheet

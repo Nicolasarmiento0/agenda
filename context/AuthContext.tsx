@@ -55,15 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
+    console.log('AUTH: fetchProfile START → userId:', userId);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
+      console.log('AUTH: profiles query → role:', data?.role ?? null, '| error:', error?.message ?? null);
+
       if (data) {
-        console.log('AUTH: Profile fetched:', data.role);
         setProfile(data);
 
         if (data.role === 'company') {
@@ -93,7 +95,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('AUTH: Critical error in fetchProfile:', error);
     } finally {
+      // ✅ Garantizado: loading y profileLoaded se resuelven siempre aquí,
+      // sin importar si hubo error, timeout o excepción.
+      console.log('AUTH: fetchProfile FINALLY → loading=false, profileLoaded=true');
       setProfileLoaded(true);
+      setLoading(false);
     }
   }, []);
 
@@ -142,10 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange es la fuente única de verdad.
-    // En web al recargar, Supabase emite INITIAL_SESSION con la sesión guardada en localStorage.
-    // En mobile, getSession() sigue siendo necesario porque onAuthStateChange puede no emitir
-    // INITIAL_SESSION si el token ya venció y no se pudo refrescar.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
       console.log('AUTH: onAuthStateChange event:', event);
@@ -163,17 +165,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
 
         if (newSession?.user) {
+          // setLoading(true) antes del fetch; setLoading(false) lo hace fetchProfile en su finally
           setLoading(true);
           await fetchProfile(newSession.user.id);
         } else {
-          // Sin sesión activa (INITIAL_SESSION con null)
+          // Sin sesión (INITIAL_SESSION null = usuario no logueado)
           setProfileLoaded(true);
+          setLoading(false);
         }
-        setLoading(false);
         return;
       }
 
-      // Para otros eventos (USER_UPDATED, PASSWORD_RECOVERY, etc.)
+      // USER_UPDATED, PASSWORD_RECOVERY, etc.
       setSession(newSession);
     });
 

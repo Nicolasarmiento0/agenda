@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import Sidebar from '../../../../components/Sidebar';
 import { useAuth } from '../../../../context/AuthContext';
+import { useAlert } from '../../../../context/AlertContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors } from '../../../../styles/appStyles';
@@ -255,6 +257,7 @@ function EmployeeFormModal({
 
 export default function CompanyEmployeesScreen() {
   const { business } = useAuth();
+  const { showAlert } = useAlert();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
@@ -304,9 +307,10 @@ export default function CompanyEmployeesScreen() {
     setEmployees(formatted);
   }, [business?.id]);
 
-  useEffect(() => {
+  // Refresca empleados cada vez que la pantalla gana foco (ej: al volver desde otra pantalla)
+  useFocusEffect(useCallback(() => {
     fetchEmployees();
-  }, [fetchEmployees]);
+  }, [fetchEmployees]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -333,8 +337,25 @@ export default function CompanyEmployeesScreen() {
       const { error } = await supabase.from('workers').update({ active: !emp.active }).eq('id', emp.id);
       if (!error) fetchEmployees();
     } else if (actionId === 'delete') {
-      const { error } = await supabase.from('workers').delete().eq('id', emp.id);
-      if (!error) fetchEmployees();
+      showAlert({
+        title: 'ELIMINAR EMPLEADO',
+        message: `¿Eliminar a ${emp.name}? Esta acción no se puede deshacer y eliminará su historial asociado.`,
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: async () => {
+              const { error } = await supabase.from('workers').delete().eq('id', emp.id);
+              if (!error) {
+                fetchEmployees();
+              } else {
+                showAlert({ title: 'Error', message: 'No se pudo eliminar el empleado. Intenta nuevamente.' });
+              }
+            },
+          },
+        ],
+      });
     } else if (actionId === 'edit') {
       setEditingEmp(emp);
       setFormVisible(true);

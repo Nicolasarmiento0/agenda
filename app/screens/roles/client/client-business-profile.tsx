@@ -1,7 +1,8 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -13,27 +14,67 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useBusiness } from '../../../../context/BusinessContext';
+import { SelectedBusiness, useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
 
 const { width } = Dimensions.get('window');
 
 export default function ClientBusinessProfileScreen() {
-  const { selectedBusiness } = useBusiness();
+  const { selectedBusiness, setSelectedBusiness } = useBusiness();
   const { colors, isDarkMode } = useTheme();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [fetchedBusiness, setFetchedBusiness] = useState<SelectedBusiness | null>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // Si no hay negocio en contexto (ej: recarga de página) pero hay un id en la URL,
+  // lo fetcheamos directamente desde Supabase.
   useEffect(() => {
+    if (selectedBusiness) {
+      setFetchedBusiness(selectedBusiness);
+      return;
+    }
+    if (!id) return;
+
+    setFetchLoading(true);
+    supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (data) {
+          setFetchedBusiness(data);
+          setSelectedBusiness(data); // repoblar contexto
+        } else {
+          console.error('ClientBusinessProfile: error fetching business by id', error);
+        }
+        setFetchLoading(false);
+      });
+  }, [id, selectedBusiness]);
+
+  useEffect(() => {
+    if (!fetchedBusiness) return;
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [fetchedBusiness]);
 
-  if (!selectedBusiness) {
+  if (fetchLoading) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.textPrimary} />
+      </View>
+    );
+  }
+
+  if (!fetchedBusiness) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: colors.textSecondary }}>No hay información del negocio.</Text>
@@ -44,8 +85,7 @@ export default function ClientBusinessProfileScreen() {
     );
   }
 
-  const { name, description, phone, avatar_url, opening_time, closing_time, instagram_url, maps_url } = selectedBusiness;
-
+  const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url } = fetchedBusiness;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -58,8 +98,8 @@ export default function ClientBusinessProfileScreen() {
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+
           {/* Avatar Section */}
           <View style={[styles.avatarContainer, { borderColor: colors.background, backgroundColor: colors.surface }]}>
             {avatar_url ? (
@@ -71,15 +111,13 @@ export default function ClientBusinessProfileScreen() {
             )}
           </View>
 
-          {/* Info Section */}
           <Text style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
-          
+
           {description ? (
             <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
           ) : null}
 
           <View style={styles.detailsContainer}>
-            {/* Horario */}
             {opening_time && closing_time && (
               <View style={styles.detailRow}>
                 <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -94,7 +132,6 @@ export default function ClientBusinessProfileScreen() {
               </View>
             )}
 
-            {/* Google Maps */}
             {maps_url && (
               <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(maps_url)} style={styles.detailRow}>
                 <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -110,7 +147,6 @@ export default function ClientBusinessProfileScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Instagram */}
             {instagram_url && (
               <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(instagram_url)} style={styles.detailRow}>
                 <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -125,30 +161,16 @@ export default function ClientBusinessProfileScreen() {
                 <Feather name="external-link" size={14} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
-
-            {/* Teléfono */}
-            {phone && (
-              <View style={styles.detailRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Feather name="phone" size={16} color={appColors.primary} />
-                </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Contacto</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{phone}</Text>
-                </View>
-              </View>
-            )}
           </View>
 
         </Animated.View>
       </ScrollView>
 
-      {/* Floating Bottom Button */}
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           style={[appStyles.primaryButton, { width: '100%' }]}
-          onPress={() => router.push('/screens/roles/client/client-agenda' as any)}
+          onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
         >
           <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
         </TouchableOpacity>
@@ -159,7 +181,6 @@ export default function ClientBusinessProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-
   backBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 56 : 36,
@@ -169,11 +190,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' },
+    }),
   },
   content: {
     paddingHorizontal: 20,
@@ -188,11 +209,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' },
+    }),
   },
   avatar: {
     width: '100%',

@@ -94,8 +94,8 @@ export default function Sidebar({ visible, onClose }: Props) {
           style={[styles.drawer, { borderRightColor: colors.border }]}
         >
           {/* Avatar y nombre */}
-          <TouchableOpacity 
-            style={styles.profileSection} 
+          <TouchableOpacity
+            style={styles.profileSection}
             activeOpacity={0.7}
             onPress={() => handleNavigate('/screens/global/profile')}
           >
@@ -131,9 +131,9 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/client/client-agenda')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>RESERVAR</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/my-appointments')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
