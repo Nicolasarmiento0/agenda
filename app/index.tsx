@@ -42,8 +42,8 @@ export default function Index() {
       console.log('INDEX: Admin role, redirecting to Admin Dashboard');
       router.replace('/screens/admin-dashboard' as any);
     } else if (profile.role === 'client') {
-      console.log('INDEX: Client role, redirecting to Client Agenda');
-      router.replace('/screens/client-agenda' as any);
+      console.log('INDEX: Client role, redirecting to Explore');
+      router.replace('/screens/explore' as any);
     } else if (profile.role === 'company') {
       if (!business) {
         console.log('INDEX: Company role but NO business found, redirecting to Business Setup');
