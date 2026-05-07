@@ -1,6 +1,6 @@
 import { router, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -81,7 +81,13 @@ export default function Index() {
           },
           { 
             text: 'RECARGAR', 
-            onPress: () => refreshProfile() 
+            onPress: () => {
+              if (Platform.OS === 'web') {
+                window.location.reload();
+              } else {
+                refreshProfile();
+              }
+            } 
           }
         ]
       });
