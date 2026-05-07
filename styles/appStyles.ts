@@ -71,6 +71,11 @@ export const appStyles = StyleSheet.create({
     color: appColors.textSecondary,
     letterSpacing: 1,
   },
+  subtitle2: {
+    fontSize: 6,
+    color: appColors.textSecondary,
+    letterSpacing: 1,
+  },
   subtitleCentered: {
     fontSize: 14,
     color: appColors.textSecondary,
