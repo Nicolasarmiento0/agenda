@@ -157,27 +157,29 @@ function AppointmentCard({
   const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const isShort = height < 48;
 
+  const isBlocked = appt.service === 'BLOQUEO';
+
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.85}
+      activeOpacity={isBlocked ? 1 : 0.85}
       style={[
         styles.apptCard,
         {
           top,
           height,
           width: columnWidth - 6,
-          borderLeftColor: appt.workerColor,
-          backgroundColor: colors.surface,
+          borderLeftColor: isBlocked ? '#999999' : appt.workerColor,
+          backgroundColor: isBlocked ? '#F0F0F0' : colors.surface,
         },
       ]}
     >
-      <View style={[styles.apptDot, { backgroundColor: status.dot }]} />
+      <View style={[styles.apptDot, { backgroundColor: isBlocked ? '#999999' : status.dot }]} />
       <View style={{ flex: 1, overflow: 'hidden' }}>
-        <Text style={[styles.apptTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-          {appt.service}
+        <Text style={[styles.apptTitle, { color: isBlocked ? '#999999' : colors.textPrimary }]} numberOfLines={1}>
+          {isBlocked ? 'No disponible' : appt.service}
         </Text>
-        {!isShort && (
+        {!isShort && !isBlocked && (
           <Text style={[styles.apptSub, { color: colors.textSecondary }]} numberOfLines={1}>
             {appt.clientName}
           </Text>
@@ -473,9 +475,21 @@ function AppointmentFormModal({
       return;
     }
 
-    if (dateText === todayStr && startHour < currentHour) {
-      showAlert({ title: 'Hora inválida', message: 'No puedes agendar citas para una hora que ya pasó.' });
-      return;
+    const openingTimeHour = openingTime ? parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60 : DEFAULT_START_HOUR;
+    // Si la hora de inicio solicitada es muy cercana a la de apertura (consideramos un bloque de primera hora si está dentro de los primeros 15 min de apertura)
+    const isFirstBlock = Math.abs(startHour - openingTimeHour) <= 0.25;
+
+    if (dateText === todayStr) {
+      if (isFirstBlock) {
+        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta el día anterior.' });
+        return;
+      }
+      
+      // Margen de 1 hora mínimo de anticipación
+      if (startHour <= currentHour + 1) {
+        showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
+        return;
+      }
     }
 
     // ── Validación de horario de apertura ──
@@ -774,6 +788,7 @@ export default function ClientAgendaScreen() {
   }, [filteredAppointments]);
 
   const openSheet = useCallback((appt: Appointment) => {
+    if (appt.service === 'BLOQUEO') return;
     setSelectedAppt(appt);
     setSheetVisible(true);
   }, []);

@@ -150,6 +150,8 @@ function AppointmentCard({
   const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const isShort = height < 48;
 
+  const isBlocked = appt.service === 'BLOQUEO';
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -160,17 +162,17 @@ function AppointmentCard({
           top,
           height,
           width: columnWidth - 6,
-          borderLeftColor: appt.workerColor,
-          backgroundColor: colors.surface,
+          borderLeftColor: isBlocked ? '#999999' : appt.workerColor,
+          backgroundColor: isBlocked ? '#F0F0F0' : colors.surface,
         },
       ]}
     >
-      <View style={[styles.apptDot, { backgroundColor: status.dot }]} />
+      <View style={[styles.apptDot, { backgroundColor: isBlocked ? '#999999' : status.dot }]} />
       <View style={{ flex: 1, overflow: 'hidden' }}>
-        <Text style={[styles.apptTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-          {appt.service}
+        <Text style={[styles.apptTitle, { color: isBlocked ? '#999999' : colors.textPrimary }]} numberOfLines={1}>
+          {isBlocked ? 'Bloqueo' : appt.service}
         </Text>
-        {!isShort && (
+        {!isShort && !isBlocked && (
           <Text style={[styles.apptSub, { color: colors.textSecondary }]} numberOfLines={1}>
             {appt.clientName}
           </Text>
@@ -232,7 +234,11 @@ function AppointmentSheet({
   const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const endHour = appt.startHour + appt.durationHours;
 
-  const ACTIONS = [
+  const isBlocked = appt.service === 'BLOQUEO';
+
+  const ACTIONS = isBlocked ? [
+    { id: 'cancel', icon: 'unlock', label: 'Desbloquear', color: '#E24B4A' },
+  ] : [
     { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
     { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
     { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
@@ -333,6 +339,7 @@ function AppointmentFormModal({
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
 
   const [services, setServices] = useState<any[]>([]);
 
@@ -405,6 +412,7 @@ function AppointmentFormModal({
         setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
         setDurationMinutes(Math.round(initialData.durationHours * 60));
         setDateText(initialData.date || selectedDateStr);
+        setIsBlocking(initialData.service === 'BLOQUEO');
       } else {
         setClientName('');
         setService('');
@@ -412,6 +420,7 @@ function AppointmentFormModal({
         setStartTimeText('09:00');
         setDurationMinutes(30);
         setDateText(selectedDateStr);
+        setIsBlocking(false);
       }
       setLoading(false);
       setShowCalendar(false);
@@ -421,13 +430,15 @@ function AppointmentFormModal({
   const handleSave = async () => {
     if (loading) return;
     // ── Validación de campos obligatorios ──────────────────────────────
-    if (!clientName.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
-      return;
-    }
-    if (!service.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' });
-      return;
+    if (!isBlocking) {
+      if (!clientName.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
+        return;
+      }
+      if (!service.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' });
+        return;
+      }
     }
     if (!workerId) {
       showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
@@ -468,8 +479,8 @@ function AppointmentFormModal({
     const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
 
     const success = await onSave({
-      clientName,
-      service,
+      clientName: isBlocking ? 'BLOQUEADO' : clientName,
+      service: isBlocking ? 'BLOQUEO' : service,
       worker_id: workerId,
       startHour,
       durationHours: durationMinutes / 60,
@@ -494,32 +505,49 @@ function AppointmentFormModal({
               {initialData ? 'Editar Cita' : 'Nueva Cita'}
             </Text>
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={clientName}
-              onChangeText={setClientName}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="Nombre del cliente"
-            />
+            {!initialData && (
+              <TouchableOpacity 
+                onPress={() => setIsBlocking(!isBlocking)}
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 }}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: isBlocking ? appColors.primary : colors.border, backgroundColor: isBlocking ? appColors.primary : 'transparent', justifyContent: 'center', alignItems: 'center' }}>
+                  {isBlocking && <Feather name="check" size={14} color="#fff" />}
+                </View>
+                <Text style={{ color: colors.textPrimary }}>Bloquear este horario</Text>
+              </TouchableOpacity>
+            )}
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
-            <View style={[styles.modalRow, { marginBottom: 16 }]}>
-              {services.map((s, index) => (
-                <TouchableOpacity
-                  key={s.id || `${s.name}-${index}`}
-                  onPress={() => setService(s.name)}
-                  style={[
-                    styles.modalChip,
-                    service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  ]}
-                >
-                  <Text style={[styles.modalChipText, service === s.name ? { color: '#fff' } : { color: colors.textSecondary }]}>
-                    {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {!isBlocking && (
+              <>
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
+                <TextInput
+                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={clientName}
+                  onChangeText={setClientName}
+                  placeholderTextColor={colors.textSecondary}
+                  placeholder="Nombre del cliente"
+                />
+
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
+                <View style={[styles.modalRow, { marginBottom: 16 }]}>
+                  {services.map((s, index) => (
+                    <TouchableOpacity
+                      key={s.id || `${s.name}-${index}`}
+                      onPress={() => setService(s.name)}
+                      style={[
+                        styles.modalChip,
+                        service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                      ]}
+                    >
+                      <Text style={[styles.modalChipText, service === s.name ? { color: '#fff' } : { color: colors.textSecondary }]}>
+                        {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
 
             <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
             <View style={styles.modalRow}>
