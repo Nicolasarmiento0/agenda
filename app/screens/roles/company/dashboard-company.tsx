@@ -37,23 +37,60 @@ type TimeFilter = 'daily' | 'weekly' | 'monthly';
 
 // ─── COMPONENTES ────────────────────────────────────────────────────────
 
+const toLocalDateStr = (date: Date): string => {
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().split('T')[0];
+};
+
+const formatCurrency = (v: number): string => {
+  if (v === 0) return '';
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 10_000) return `$${(v / 1_000).toFixed(0)}k`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}k`;
+  return `$${v}`;
+};
+
 const BarChart = ({ data, colors, filter }: { data: { label: string, value: number }[], colors: any, filter: TimeFilter }) => {
   const maxValue = Math.max(...data.map(d => d.value), 1);
+  const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <View style={styles.chartContainer}>
-      <View style={styles.barsWrapper}>
-        {data.map((item, index) => {
-          const heightPercent = (item.value / maxValue) * 100;
-          return (
-            <View key={index} style={styles.barCol}>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { height: `${heightPercent}%`, backgroundColor: appColors.primary }]} />
+    <View>
+      {/* Total del período */}
+      <View style={styles.chartTotalRow}>
+        <Text style={[styles.chartTotalValue, { color: colors.textPrimary }]}>
+          {total > 0 ? `$${total.toLocaleString('es-AR')}` : '$0'}
+        </Text>
+        <Text style={[styles.chartTotalLabel, { color: colors.textSecondary }]}>
+          {filter === 'daily' ? 'hoy' : filter === 'weekly' ? 'esta semana' : 'últimos 30 días'}
+        </Text>
+      </View>
+
+      <View style={styles.chartContainer}>
+        <View style={styles.barsWrapper}>
+          {data.map((item, index) => {
+            const heightPercent = (item.value / maxValue) * 100;
+            const isMax = item.value === maxValue && item.value > 0;
+            return (
+              <View key={index} style={styles.barCol}>
+                <Text style={[styles.barValue, { color: item.value > 0 ? appColors.primary : 'transparent' }]}>
+                  {formatCurrency(item.value)}
+                </Text>
+                <View style={styles.barTrack}>
+                  <View style={[
+                    styles.barFill,
+                    {
+                      height: `${heightPercent}%`,
+                      backgroundColor: isMax ? appColors.primary : appColors.primary + '70',
+                    }
+                  ]} />
+                </View>
+                <Text style={[styles.barLabel, { color: colors.textSecondary }]}>{item.label}</Text>
               </View>
-              <Text style={[styles.barLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -93,14 +130,16 @@ export default function DashboardCompanyScreen() {
     let startDate = new Date();
 
     if (timeFilter === 'daily') {
-      startDate.setHours(0, 0, 0, 0); // Today only
+      startDate.setHours(0, 0, 0, 0);
     } else if (timeFilter === 'weekly') {
-      startDate.setDate(today.getDate() - 6); // Last 7 days
+      const dow = today.getDay();
+      const daysToMonday = dow === 0 ? 6 : dow - 1;
+      startDate.setDate(today.getDate() - daysToMonday);
     } else if (timeFilter === 'monthly') {
-      startDate.setDate(today.getDate() - 29); // Last 30 days
+      startDate.setDate(today.getDate() - 29);
     }
 
-    const dateStr = startDate.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(startDate);
 
     const { data: appointments } = await supabase
       .from('appointments')
@@ -157,7 +196,7 @@ export default function DashboardCompanyScreen() {
         blocks.forEach(b => newRevData.push({ label: `${b}h`, value: 0, key: b }));
 
         appointments.forEach(a => {
-          if (a.price && a.date === today.toISOString().split('T')[0]) {
+          if (a.price && a.date === toLocalDateStr(today)) {
             const hour = Math.floor(a.start_hour);
             // Find the closest block <= hour
             let targetBlock = 8;
@@ -173,10 +212,13 @@ export default function DashboardCompanyScreen() {
         });
       } else if (timeFilter === 'weekly') {
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(today.getDate() - i);
-          newRevData.push({ label: dayNames[d.getDay()], value: 0, key: d.toISOString().split('T')[0] });
+        const weekStart = new Date(today);
+        const dow = today.getDay();
+        weekStart.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setDate(weekStart.getDate() + i);
+          newRevData.push({ label: dayNames[d.getDay()], value: 0, key: toLocalDateStr(d) });
         }
         appointments.forEach(a => {
           if (a.price) {
@@ -504,6 +546,21 @@ const styles = StyleSheet.create({
   },
 
   /* CHART STYLES */
+  chartTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginBottom: 12,
+  },
+  chartTotalValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  chartTotalLabel: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
   chartContainer: {
     height: 140,
   },
@@ -517,10 +574,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 30,
     height: '100%',
+    justifyContent: 'flex-end',
+  },
+  barValue: {
+    fontSize: 8,
+    fontWeight: '700',
+    marginBottom: 3,
+    letterSpacing: 0,
   },
   barTrack: {
-    flex: 1,
     width: 8,
+    height: 90,
     backgroundColor: '#33333320',
     borderRadius: 4,
     justifyContent: 'flex-end',
@@ -532,7 +596,7 @@ const styles = StyleSheet.create({
   },
   barLabel: {
     fontSize: 10,
-    marginTop: 8,
+    marginTop: 6,
     fontWeight: '500',
   },
 
@@ -601,18 +665,19 @@ const styles = StyleSheet.create({
   /* SCHEDULE */
   scheduleRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    flexWrap: 'nowrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   dayCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
   },
 

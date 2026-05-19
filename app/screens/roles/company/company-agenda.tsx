@@ -946,8 +946,8 @@ export default function CompanyAgendaScreen() {
   const fetchAppointments = useCallback(async () => {
     if (!business?.id || !weekDays[0] || !weekDays[6]) return;
 
-    const startStr = weekDays[0].toISOString().split('T')[0];
-    const endStr = weekDays[6].toISOString().split('T')[0];
+    const startStr = toLocalISOString(weekDays[0]);
+    const endStr = toLocalISOString(weekDays[6]);
 
     const { data, error } = await supabase
       .from('appointments')
@@ -1181,7 +1181,7 @@ export default function CompanyAgendaScreen() {
         ))}
 
         {/* Columnas de citas por trabajador */}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH }]}>
+        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {WORKERS.map((w, wi) => (
             <View
               key={w.id}
@@ -1261,9 +1261,9 @@ export default function CompanyAgendaScreen() {
             <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
           </View>
         ))}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH }]}>
+        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {weekDays.map((d, di) => {
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = toLocalISOString(d);
             return (
               <View
                 key={di}
@@ -1397,7 +1397,10 @@ export default function CompanyAgendaScreen() {
             onPress={() => setSelectedWorkerFilter(w.name)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: w.color }} />
+              <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -1453,7 +1456,7 @@ export default function CompanyAgendaScreen() {
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
         colors={{ ...colors, workersList: workers, businessId: business?.id }}
-        selectedDateStr={selectedDate.toISOString().split('T')[0]}
+        selectedDateStr={selectedDateStr}
         showAlert={showAlert}
         openingHour={startHour}
         closingHour={endHour}
