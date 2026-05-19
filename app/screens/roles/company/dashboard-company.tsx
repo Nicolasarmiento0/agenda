@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import Sidebar from '../../../../components/Sidebar';
+import WorkerAvatar from '../../../../components/WorkerAvatar';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
@@ -121,7 +122,7 @@ export default function DashboardCompanyScreen() {
     // 1. Fetch Workers
     const { data: workers } = await supabase
       .from('workers')
-      .select('*')
+      .select('*, profiles(avatar_url)')
       .eq('business_id', business.id)
       .eq('active', true);
 
@@ -175,7 +176,7 @@ export default function DashboardCompanyScreen() {
 
     if (workers && appointments) {
       // Process Workers Data
-      const processedWorkers = workers.map(w => {
+      const processedWorkers = workers.map((w: any) => {
         const workerAppts = appointments.filter(a => a.worker_id === w.id).length;
         return {
           id: w.id,
@@ -183,6 +184,7 @@ export default function DashboardCompanyScreen() {
           role: w.specialty || 'Especialista',
           services: workerAppts,
           color: w.color || '#3B7BE0',
+          avatar_url: w.profiles?.avatar_url ?? null,
         };
       });
       setWorkerData(processedWorkers);
@@ -373,9 +375,13 @@ export default function DashboardCompanyScreen() {
               <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No hay trabajadores registrados o citas recientes.</Text>
             ) : workerData.map((worker, i) => (
               <View key={worker.id} style={[styles.workerRow, i < workerData.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-                <View style={[styles.avatar, { backgroundColor: worker.color + '20', borderColor: worker.color }]}>
-                  <Text style={[styles.avatarInitials, { color: worker.color }]}>{worker.name.substring(0, 2).toUpperCase()}</Text>
-                </View>
+                <WorkerAvatar
+                  avatarUrl={worker.avatar_url}
+                  name={worker.name}
+                  color={worker.color}
+                  size={44}
+                  showDot={false}
+                />
                 <View style={styles.workerInfo}>
                   <Text style={[styles.workerName, { color: colors.textPrimary }]}>{worker.name}</Text>
                   <Text style={[styles.workerRole, { color: colors.textSecondary }]}>{worker.role}</Text>

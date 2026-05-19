@@ -2,12 +2,14 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,17 +17,16 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  Pressable,
 } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Sidebar from '../../../../components/Sidebar';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
+import WorkerAvatar from '../../../../components/WorkerAvatar';
+import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
-import { useAlert } from '../../../../context/AlertContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors } from '../../../../styles/appStyles';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
@@ -62,6 +63,8 @@ type Worker = {
   name: string;
   color: string;
   initials: string;
+  avatar_url: string | null;
+  specialty: string;
 };
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -932,13 +935,18 @@ export default function CompanyAgendaScreen() {
 
   const fetchWorkers = useCallback(async () => {
     if (!business?.id) return;
-    const { data, error } = await supabase.from('workers').select('*').eq('business_id', business.id);
+    const { data, error } = await supabase
+      .from('workers')
+      .select('*, profiles(avatar_url)')
+      .eq('business_id', business.id);
     if (!error && data) {
-      setWorkers(data.map(w => ({
+      setWorkers(data.map((w: any) => ({
         id: w.id,
         name: w.name,
         color: w.color || '#D00024',
         initials: w.name.substring(0, 2).toUpperCase(),
+        avatar_url: w.profiles?.avatar_url ?? null,
+        specialty: w.specialty || '',
       })));
     }
   }, [business?.id]);
@@ -1153,13 +1161,17 @@ export default function CompanyAgendaScreen() {
               onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
               activeOpacity={0.75}
             >
-              <View style={styles.workerAvatarWrapper}>
-                <View style={[styles.workerAvatar, { backgroundColor: w.color + '25', borderColor: w.color }]}>
-                  <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
-                </View>
-                <View style={[styles.workerActiveDot, { backgroundColor: '#4CAF50' }]} />
-              </View>
+              <WorkerAvatar
+                avatarUrl={w.avatar_url}
+                name={w.name}
+                color={w.color}
+                size={100}
+                showDot={true}
+              />
               <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+              {w.specialty ? (
+                <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+              ) : null}
               {todayAppts > 0 && (
                 <Text style={[styles.workerApptCount, { color: w.color }]}>{todayAppts} cita{todayAppts > 1 ? 's' : ''}</Text>
               )}
@@ -1229,11 +1241,39 @@ export default function CompanyAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
-    >
-      {/* Cabecera de días */}
-      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
+    <View style={{ flex: 1}}>
+      {/* Selector de trabajador — fijo, no scrollea verticalmente */}
+      <View style={{ flexShrink: 0 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        //style={{ height: 160 }}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ paddingHorizontal: PADDING, paddingTop: 15, paddingBottom: 10, gap: 20 }}
+      >
+        {workers.map(w => {
+          const isSelected = selectedWorkerFilter === w.name;
+          return (
+            <TouchableOpacity
+              key={w.id}
+              onPress={() => setSelectedWorkerFilter(w.name)}
+              activeOpacity={0.75}
+              style={{ alignItems: 'center', gap: 5, opacity: isSelected ? 1 : 0.40 }}
+            >
+              <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={100} showDot={isSelected} />
+              <Text style={[styles.workerName, { color: isSelected ? w.color : colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+              {w.specialty ? (
+                <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+              ) : null}
+            </TouchableOpacity>
+           
+          );
+        })}
+      </ScrollView>
+      </View>
+
+      {/* Cabecera de días — fija, no scrollea verticalmente */}
+      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
         {weekDays.map((d, i) => (
           <TouchableOpacity
             key={i}
@@ -1252,58 +1292,66 @@ export default function CompanyAgendaScreen() {
         ))}
       </View>
 
-      <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
-        {hoursGrid.map(h => (
-          <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
-            <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
-              {String(h).padStart(2, '0')}:00
-            </Text>
-            <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
-          </View>
-        ))}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
-          {weekDays.map((d, di) => {
-            const dateStr = toLocalISOString(d);
-            return (
-              <View
-                key={di}
-                style={[
-                  styles.workerColumn,
-                  {
-                    width: weekColWidth,
-                    left: di * weekColWidth,
-                    borderLeftColor: colors.border,
-                    borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
-                    height: (endHour - startHour) * HOUR_HEIGHT,
-                    backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
-                  },
-                ]}
-              >
-                {filteredAppointments
-                  .filter(a => a.date === dateStr)
-                  .map(appt => (
-                    <AppointmentCard
-                      key={appt.id}
-                      appt={appt}
-                      columnWidth={weekColWidth}
-                      onPress={() => openSheet(appt)}
-                      colors={colors}
-                      isDarkMode={isDarkMode}
-                      startHour={startHour}
-                    />
-                  ))}
-              </View>
-            );
-          })}
-          {nowPosition !== null && (
-            <View style={[styles.nowLine, { top: nowPosition, width: 7 * weekColWidth }]}>
-              <View style={styles.nowDot} />
-              <View style={[styles.nowBar, { backgroundColor: appColors.primary }]} />
+      {/* Grid de horas — único elemento que scrollea */}
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
+      >
+        <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
+          {hoursGrid.map(h => (
+            <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
+              <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
+                {String(h).padStart(2, '0')}:00
+              </Text>
+              <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
             </View>
-          )}
+          ))}
+          <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
+            {weekDays.map((d, di) => {
+              const dateStr = toLocalISOString(d);
+              return (
+                <View
+                  key={di}
+                  style={[
+                    styles.workerColumn,
+                    {
+                      width: weekColWidth,
+                      left: di * weekColWidth,
+                      borderLeftColor: colors.border,
+                      borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
+                      height: (endHour - startHour) * HOUR_HEIGHT,
+                      backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
+                    },
+                  ]}
+                >
+                  {filteredAppointments
+                    .filter(a => a.date === dateStr)
+                    .map(appt => (
+                      <AppointmentCard
+                        key={appt.id}
+                        appt={appt}
+                        columnWidth={weekColWidth}
+                        onPress={() => openSheet(appt)}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                        startHour={startHour}
+                      />
+                    ))}
+                </View>
+              );
+            })}
+            {nowPosition !== null && (
+              <View style={[styles.nowLine, { top: nowPosition, width: 7 * weekColWidth }]}>
+                <View style={styles.nowDot} />
+                <View style={[styles.nowBar, { backgroundColor: appColors.primary }]} />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -1336,8 +1384,8 @@ export default function CompanyAgendaScreen() {
           ))}
         </View>
 
-        <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.7}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
+        <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.3}>
+          <Feather name={isDarkMode ? 'moon' : 'sun'} size={30} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -1345,7 +1393,7 @@ export default function CompanyAgendaScreen() {
       {viewMode === 'day' && (
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-left" size={20} color={colors.textPrimary} />
+            <Feather name="chevron-left" size={25} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
             {formatDateLabel(selectedDate)}
@@ -1360,20 +1408,20 @@ export default function CompanyAgendaScreen() {
       {viewMode === 'week' && (
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-7)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-left" size={20} color={colors.textPrimary} />
+            <Feather name="chevron-left" size={25} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
             {weekDays[0].getDate()} – {weekDays[6].getDate()} {['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][selectedDate.getMonth()]}
           </Text>
           <TouchableOpacity onPress={() => navigateDay(7)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-right" size={20} color={colors.textPrimary} />
+            <Feather name="chevron-right" size={25} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* ── Filtro por trabajador — glass chips ───────────────────── */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
-        {viewMode === 'day' && (
+      {/* ── Filtro por trabajador — solo en vista día ─────────────── */}
+      {viewMode === 'day' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
           <TouchableOpacity
             style={[styles.filterChip,
               !selectedWorkerFilter
@@ -1385,44 +1433,46 @@ export default function CompanyAgendaScreen() {
           >
             <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
           </TouchableOpacity>
-        )}
-        {workers.map(w => (
-          <TouchableOpacity
-            key={w.id}
-            style={[styles.filterChip,
-              selectedWorkerFilter === w.name
-                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
-            ]}
-            onPress={() => setSelectedWorkerFilter(w.name)}
-            activeOpacity={0.8}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: w.color }} />
-              <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {workers.map(w => (
+            <TouchableOpacity
+              key={w.id}
+              style={[styles.filterChip,
+                selectedWorkerFilter === w.name
+                  ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                  : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+              ]}
+              onPress={() => setSelectedWorkerFilter(w.name)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={18} showDot={false} />
+                <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
-      {/* ── Stats row (Liquid Glass) ─────────────────────────────── */}
-      <View style={styles.statsRow}>
-        {stats.map((s, i) => (
-          <View key={i} style={[styles.statCard, {
-            backgroundColor: i === 0
-              ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
-              : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
-            borderColor: i === 0
-              ? 'rgba(227,25,55,0.3)'
-              : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
-          }]}>
-            <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
-              {s.value}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
+      {/* ── Stats row (Liquid Glass) — solo en vista día ────────── */}
+      {viewMode === 'day' && (
+        <View style={styles.statsRow}>
+          {stats.map((s, i) => (
+            <View key={i} style={[styles.statCard, {
+              backgroundColor: i === 0
+                ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+              borderColor: i === 0
+                ? 'rgba(227,25,55,0.3)'
+                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
+            }]}>
+              <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
+                {s.value}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={[styles.gridContainer, { borderTopColor: colors.border }]}>
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
@@ -1641,12 +1691,12 @@ const styles = StyleSheet.create({
   // Worker header
   workerHeader: {
     flexDirection: 'row',
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   workerCol: {
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   workerAvatarWrapper: {
     position: 'relative',
@@ -1675,9 +1725,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   workerName: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  workerSpecialty: {
+    fontSize: 9,
+    fontWeight: '400',
+    letterSpacing: 0.2,
   },
   workerApptCount: {
     fontSize: 9,
