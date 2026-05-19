@@ -1385,7 +1385,7 @@ export default function CompanyAgendaScreen() {
         </View>
 
         <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.3}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={30} color={colors.textPrimary} />
+          <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -1393,7 +1393,7 @@ export default function CompanyAgendaScreen() {
       {viewMode === 'day' && (
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-left" size={25} color={colors.textPrimary} />
+            <Feather name="chevron-left" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
             {formatDateLabel(selectedDate)}
@@ -1408,13 +1408,13 @@ export default function CompanyAgendaScreen() {
       {viewMode === 'week' && (
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-7)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-left" size={25} color={colors.textPrimary} />
+            <Feather name="chevron-left" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
             {weekDays[0].getDate()} – {weekDays[6].getDate()} {['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][selectedDate.getMonth()]}
           </Text>
           <TouchableOpacity onPress={() => navigateDay(7)} style={styles.navBtn} activeOpacity={0.7}>
-            <Feather name="chevron-right" size={25} color={colors.textPrimary} />
+            <Feather name="chevron-right" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       )}
