@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -161,6 +162,16 @@ function AppointmentCard({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
+  const glassColor = isBlocked
+    ? (isDarkMode ? 'rgba(60,60,60,0.6)' : 'rgba(220,220,220,0.7)')
+    : isDarkMode
+      ? 'rgba(30,30,40,0.75)'
+      : 'rgba(255,255,255,0.75)';
+
+  const glassBorder = isBlocked
+    ? (isDarkMode ? 'rgba(120,120,120,0.3)' : 'rgba(160,160,160,0.4)')
+    : appt.workerColor + '55';
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -172,7 +183,9 @@ function AppointmentCard({
           height,
           width: columnWidth - 6,
           borderLeftColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : appt.workerColor,
-          backgroundColor: isBlocked ? (isDarkMode ? '#222222' : '#F0F0F0') : colors.surface,
+          backgroundColor: glassColor,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: glassBorder,
         },
       ]}
     >
@@ -199,12 +212,14 @@ function AppointmentSheet({
   onClose,
   onAction,
   colors,
+  isDarkMode,
 }: {
   appt: Appointment | null;
   visible: boolean;
   onClose: () => void;
   onAction: (action: string, appt: Appointment) => void;
   colors: any;
+  isDarkMode: boolean;
 }) {
   const slideY = useRef(new Animated.Value(400)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -267,11 +282,23 @@ function AppointmentSheet({
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
       </Animated.View>
       <Animated.View
-        style={[styles.sheet, { backgroundColor: colors.surface, transform: [{ translateY: slideY }] }]}
+        style={[styles.sheet, { transform: [{ translateY: slideY }], overflow: 'hidden' }]}
         {...panResponder.panHandlers}
       >
+        <BlurView
+          intensity={isDarkMode ? 60 : 80}
+          tint={isDarkMode ? 'dark' : 'light'}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
+        />
+        <View style={[StyleSheet.absoluteFill, {
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          backgroundColor: isDarkMode ? 'rgba(15,15,20,0.55)' : 'rgba(255,255,255,0.45)',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }]} />
         {/* Handle */}
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <View style={[styles.sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
 
         {/* Info principal */}
         <View style={styles.sheetTop}>
@@ -1136,8 +1163,11 @@ export default function ClientAgendaScreen() {
           <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        {/* Toggle Día / Semana */}
-        <View style={[styles.toggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Toggle Día / Semana — glass */}
+        <View style={[styles.toggle, {
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+        }]}>
           {(['day', 'week'] as ViewMode[]).map(m => (
             <TouchableOpacity
               key={m}
@@ -1157,9 +1187,12 @@ export default function ClientAgendaScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Título del negocio (estilo Tesla) ────────────────────── */}
+      {/* ── Título del negocio (Liquid Glass) ────────────────────── */}
       {business && (
-        <View style={[styles.businessHeader, { borderBottomColor: colors.border }]}>
+        <View style={[styles.businessHeader, {
+          borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+        }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
             <Text style={[styles.businessHeaderTitle, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -1200,11 +1233,15 @@ export default function ClientAgendaScreen() {
         </View>
       )}
 
-      {/* ── Filtro por trabajador ──────────────────────────────────── */}
+      {/* ── Filtro por trabajador — glass chips ───────────────────── */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
         {viewMode === 'day' && (
           <TouchableOpacity
-            style={[styles.filterChip, !selectedWorkerFilter && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[styles.filterChip,
+              !selectedWorkerFilter
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            ]}
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
           >
@@ -1214,7 +1251,11 @@ export default function ClientAgendaScreen() {
         {workers.map(w => (
           <TouchableOpacity
             key={w.id}
-            style={[styles.filterChip, selectedWorkerFilter === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[styles.filterChip,
+              selectedWorkerFilter === w.name
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            ]}
             onPress={() => setSelectedWorkerFilter(w.name)}
             activeOpacity={0.8}
           >
@@ -1223,10 +1264,17 @@ export default function ClientAgendaScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Stats row ────────────────────────────────────────────── */}
+      {/* ── Stats row (Liquid Glass) ─────────────────────────────── */}
       <View style={styles.statsRow}>
         {stats.map((s, i) => (
-          <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View key={i} style={[styles.statCard, {
+            backgroundColor: i === 0
+              ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+              : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+            borderColor: i === 0
+              ? 'rgba(227,25,55,0.3)'
+              : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
+          }]}>
             <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
               {s.value}
             </Text>
@@ -1284,6 +1332,7 @@ export default function ClientAgendaScreen() {
         onClose={() => setSheetVisible(false)}
         onAction={handleSheetAction}
         colors={colors}
+        isDarkMode={isDarkMode}
       />
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />

@@ -1,3 +1,4 @@
+import { AntDesign } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -5,25 +6,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
-import { useAppStyles } from '../../../styles/appStyles'; // ajusta el path 
+import { useAppStyles } from '../../../styles/appStyles';
 
 
 export default function LoginScreen() {
   const { colors } = useTheme();
   const appStyles = useAppStyles();
+  const { signInWithGoogle } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const validate = () => {
     let valid = true;
@@ -49,6 +54,17 @@ export default function LoginScreen() {
     }
 
     return valid;
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+      await signInWithGoogle();
+    } catch (err: any) {
+      setPasswordError(err?.message ?? 'Error al iniciar con Google.');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -178,6 +194,25 @@ export default function LoginScreen() {
               <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </View>
 
+            {/* Botón Google */}
+            <TouchableOpacity
+              style={[loginStyles.googleButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+              onPress={handleGoogleLogin}
+              disabled={googleLoading}
+              activeOpacity={0.8}
+            >
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={colors.textPrimary} />
+              ) : (
+                <>
+                  <AntDesign name="google" size={18} color="#4285F4" />
+                  <Text style={[loginStyles.googleText, { color: colors.textPrimary }]}>
+                    Continuar con Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             {/* Botón secundario */}
             <TouchableOpacity
               style={appStyles.secondaryButton}
@@ -193,3 +228,21 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const loginStyles = StyleSheet.create({
+  googleButton: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  googleText: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+});

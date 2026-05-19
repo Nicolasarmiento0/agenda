@@ -73,12 +73,19 @@ function DeepLinkHandler() {
   useEffect(() => {
     const handleDeepLink = async (url: string) => {
       if (!url.includes('access_token')) return;
-      const params = new URLSearchParams(url.split('#')[1]);
+      const fragment = url.split('#')[1] ?? '';
+      const query = url.split('?')[1] ?? '';
+      const params = new URLSearchParams(fragment || query);
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
+      const type = params.get('type');
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        router.replace('/screens/global/resetPassword' as any);
+        // Solo redirigir a resetPassword si es un flujo de recuperación de contraseña
+        if (type === 'recovery') {
+          router.replace('/screens/global/resetPassword' as any);
+        }
+        // OAuth (Google, etc.) → onAuthStateChange se encarga del routing
       }
     };
 

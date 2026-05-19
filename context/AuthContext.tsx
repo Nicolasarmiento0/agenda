@@ -1,7 +1,12 @@
 import { Session, User } from '@supabase/supabase-js';
+import { makeRedirectUri } from 'expo-auth-session';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type Profile = {
   id: string;
@@ -33,6 +38,7 @@ type AuthContextType = {
   refreshProfile: () => Promise<void>;
   updateProfileState: (updates: Partial<Profile>) => void;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -45,6 +51,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => { },
   updateProfileState: () => { },
   signOut: async () => { },
+  signInWithGoogle: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -143,6 +150,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace('/screens/global/home' as any);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const redirectTo = Platform.OS === 'web'
+      ? undefined
+      : makeRedirectUri({ scheme: 'myapp', path: 'auth/callback' });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: Platform.OS !== 'web',
+        queryParams: { access_type: 'offline', prompt: 'consent' },
+      },
+    });
+
+    if (error) throw error;
+
+    if (Platform.OS !== 'web' && data.url) {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo!);
+      if (result.type === 'success') {
+        const fragment = result.url.split('#')[1] ?? '';
+        const query = result.url.split('?')[1] ?? '';
+        const params = new URLSearchParams(fragment || query);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        }
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -197,7 +235,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshProfile,
     updateProfileState,
     signOut,
-  }), [session, profile, business, loading, profileLoaded, refreshProfile, updateProfileState, signOut]);
+    signInWithGoogle,
+  }), [session, profile, business, loading, profileLoaded, refreshProfile, updateProfileState, signOut, signInWithGoogle]);
 
   return (
     <AuthContext.Provider value={contextValue}>

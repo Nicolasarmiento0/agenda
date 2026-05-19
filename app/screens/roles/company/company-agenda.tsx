@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -154,6 +155,16 @@ function AppointmentCard({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
+  const glassColor = isBlocked
+    ? (isDarkMode ? 'rgba(60,60,60,0.6)' : 'rgba(220,220,220,0.7)')
+    : isDarkMode
+      ? 'rgba(30,30,40,0.75)'
+      : 'rgba(255,255,255,0.75)';
+
+  const glassBorder = isBlocked
+    ? (isDarkMode ? 'rgba(120,120,120,0.3)' : 'rgba(160,160,160,0.4)')
+    : appt.workerColor + '55';
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -165,7 +176,9 @@ function AppointmentCard({
           height,
           width: columnWidth - 6,
           borderLeftColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : appt.workerColor,
-          backgroundColor: isBlocked ? (isDarkMode ? '#222222' : '#F0F0F0') : colors.surface,
+          backgroundColor: glassColor,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: glassBorder,
         },
       ]}
     >
@@ -193,6 +206,7 @@ function AppointmentSheet({
   onAction,
   colors,
   isGym,
+  isDarkMode,
 }: {
   appt: Appointment | null;
   visible: boolean;
@@ -200,6 +214,7 @@ function AppointmentSheet({
   onAction: (action: string, appt: Appointment) => void;
   colors: any;
   isGym: boolean;
+  isDarkMode: boolean;
 }) {
   const slideY = useRef(new Animated.Value(400)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -261,11 +276,23 @@ function AppointmentSheet({
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
       </Animated.View>
       <Animated.View
-        style={[styles.sheet, { backgroundColor: colors.surface, transform: [{ translateY: slideY }] }]}
+        style={[styles.sheet, { transform: [{ translateY: slideY }], overflow: 'hidden' }]}
         {...panResponder.panHandlers}
       >
+        <BlurView
+          intensity={isDarkMode ? 60 : 80}
+          tint={isDarkMode ? 'dark' : 'light'}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
+        />
+        <View style={[StyleSheet.absoluteFill, {
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          backgroundColor: isDarkMode ? 'rgba(15,15,20,0.55)' : 'rgba(255,255,255,0.45)',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        }]} />
         {/* Handle */}
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <View style={[styles.sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
 
         {/* Info principal */}
         <View style={styles.sheetTop}>
@@ -324,6 +351,8 @@ function AppointmentFormModal({
   colors,
   selectedDateStr,
   showAlert,
+  openingHour,
+  closingHour,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -332,16 +361,22 @@ function AppointmentFormModal({
   colors: any;
   selectedDateStr: string;
   showAlert: (opts: { title: string; message: string }) => void;
+  openingHour: number;
+  closingHour: number;
 }) {
+  const { isDarkMode } = useTheme();
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
   const [workerId, setWorkerId] = useState('');
   const [dateText, setDateText] = useState('');
-  const [startTimeText, setStartTimeText] = useState('09:00');
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [busyIntervals, setBusyIntervals] = useState<Array<{ start: number; end: number }>>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [services, setServices] = useState<any[]>([]);
 
@@ -411,7 +446,7 @@ function AppointmentFormModal({
         setWorkerId(initialData.worker_id);
         const hh = Math.floor(initialData.startHour);
         const mm = Math.round((initialData.startHour - hh) * 60);
-        setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+        setSelectedSlot(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
         setDurationMinutes(Math.round(initialData.durationHours * 60));
         setDateText(initialData.date || selectedDateStr);
         setIsBlocking(initialData.service === 'BLOQUEO');
@@ -419,7 +454,7 @@ function AppointmentFormModal({
         setClientName('');
         setService('');
         setWorkerId('');
-        setStartTimeText('09:00');
+        setSelectedSlot(null);
         setDurationMinutes(30);
         setDateText(selectedDateStr);
         setIsBlocking(false);
@@ -428,6 +463,67 @@ function AppointmentFormModal({
       setShowCalendar(false);
     }
   }, [visible, initialData, selectedDateStr]);
+
+  // Genera todos los slots de 15 min dentro del horario del negocio
+  const allSlots = useMemo(() => {
+    const slots: string[] = [];
+    let current = openingHour * 60;
+    const end = closingHour * 60;
+    while (current < end) {
+      const hh = Math.floor(current / 60);
+      const mm = current % 60;
+      slots.push(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+      current += 15;
+    }
+    return slots;
+  }, [openingHour, closingHour]);
+
+  // Descarga los turnos ocupados del worker+fecha seleccionados
+  useEffect(() => {
+    if (!workerId || !dateText || !colors.businessId) {
+      setBusyIntervals([]);
+      return;
+    }
+    setSlotsLoading(true);
+    supabase
+      .from('appointments')
+      .select('id, start_hour, duration_hours')
+      .eq('business_id', colors.businessId)
+      .eq('worker_id', workerId)
+      .eq('date', dateText)
+      .then(({ data }) => {
+        const intervals = (data ?? [])
+          .filter((a: any) => a.id !== initialData?.id)
+          .map((a: any) => ({ start: Number(a.start_hour), end: Number(a.start_hour) + Number(a.duration_hours) }));
+        setBusyIntervals(intervals);
+        setSlotsLoading(false);
+      });
+  }, [workerId, dateText, colors.businessId, initialData?.id]);
+
+  // Si la duración sube y el slot elegido queda solapado, lo limpia
+  useEffect(() => {
+    if (!selectedSlot) return;
+    const [hh, mm] = selectedSlot.split(':').map(Number);
+    const slotStart = hh + mm / 60;
+    const slotEnd = slotStart + durationMinutes / 60;
+    const nowBusy = busyIntervals.some(({ start, end }) => slotStart < end && slotEnd > start);
+    if (nowBusy) setSelectedSlot(null);
+  }, [busyIntervals, durationMinutes]);
+
+  const isSlotBusy = useCallback((slot: string) => {
+    const [hh, mm] = slot.split(':').map(Number);
+    const slotStart = hh + mm / 60;
+    const slotEnd = slotStart + durationMinutes / 60;
+    return busyIntervals.some(({ start, end }) => slotStart < end && slotEnd > start);
+  }, [busyIntervals, durationMinutes]);
+
+  const isPastSlot = useCallback((slot: string, today: string, date: string) => {
+    if (date !== today) return false;
+    const [hh, mm] = slot.split(':').map(Number);
+    const slotHour = hh + mm / 60;
+    const now = new Date();
+    return slotHour < (now.getHours() + now.getMinutes() / 60);
+  }, []);
 
   const handleSave = async () => {
     if (loading) return;
@@ -450,29 +546,21 @@ function AppointmentFormModal({
       showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
       return;
     }
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(startTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+    if (!selectedSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona un horario disponible.' });
       return;
     }
 
-    const [hhStr, mmStr] = startTimeText.split(':');
+    const [hhStr, mmStr] = selectedSlot.split(':');
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
 
-    // ── Validación de fecha y hora pasada ──
     const now = new Date();
     const todayStr = toLocalISOString(now);
-    const currentHour = now.getHours() + now.getMinutes() / 60;
 
     if (dateText < todayStr) {
       showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
-      return;
-    }
-
-    if (dateText === todayStr && startHour < currentHour) {
-      showAlert({ title: 'Hora inválida', message: 'No puedes agendar citas para una hora que ya pasó.' });
       return;
     }
 
@@ -492,176 +580,328 @@ function AppointmentFormModal({
     setLoading(false);
 
     if (success) {
-      onClose();
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+      }, 1400);
     }
   };
 
   if (!visible) return null;
 
+  const glassInput = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
+    marginBottom: 4,
+  };
+
+  const todayStr = toLocalISOString(new Date());
+  const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr = toLocalISOString(tomorrowDate);
+
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {initialData ? 'Editar Cita' : 'Nueva Cita'}
-            </Text>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end', padding: 0 }]}>
 
-            {!initialData && (
-              <TouchableOpacity 
-                onPress={() => {
-                  setIsBlocking(!isBlocking);
-                  if (!isBlocking) setClientName(''); // Limpiar si entra a modo bloqueo
-                }}
-                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 }}
-                activeOpacity={0.7}
-              >
-                <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: isBlocking ? appColors.primary : colors.border, backgroundColor: isBlocking ? appColors.primary : 'transparent', justifyContent: 'center', alignItems: 'center' }}>
-                  {isBlocking && <Feather name="check" size={14} color="#fff" />}
-                </View>
-                <Text style={{ color: colors.textPrimary }}>Bloquear este horario</Text>
-              </TouchableOpacity>
-            )}
-
-            {isBlocking && (
-              <>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Razón del bloqueo (Opcional)</Text>
-                <TextInput
-                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={clientName}
-                  onChangeText={setClientName}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="Ej: Colación, Descanso..."
+          {/* ── Estado de éxito ─────────────────────────────────── */}
+          {showSuccess && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 10 }]}>
+              <View style={[formStyles.successCard, { overflow: 'hidden' }]}>
+                <BlurView
+                  intensity={isDarkMode ? 70 : 85}
+                  tint={isDarkMode ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
                 />
-              </>
-            )}
+                <View style={[StyleSheet.absoluteFill, {
+                  backgroundColor: isDarkMode ? 'rgba(12,18,12,0.5)' : 'rgba(240,255,240,0.5)',
+                  borderRadius: 24,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(61,158,90,0.4)',
+                }]} />
+                <Feather name="check-circle" size={52} color="#3D9E5A" />
+                <Text style={[formStyles.successTitle, { color: colors.textPrimary }]}>¡Listo!</Text>
+                <Text style={[formStyles.successSub, { color: colors.textSecondary }]}>
+                  {isBlocking ? 'Horario bloqueado' : 'Cita agendada'}
+                </Text>
+              </View>
+            </View>
+          )}
 
-            {!isBlocking && (
-              <>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Cliente</Text>
-                <TextInput
-                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={clientName}
-                  onChangeText={setClientName}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="Nombre del cliente"
-                />
+          {/* ── Bottom sheet glass ──────────────────────────────── */}
+          <View style={[formStyles.sheet, { overflow: 'hidden' }]}>
+            <BlurView
+              intensity={isDarkMode ? 65 : 85}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
+            />
+            <View style={[StyleSheet.absoluteFill, {
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              backgroundColor: isDarkMode ? 'rgba(10,10,16,0.6)' : 'rgba(248,248,252,0.55)',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }]} />
 
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
-                <View style={[styles.modalRow, { marginBottom: 16 }]}>
-                  {services.map((s, index) => (
+            {/* Handle */}
+            <View style={[formStyles.handle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)' }]} />
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+
+              {/* Header */}
+              <View style={formStyles.header}>
+                <Text style={[formStyles.title, { color: colors.textPrimary }]}>
+                  {initialData ? 'Editar cita' : isBlocking ? 'Bloquear horario' : 'Nueva cita'}
+                </Text>
+                <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={formStyles.closeBtn}>
+                  <Feather name="x" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Toggle bloqueo */}
+              {!initialData && (
+                <TouchableOpacity
+                  onPress={() => { setIsBlocking(!isBlocking); setClientName(''); }}
+                  style={[formStyles.blockToggle, { borderColor: isBlocking ? 'rgba(227,25,55,0.4)' : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'), backgroundColor: isBlocking ? 'rgba(227,25,55,0.1)' : 'transparent' }]}
+                  activeOpacity={0.7}
+                >
+                  <View style={[formStyles.checkbox, { borderColor: isBlocking ? appColors.primary : colors.textSecondary, backgroundColor: isBlocking ? appColors.primary : 'transparent' }]}>
+                    {isBlocking && <Feather name="lock" size={10} color="#fff" />}
+                  </View>
+                  <Text style={[formStyles.blockToggleText, { color: isBlocking ? appColors.primary : colors.textSecondary }]}>
+                    Bloquear este horario
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Input principal: cliente o razón de bloqueo */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>
+                {isBlocking ? 'RAZÓN (OPCIONAL)' : 'CLIENTE'}
+              </Text>
+              <TextInput
+                style={[glassInput, { color: colors.textPrimary, justifyContent: 'flex-start' } as any]}
+                value={clientName}
+                onChangeText={setClientName}
+                placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                placeholder={isBlocking ? 'Ej: Colación, Descanso...' : 'Nombre del cliente'}
+              />
+
+              {/* Servicios */}
+              {!isBlocking && (
+                <>
+                  <Text style={[formStyles.label, { color: colors.textSecondary }]}>SERVICIO</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} contentContainerStyle={{ gap: 8 }}>
+                    {services.map((s, index) => (
+                      <TouchableOpacity
+                        key={s.id || `${s.name}-${index}`}
+                        onPress={() => setService(s.name)}
+                        style={[formStyles.serviceChip, {
+                          backgroundColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                          borderColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
+                        }]}
+                      >
+                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#fff' : colors.textSecondary }]}>
+                          {s.name}{s.price > 0 ? `  $${Number(s.price).toLocaleString('es-CL')}` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              {/* Profesional — círculos de color */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>PROFESIONAL</Text>
+              <View style={formStyles.workerRow}>
+                {colors.workersList?.map((w: any) => {
+                  const selected = workerId === w.id;
+                  return (
                     <TouchableOpacity
-                      key={s.id || `${s.name}-${index}`}
-                      onPress={() => setService(s.name)}
-                      style={[
-                        styles.modalChip,
-                        service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                      ]}
+                      key={w.id}
+                      onPress={() => setWorkerId(w.id)}
+                      activeOpacity={0.8}
+                      style={[formStyles.workerCircle, {
+                        backgroundColor: w.color ?? appColors.primary,
+                        borderWidth: selected ? 3 : 1.5,
+                        borderColor: selected ? '#fff' : (w.color ?? appColors.primary) + '80',
+                        shadowColor: selected ? (w.color ?? appColors.primary) : 'transparent',
+                        shadowOpacity: 0.7,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 0 },
+                      }]}
                     >
-                      <Text style={[styles.modalChipText, service === s.name ? { color: '#fff' } : { color: colors.textSecondary }]}>
-                        {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
+                      <Text style={formStyles.workerInitial}>
+                        {w.name?.[0]?.toUpperCase() ?? '?'}
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
-            <View style={styles.modalRow}>
-              {colors.workersList?.map((w: any) => (
-                <TouchableOpacity
-                  key={w.id}
-                  onPress={() => setWorkerId(w.id)}
-                  style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
-                >
-                  <Text style={[styles.modalChipText, workerId === w.id ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha de la Cita</Text>
-            <TouchableOpacity 
-              onPress={() => setShowCalendar(!showCalendar)}
-              style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-            >
-              <Text style={{ color: colors.textPrimary }}>{dateText || 'Seleccionar fecha'}</Text>
-              <Feather name="calendar" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            {showCalendar && (
-              <View style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
-                <Calendar
-                  minDate={toLocalISOString(new Date())}
-                  onDayPress={(day: any) => {
-                    setDateText(day.dateString);
-                    setShowCalendar(false);
-                  }}
-                  markedDates={dateText ? {
-                    [dateText]: { selected: true, selectedColor: appColors.primary }
-                  } : {}}
-                  theme={{
-                    backgroundColor: colors.surface,
-                    calendarBackground: colors.surface,
-                    textSectionTitleColor: colors.textSecondary,
-                    selectedDayBackgroundColor: appColors.primary,
-                    selectedDayTextColor: '#ffffff',
-                    todayTextColor: appColors.primary,
-                    dayTextColor: colors.textPrimary,
-                    textDisabledColor: colors.border,
-                    monthTextColor: colors.textPrimary,
-                    arrowColor: appColors.primary,
-                  }}
-                />
+                  );
+                })}
               </View>
-            )}
+              {colors.workersList && !!workerId ? (
+                <Text style={[formStyles.workerName, { color: colors.textSecondary }]}>
+                  {colors.workersList.find((w: any) => w.id === workerId)?.name ?? ''}
+                </Text>
+              ) : null}
 
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Hora (HH:MM)</Text>
-                <TextInput
-                  style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={startTimeText}
-                  onChangeText={setStartTimeText}
-                  placeholder="Ej: 09:30"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Duración (min)</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, height: 40 }}>
-                  <TouchableOpacity 
-                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
-                    onPress={() => setDurationMinutes(Math.max(10, durationMinutes - 10))}
-                  >
-                    <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{durationMinutes}</Text>
-                  <TouchableOpacity 
-                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.surface }} 
-                    onPress={() => setDurationMinutes(durationMinutes + 10)}
-                  >
-                    <Text style={{ color: colors.textPrimary, fontWeight: 'bold' }}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleSave} 
-                disabled={loading}
-                style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+              {/* Fecha */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>FECHA</Text>
+              <TouchableOpacity
+                onPress={() => setShowCalendar(!showCalendar)}
+                style={glassInput}
               >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
-                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="calendar" size={15} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textPrimary, fontSize: 15 }}>
+                    {selectedSlot
+                      ? `${dateText || 'Seleccionar fecha'} · ${selectedSlot}`
+                      : (dateText || 'Seleccionar fecha')}
+                  </Text>
+                </View>
+                <Feather name={showCalendar ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
+
+              {/* Atajos de fecha */}
+              <View style={formStyles.quickDates}>
+                {[
+                  { label: 'Hoy', val: todayStr },
+                  { label: 'Mañana', val: tomorrowStr },
+                ].map(({ label, val }) => (
+                  <TouchableOpacity
+                    key={label}
+                    onPress={() => { setDateText(val); setShowCalendar(false); }}
+                    style={[formStyles.quickChip, {
+                      backgroundColor: dateText === val ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                      borderColor: dateText === val ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
+                    }]}
+                  >
+                    <Text style={[formStyles.quickChipText, { color: dateText === val ? '#fff' : colors.textSecondary }]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Slot picker de hora */}
+              <Text style={[formStyles.label, { color: colors.textSecondary, marginTop: 14 }]}>HORA</Text>
+              {slotsLoading ? (
+                <ActivityIndicator size="small" color={appColors.primary} style={{ marginVertical: 12 }} />
+              ) : !workerId || !dateText ? (
+                <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 8 }}>
+                  {!workerId ? 'Selecciona un profesional primero' : 'Selecciona una fecha primero'}
+                </Text>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginBottom: 4 }}
+                  contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                >
+                  {allSlots.map(slot => {
+                    const busy = isSlotBusy(slot);
+                    const past = isPastSlot(slot, todayStr, dateText);
+                    const disabled = busy || past;
+                    const selected = selectedSlot === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
+                        onPress={() => { if (!disabled) setSelectedSlot(slot); }}
+                        disabled={disabled}
+                        style={[formStyles.slotChip, {
+                          backgroundColor: selected
+                            ? appColors.primary
+                            : disabled
+                              ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
+                              : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                          borderColor: selected
+                            ? appColors.primary
+                            : disabled
+                              ? (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
+                              : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
+                          opacity: disabled ? 0.38 : 1,
+                        }]}
+                      >
+                        <Text style={{ color: selected ? '#fff' : colors.textPrimary, fontSize: 13, fontWeight: selected ? '600' : '400' }}>
+                          {slot}
+                        </Text>
+                        {busy && (
+                          <Text style={{ fontSize: 9, color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', marginTop: 1, letterSpacing: 0.3 }}>
+                            ocupado
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              {/* Calendario inline */}
+              {showCalendar && (
+                <View style={{ marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}>
+                  <Calendar
+                    minDate={todayStr}
+                    onDayPress={(day: any) => { setDateText(day.dateString); setShowCalendar(false); }}
+                    markedDates={dateText ? { [dateText]: { selected: true, selectedColor: appColors.primary } } : {}}
+                    theme={{
+                      backgroundColor: 'transparent',
+                      calendarBackground: 'transparent',
+                      textSectionTitleColor: colors.textSecondary,
+                      selectedDayBackgroundColor: appColors.primary,
+                      selectedDayTextColor: '#ffffff',
+                      todayTextColor: appColors.primary,
+                      dayTextColor: colors.textPrimary,
+                      textDisabledColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      monthTextColor: colors.textPrimary,
+                      arrowColor: appColors.primary,
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* Duración */}
+              <Text style={[formStyles.label, { color: colors.textSecondary, marginTop: 16 }]}>DURACIÓN</Text>
+              <View style={formStyles.durationRow}>
+                <TouchableOpacity
+                  style={[formStyles.durationBtn, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' }]}
+                  onPress={() => setDurationMinutes(Math.max(10, durationMinutes - 10))}
+                >
+                  <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '300' }}>−</Text>
+                </TouchableOpacity>
+                <View style={formStyles.durationDisplay}>
+                  <Text style={[formStyles.durationValue, { color: colors.textPrimary }]}>{durationMinutes}</Text>
+                  <Text style={[formStyles.durationUnit, { color: colors.textSecondary }]}>min</Text>
+                </View>
+                <TouchableOpacity
+                  style={[formStyles.durationBtn, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' }]}
+                  onPress={() => setDurationMinutes(durationMinutes + 10)}
+                >
+                  <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '300' }}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Botón principal */}
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={loading}
+                style={[formStyles.saveBtn, { backgroundColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={formStyles.saveBtnText}>{initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
+                }
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={onClose} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.6}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 0.5 }}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1100,8 +1340,11 @@ export default function CompanyAgendaScreen() {
           <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        {/* Toggle Día / Semana */}
-        <View style={[styles.toggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Toggle Día / Semana — glass */}
+        <View style={[styles.toggle, {
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+        }]}>
           {(['day', 'week'] as ViewMode[]).map(m => (
             <TouchableOpacity
               key={m}
@@ -1151,11 +1394,15 @@ export default function CompanyAgendaScreen() {
         </View>
       )}
 
-      {/* ── Filtro por trabajador ──────────────────────────────────── */}
+      {/* ── Filtro por trabajador — glass chips ───────────────────── */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
         {viewMode === 'day' && (
           <TouchableOpacity
-            style={[styles.filterChip, !selectedWorkerFilter && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[styles.filterChip,
+              !selectedWorkerFilter
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            ]}
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
           >
@@ -1165,7 +1412,11 @@ export default function CompanyAgendaScreen() {
         {workers.map(w => (
           <TouchableOpacity
             key={w.id}
-            style={[styles.filterChip, selectedWorkerFilter === w.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[styles.filterChip,
+              selectedWorkerFilter === w.name
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            ]}
             onPress={() => setSelectedWorkerFilter(w.name)}
             activeOpacity={0.8}
           >
@@ -1174,10 +1425,17 @@ export default function CompanyAgendaScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Stats row ────────────────────────────────────────────── */}
+      {/* ── Stats row (Liquid Glass) ─────────────────────────────── */}
       <View style={styles.statsRow}>
         {stats.map((s, i) => (
-          <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View key={i} style={[styles.statCard, {
+            backgroundColor: i === 0
+              ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+              : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+            borderColor: i === 0
+              ? 'rgba(227,25,55,0.3)'
+              : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
+          }]}>
             <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
               {s.value}
             </Text>
@@ -1220,6 +1478,8 @@ export default function CompanyAgendaScreen() {
         colors={{ ...colors, workersList: workers, businessId: business?.id }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
         showAlert={showAlert}
+        openingHour={startHour}
+        closingHour={endHour}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1230,6 +1490,7 @@ export default function CompanyAgendaScreen() {
         onAction={handleSheetAction}
         colors={colors}
         isGym={isGym}
+        isDarkMode={isDarkMode}
       />
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
@@ -1657,5 +1918,191 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: appColors.error,
+  },
+});
+
+// ─── Estilos del formulario de cita (Liquid Glass) ────────────────────────────
+
+const formStyles = StyleSheet.create({
+  sheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '90%',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  blockToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockToggleText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  serviceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  serviceChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  workerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  workerCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workerInitial: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  workerName: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  quickDates: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  quickChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  quickChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  slotChip: {
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 58,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    paddingVertical: 8,
+  },
+  durationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  durationDisplay: {
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  durationValue: {
+    fontSize: 28,
+    fontWeight: '300',
+    letterSpacing: -0.5,
+  },
+  durationUnit: {
+    fontSize: 11,
+    letterSpacing: 1,
+    marginTop: -2,
+  },
+  saveBtn: {
+    alignSelf: 'stretch',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 4,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  successCard: {
+    width: 200,
+    height: 200,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  successSub: {
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
 });
