@@ -15,9 +15,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator
+  ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import Sidebar from '../../../../components/Sidebar';
+import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { useAlert } from '../../../../context/AlertContext';
@@ -131,6 +133,17 @@ function nowLinePosition(startHour: number, endHour: number) {
   return (h - startHour) * HOUR_HEIGHT;
 }
 
+function getPastelColor(id: string, isDarkMode: boolean, alpha: number = 1) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  const s = isDarkMode ? 45 : 65;
+  const l = isDarkMode ? 25 : 85;
+  return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+}
+
 // ─── Componente: AppointmentCard ─────────────────────────────────────────────
 
 function AppointmentCard({
@@ -155,15 +168,16 @@ function AppointmentCard({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
+  const pastelColor = getPastelColor(appt.id, isDarkMode, isDarkMode ? 0.6 : 0.85);
+  const pastelBorder = getPastelColor(appt.id, isDarkMode, 1);
+
   const glassColor = isBlocked
     ? (isDarkMode ? 'rgba(60,60,60,0.6)' : 'rgba(220,220,220,0.7)')
-    : isDarkMode
-      ? 'rgba(30,30,40,0.75)'
-      : 'rgba(255,255,255,0.75)';
+    : pastelColor;
 
   const glassBorder = isBlocked
     ? (isDarkMode ? 'rgba(120,120,120,0.3)' : 'rgba(160,160,160,0.4)')
-    : appt.workerColor + '55';
+    : pastelBorder;
 
   return (
     <TouchableOpacity
@@ -372,11 +386,12 @@ function AppointmentFormModal({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [busyIntervals, setBusyIntervals] = useState<Array<{ start: number; end: number }>>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [endSlot, setEndSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const formScrollRef = useRef<any>(null);
 
   const [services, setServices] = useState<any[]>([]);
 
@@ -447,15 +462,18 @@ function AppointmentFormModal({
         const hh = Math.floor(initialData.startHour);
         const mm = Math.round((initialData.startHour - hh) * 60);
         setSelectedSlot(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
-        setDurationMinutes(Math.round(initialData.durationHours * 60));
+        const endH = initialData.startHour + initialData.durationHours;
+        const endHh = Math.floor(endH);
+        const endMm = Math.round(((endH - endHh) * 60) / 15) * 15;
+        setEndSlot(`${String(endHh).padStart(2, '0')}:${String(Math.min(endMm, 45)).padStart(2, '0')}`);
         setDateText(initialData.date || selectedDateStr);
         setIsBlocking(initialData.service === 'BLOQUEO');
       } else {
         setClientName('');
         setService('');
         setWorkerId('');
-        setSelectedSlot(null);
-        setDurationMinutes(30);
+        setSelectedSlot(`${String(openingHour).padStart(2, '0')}:00`);
+        setEndSlot(`${String(Math.min(openingHour + 1, closingHour - 1)).padStart(2, '0')}:00`);
         setDateText(selectedDateStr);
         setIsBlocking(false);
       }
@@ -500,23 +518,6 @@ function AppointmentFormModal({
       });
   }, [workerId, dateText, colors.businessId, initialData?.id]);
 
-  // Si la duración sube y el slot elegido queda solapado, lo limpia
-  useEffect(() => {
-    if (!selectedSlot) return;
-    const [hh, mm] = selectedSlot.split(':').map(Number);
-    const slotStart = hh + mm / 60;
-    const slotEnd = slotStart + durationMinutes / 60;
-    const nowBusy = busyIntervals.some(({ start, end }) => slotStart < end && slotEnd > start);
-    if (nowBusy) setSelectedSlot(null);
-  }, [busyIntervals, durationMinutes]);
-
-  const isSlotBusy = useCallback((slot: string) => {
-    const [hh, mm] = slot.split(':').map(Number);
-    const slotStart = hh + mm / 60;
-    const slotEnd = slotStart + durationMinutes / 60;
-    return busyIntervals.some(({ start, end }) => slotStart < end && slotEnd > start);
-  }, [busyIntervals, durationMinutes]);
-
   const isPastSlot = useCallback((slot: string, today: string, date: string) => {
     if (date !== today) return false;
     const [hh, mm] = slot.split(':').map(Number);
@@ -547,7 +548,11 @@ function AppointmentFormModal({
       return;
     }
     if (!selectedSlot) {
-      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona un horario disponible.' });
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de inicio.' });
+      return;
+    }
+    if (!endSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de fin.' });
       return;
     }
 
@@ -555,6 +560,12 @@ function AppointmentFormModal({
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
+    const [ehStr, emStr] = endSlot.split(':');
+    const endHourCalc = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
+    if (endHourCalc <= startHour) {
+      showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
+      return;
+    }
 
     const now = new Date();
     const todayStr = toLocalISOString(now);
@@ -573,7 +584,7 @@ function AppointmentFormModal({
       service: isBlocking ? 'BLOQUEO' : service,
       worker_id: workerId,
       startHour,
-      durationHours: durationMinutes / 60,
+      durationHours: endHourCalc - startHour,
       date: dateText,
       price,
     });
@@ -590,6 +601,14 @@ function AppointmentFormModal({
 
   if (!visible) return null;
 
+  const durationForPicker = (() => {
+    if (!selectedSlot || !endSlot) return 60;
+    const [sh, sm] = selectedSlot.split(':').map(Number);
+    const [eh, em] = endSlot.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    return Math.max(15, diff);
+  })();
+
   const glassInput = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -604,8 +623,6 @@ function AppointmentFormModal({
   };
 
   const todayStr = toLocalISOString(new Date());
-  const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = toLocalISOString(tomorrowDate);
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
@@ -654,7 +671,7 @@ function AppointmentFormModal({
             {/* Handle */}
             <View style={[formStyles.handle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)' }]} />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+            <ScrollView ref={formScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
 
               {/* Header */}
               <View style={formStyles.header}>
@@ -759,87 +776,11 @@ function AppointmentFormModal({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Feather name="calendar" size={15} color={colors.textSecondary} />
                   <Text style={{ color: colors.textPrimary, fontSize: 15 }}>
-                    {selectedSlot
-                      ? `${dateText || 'Seleccionar fecha'} · ${selectedSlot}`
-                      : (dateText || 'Seleccionar fecha')}
+                    {dateText || 'Seleccionar fecha'}
                   </Text>
                 </View>
                 <Feather name={showCalendar ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
               </TouchableOpacity>
-
-              {/* Atajos de fecha */}
-              <View style={formStyles.quickDates}>
-                {[
-                  { label: 'Hoy', val: todayStr },
-                  { label: 'Mañana', val: tomorrowStr },
-                ].map(({ label, val }) => (
-                  <TouchableOpacity
-                    key={label}
-                    onPress={() => { setDateText(val); setShowCalendar(false); }}
-                    style={[formStyles.quickChip, {
-                      backgroundColor: dateText === val ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
-                      borderColor: dateText === val ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
-                    }]}
-                  >
-                    <Text style={[formStyles.quickChipText, { color: dateText === val ? '#fff' : colors.textSecondary }]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Slot picker de hora */}
-              <Text style={[formStyles.label, { color: colors.textSecondary, marginTop: 14 }]}>HORA</Text>
-              {slotsLoading ? (
-                <ActivityIndicator size="small" color={appColors.primary} style={{ marginVertical: 12 }} />
-              ) : !workerId || !dateText ? (
-                <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 8 }}>
-                  {!workerId ? 'Selecciona un profesional primero' : 'Selecciona una fecha primero'}
-                </Text>
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginBottom: 4 }}
-                  contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-                >
-                  {allSlots.map(slot => {
-                    const busy = isSlotBusy(slot);
-                    const past = isPastSlot(slot, todayStr, dateText);
-                    const disabled = busy || past;
-                    const selected = selectedSlot === slot;
-                    return (
-                      <TouchableOpacity
-                        key={slot}
-                        onPress={() => { if (!disabled) setSelectedSlot(slot); }}
-                        disabled={disabled}
-                        style={[formStyles.slotChip, {
-                          backgroundColor: selected
-                            ? appColors.primary
-                            : disabled
-                              ? (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
-                              : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
-                          borderColor: selected
-                            ? appColors.primary
-                            : disabled
-                              ? (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
-                              : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
-                          opacity: disabled ? 0.38 : 1,
-                        }]}
-                      >
-                        <Text style={{ color: selected ? '#fff' : colors.textPrimary, fontSize: 13, fontWeight: selected ? '600' : '400' }}>
-                          {slot}
-                        </Text>
-                        {busy && (
-                          <Text style={{ fontSize: 9, color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', marginTop: 1, letterSpacing: 0.3 }}>
-                            ocupado
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
 
               {/* Calendario inline */}
               {showCalendar && (
@@ -864,25 +805,45 @@ function AppointmentFormModal({
                 </View>
               )}
 
-              {/* Duración */}
-              <Text style={[formStyles.label, { color: colors.textSecondary, marginTop: 16 }]}>DURACIÓN</Text>
-              <View style={formStyles.durationRow}>
-                <TouchableOpacity
-                  style={[formStyles.durationBtn, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' }]}
-                  onPress={() => setDurationMinutes(Math.max(10, durationMinutes - 10))}
-                >
-                  <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '300' }}>−</Text>
-                </TouchableOpacity>
-                <View style={formStyles.durationDisplay}>
-                  <Text style={[formStyles.durationValue, { color: colors.textPrimary }]}>{durationMinutes}</Text>
-                  <Text style={[formStyles.durationUnit, { color: colors.textSecondary }]}>min</Text>
+              {/* Pickers DESDE / HASTA — side by side */}
+              {(!workerId || !dateText) && (
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8, marginBottom: 2 }}>
+                  {!workerId ? '· Selecciona un profesional para ver disponibilidad' : '· Selecciona una fecha para ver disponibilidad'}
+                </Text>
+              )}
+              {slotsLoading && workerId && dateText && (
+                <ActivityIndicator size="small" color={appColors.primary} style={{ alignSelf: 'center', marginVertical: 4 }} />
+              )}
+              <View
+                style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}
+                onTouchStart={() => formScrollRef.current?.setNativeProps({ scrollEnabled: false })}
+                onTouchEnd={() => setTimeout(() => formScrollRef.current?.setNativeProps({ scrollEnabled: true }), 600)}
+                onTouchCancel={() => formScrollRef.current?.setNativeProps({ scrollEnabled: true })}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>DESDE</Text>
+                  <TimeWheelPicker
+                    openingHour={openingHour}
+                    closingHour={closingHour}
+                    selectedSlot={selectedSlot}
+                    onSlotSelect={setSelectedSlot}
+                    busyIntervals={workerId && dateText ? busyIntervals : []}
+                    durationMinutes={durationForPicker}
+                    isDarkMode={isDarkMode}
+                  />
                 </View>
-                <TouchableOpacity
-                  style={[formStyles.durationBtn, { borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' }]}
-                  onPress={() => setDurationMinutes(durationMinutes + 10)}
-                >
-                  <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '300' }}>+</Text>
-                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>HASTA</Text>
+                  <TimeWheelPicker
+                    openingHour={openingHour}
+                    closingHour={closingHour}
+                    selectedSlot={endSlot}
+                    onSlotSelect={setEndSlot}
+                    busyIntervals={[]}
+                    durationMinutes={0}
+                    isDarkMode={isDarkMode}
+                  />
+                </View>
               </View>
 
               {/* Botón principal */}
@@ -953,7 +914,7 @@ export default function CompanyAgendaScreen() {
   }, [startHour, endHour]);
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -964,6 +925,8 @@ export default function CompanyAgendaScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [profileWorker, setProfileWorker] = useState<Worker | null>(null);
+  const [profileVisible, setProfileVisible] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
@@ -1181,14 +1144,28 @@ export default function CompanyAgendaScreen() {
     >
       {/* Cabecera de columnas (trabajadores) */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
-        {WORKERS.map(w => (
-          <View key={w.id} style={[styles.workerCol, { width: colWidth }]}>
-            <View style={[styles.workerAvatar, { backgroundColor: w.color + '20', borderColor: w.color }]}>
-              <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
-            </View>
-            <Text style={[styles.workerName, { color: colors.textSecondary }]}>{w.name}</Text>
-          </View>
-        ))}
+        {WORKERS.map(w => {
+          const todayAppts = appointments.filter(a => a.worker === w.name && a.date === toLocalISOString(selectedDate)).length;
+          return (
+            <TouchableOpacity
+              key={w.id}
+              style={[styles.workerCol, { width: colWidth }]}
+              onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
+              activeOpacity={0.75}
+            >
+              <View style={styles.workerAvatarWrapper}>
+                <View style={[styles.workerAvatar, { backgroundColor: w.color + '25', borderColor: w.color }]}>
+                  <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
+                </View>
+                <View style={[styles.workerActiveDot, { backgroundColor: '#4CAF50' }]} />
+              </View>
+              <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+              {todayAppts > 0 && (
+                <Text style={[styles.workerApptCount, { color: w.color }]}>{todayAppts} cita{todayAppts > 1 ? 's' : ''}</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Grid de tiempo */}
@@ -1494,6 +1471,55 @@ export default function CompanyAgendaScreen() {
       />
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+
+      {/* ── Worker Profile Card ───────────────────────────────────── */}
+      <Modal visible={profileVisible} transparent animationType="fade" onRequestClose={() => setProfileVisible(false)}>
+        <Pressable style={styles.profileOverlay} onPress={() => setProfileVisible(false)}>
+          <Pressable onPress={() => {}}>
+            <BlurView intensity={70} tint="dark" style={styles.profileCard}>
+              <View style={[styles.profileCardInner, { backgroundColor: 'rgba(14,14,14,0.78)' }]}>
+                <TouchableOpacity style={styles.profileClose} onPress={() => setProfileVisible(false)}>
+                  <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' }}>✕</Text>
+                </TouchableOpacity>
+                {profileWorker && (
+                  <>
+                    <View style={[styles.profileAvatar, { backgroundColor: profileWorker.color + '25', borderColor: profileWorker.color }]}>
+                      <Text style={[styles.profileInitials, { color: profileWorker.color }]}>{profileWorker.initials}</Text>
+                    </View>
+                    <Text style={styles.profileName}>{profileWorker.name}</Text>
+                    <View style={styles.profileDivider} />
+                    <View style={styles.profileStats}>
+                      <View style={styles.profileStatItem}>
+                        <Text style={styles.profileStatValue}>
+                          {appointments.filter(a => a.worker === profileWorker.name && a.date === toLocalISOString(selectedDate)).length}
+                        </Text>
+                        <Text style={styles.profileStatLabel}>Hoy</Text>
+                      </View>
+                      <View style={[styles.profileStatItem, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: 'rgba(255,255,255,0.1)' }]}>
+                        <Text style={styles.profileStatValue}>
+                          {appointments.filter(a => a.worker === profileWorker.name).length}
+                        </Text>
+                        <Text style={styles.profileStatLabel}>Semana</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.profileFilterBtn, { backgroundColor: profileWorker.color + '20', borderColor: profileWorker.color + '50' }]}
+                      onPress={() => {
+                        setSelectedWorkerFilter(prev => prev === profileWorker.name ? null : profileWorker.name);
+                        setProfileVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.profileFilterBtnText, { color: profileWorker.color }]}>
+                        {selectedWorkerFilter === profileWorker.name ? 'Ver todos' : 'Filtrar por este trabajador'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </BlurView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1619,22 +1645,132 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  workerAvatarWrapper: {
+    position: 'relative',
+  },
   workerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  workerActiveDot: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: '#0A0A0A',
+  },
   workerInitials: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   workerName: {
     fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  workerApptCount: {
+    fontSize: 9,
+    fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  // Worker profile modal
+  profileOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  profileCard: {
+    width: 260,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  profileCardInner: {
+    padding: 28,
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  profileInitials: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  profileDivider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginVertical: 8,
+  },
+  profileStats: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 4,
+  },
+  profileStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
+  },
+  profileStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profileStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    fontWeight: '500',
+  },
+  profileFilterBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 50,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  profileFilterBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   weekDayNum: {
     width: 26,

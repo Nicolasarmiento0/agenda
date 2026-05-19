@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -7,14 +7,19 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SelectedBusiness, useBusiness } from '../../../../context/BusinessContext';
+import { useAuth } from '../../../../context/AuthContext';
+import { useAlert } from '../../../../context/AlertContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
@@ -23,39 +28,63 @@ const { width } = Dimensions.get('window');
 
 export default function ClientBusinessProfileScreen() {
   const { selectedBusiness, setSelectedBusiness } = useBusiness();
+  const { profile } = useAuth();
   const { colors, isDarkMode } = useTheme();
+  const { showAlert } = useAlert();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [fetchedBusiness, setFetchedBusiness] = useState<SelectedBusiness | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
 
+  // Reviews State
+  const [reviewsData, setReviewsData] = useState({ score: 0, total: 0 });
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [newScore, setNewScore] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Si no hay negocio en contexto (ej: recarga de página) pero hay un id en la URL,
-  // lo fetcheamos directamente desde Supabase.
-  useEffect(() => {
-    if (selectedBusiness) {
-      setFetchedBusiness(selectedBusiness);
-      return;
-    }
-    if (!id) return;
-
-    setFetchLoading(true);
-    supabase
-      .from('businesses')
-      .select('*')
-      .eq('id', id)
-      .single()
-      .then(({ data, error }) => {
-        if (data) {
-          setFetchedBusiness(data);
-          setSelectedBusiness(data); // repoblar contexto
-        } else {
-          console.error('ClientBusinessProfile: error fetching business by id', error);
-        }
-        setFetchLoading(false);
+  const fetchBusinessData = async (businessId: string) => {
+    // 1. Fetch Reviews
+    const { data: reviews } = await supabase
+      .from('reviews')
+      .select('score')
+      .eq('business_id', businessId);
+      
+    if (reviews && reviews.length > 0) {
+      const sum = reviews.reduce((acc, r) => acc + r.score, 0);
+      setReviewsData({
+        score: parseFloat((sum / reviews.length).toFixed(1)),
+        total: reviews.length
       });
+    } else {
+      setReviewsData({ score: 0, total: 0 });
+    }
+
+    if (!selectedBusiness) {
+      // Fetch Business Details if coming from a direct link or refresh
+      setFetchLoading(true);
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', businessId)
+        .single();
+        
+      if (data) {
+        setFetchedBusiness(data);
+        setSelectedBusiness(data);
+      }
+      setFetchLoading(false);
+    } else {
+      setFetchedBusiness(selectedBusiness);
+    }
+  };
+
+  useEffect(() => {
+    const bizId = selectedBusiness?.id || id;
+    if (bizId) fetchBusinessData(bizId);
   }, [id, selectedBusiness]);
 
   useEffect(() => {
@@ -65,6 +94,30 @@ export default function ClientBusinessProfileScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
   }, [fetchedBusiness]);
+
+  const handleSubmitReview = async () => {
+    if (!profile?.id || !fetchedBusiness?.id) return;
+    
+    setIsSubmitting(true);
+    const { error } = await supabase.from('reviews').insert([{
+      business_id: fetchedBusiness.id,
+      client_id: profile.id,
+      score: newScore,
+      comment: newComment.trim()
+    }]);
+
+    setIsSubmitting(false);
+
+    if (error) {
+      showAlert({ title: 'Error', message: 'No pudimos guardar tu opinión. Inténtalo más tarde.' });
+    } else {
+      setShowReviewModal(false);
+      setNewComment('');
+      setNewScore(5);
+      showAlert({ title: '¡Gracias!', message: 'Tu opinión ha sido guardada.' });
+      fetchBusinessData(fetchedBusiness.id);
+    }
+  };
 
   if (fetchLoading) {
     return (
@@ -112,6 +165,17 @@ export default function ClientBusinessProfileScreen() {
           </View>
 
           <Text style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+          
+          {/* Rating Section */}
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.ratingBadge}>
+            <Ionicons name="star" size={14} color="#F0A030" />
+            <Text style={[styles.ratingScore, { color: colors.textPrimary }]}>
+              {reviewsData.total > 0 ? reviewsData.score : 'Nuevo'}
+            </Text>
+            <Text style={[styles.ratingTotal, { color: colors.textSecondary }]}>
+              ({reviewsData.total > 0 ? `${reviewsData.total} opiniones` : 'Se el primero'})
+            </Text>
+          </TouchableOpacity>
 
           {description ? (
             <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
@@ -161,6 +225,19 @@ export default function ClientBusinessProfileScreen() {
                 <Feather name="external-link" size={14} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
+            
+            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.detailRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="chatbubble-outline" size={16} color={appColors.primary} />
+              </View>
+              <View style={styles.detailTextContainer}>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Reputación</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                  Escribir una opinión
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
         </Animated.View>
@@ -175,6 +252,47 @@ export default function ClientBusinessProfileScreen() {
           <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
         </TouchableOpacity>
       </View>
+
+      {/* MODAL DE RESEÑAS */}
+      <Modal visible={showReviewModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={() => setShowReviewModal(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
+            
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} activeOpacity={0.7} onPress={() => setNewScore(s)} style={styles.starBtn}>
+                  <Ionicons name={s <= newScore ? "star" : "star-outline"} size={36} color="#F0A030" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={[styles.reviewInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              placeholder="Opcional: Escribe tu opinión o sugerencia..."
+              placeholderTextColor={colors.textSecondary}
+              value={newComment}
+              onChangeText={setNewComment}
+              multiline
+              maxLength={250}
+            />
+            
+            <TouchableOpacity 
+              style={[appStyles.primaryButton, { marginTop: 16 }]} 
+              activeOpacity={0.8} 
+              disabled={isSubmitting}
+              onPress={handleSubmitReview}
+            >
+              {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -228,8 +346,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0A03015',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 20,
+    gap: 4,
+  },
+  ratingScore: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  ratingTotal: {
+    fontSize: 12,
   },
   description: {
     fontSize: 14,
@@ -278,5 +413,43 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+
+  /* MODAL */
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  starBtn: {
+    padding: 4,
+  },
+  reviewInput: {
+    height: 100,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 16,
+    paddingTop: 16,
+    fontSize: 14,
+    textAlignVertical: 'top',
   },
 });

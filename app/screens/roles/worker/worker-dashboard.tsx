@@ -59,16 +59,19 @@ const BarChart = ({ data, colors, filter }: { data: { label: string, value: numb
   );
 };
 
-export default function DashboardCompanyScreen() {
-  const { profile, business, refreshProfile } = useAuth();
+export default function WorkerDashboardScreen() {
+  const { profile, refreshProfile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Worker me state
+  const [workerMe, setWorkerMe] = useState<{ id: string, name: string, business_id: string } | null>(null);
+  const [businessName, setBusinessName] = useState<string>('');
+
   // Real data state
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
   const [revenueData, setRevenueData] = useState<{ label: string, value: number }[]>([]);
-  const [workerData, setWorkerData] = useState<any[]>([]);
 
   // Reviews state
   const [reviewsData, setReviewsData] = useState({ score: 0, total: 0, lastReviewDate: 'Sin reseñas' });
@@ -79,14 +82,24 @@ export default function DashboardCompanyScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   const fetchDashboardData = useCallback(async () => {
-    if (!business?.id) return;
+    if (!profile?.id) return;
+    setRefreshing(true);
 
-    // 1. Fetch Workers
-    const { data: workers } = await supabase
+    // 1. Obtener mi id de trabajador
+    const { data: meData } = await supabase
       .from('workers')
-      .select('*')
-      .eq('business_id', business.id)
-      .eq('active', true);
+      .select('id, name, business_id')
+      .eq('user_id', profile.id)
+      .single();
+
+    if (!meData) {
+      setRefreshing(false);
+      return;
+    }
+    setWorkerMe(meData as any);
+
+    const { data: bizData } = await supabase.from('businesses').select('name').eq('id', meData.business_id).single();
+    if (bizData) setBusinessName(bizData.name);
 
     // 2. Determine date range for appointments based on filter
     const today = new Date();
@@ -104,15 +117,16 @@ export default function DashboardCompanyScreen() {
 
     const { data: appointments } = await supabase
       .from('appointments')
-      .select('date, start_hour, price, worker_id')
-      .eq('business_id', business.id)
-      .gte('date', dateStr);
+      .select('date, start_hour, price, worker_id, status')
+      .eq('worker_id', meData.id)
+      .gte('date', dateStr)
+      .neq('status', 'cancelled');
 
     // 3. Fetch Reviews
     const { data: reviews } = await supabase
       .from('reviews')
       .select('score, comment, created_at, profiles(nickname)')
-      .eq('business_id', business.id)
+      .eq('business_id', meData.business_id)
       .order('created_at', { ascending: false });
 
     if (reviews && reviews.length > 0) {
@@ -134,19 +148,7 @@ export default function DashboardCompanyScreen() {
       setReviewsList([]);
     }
 
-    if (workers && appointments) {
-      // Process Workers Data
-      const processedWorkers = workers.map(w => {
-        const workerAppts = appointments.filter(a => a.worker_id === w.id).length;
-        return {
-          id: w.id,
-          name: w.name,
-          role: w.specialty || 'Especialista',
-          services: workerAppts,
-          color: w.color || '#3B7BE0',
-        };
-      });
-      setWorkerData(processedWorkers);
+    if (appointments) {
 
       // Process Revenue Data
       const newRevData: { label: string, value: number, key?: string | number }[] = [];
@@ -208,7 +210,8 @@ export default function DashboardCompanyScreen() {
 
       setRevenueData(newRevData.map(({ label, value }) => ({ label, value })));
     }
-  }, [business?.id, timeFilter]);
+    setRefreshing(false);
+  }, [profile?.id, timeFilter]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -252,7 +255,7 @@ export default function DashboardCompanyScreen() {
           {/* WELCOME */}
           <View style={{ marginBottom: 8 }}>
             <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Bienvenido de vuelta,</Text>
-            <Text style={[styles.businessName, { color: colors.textPrimary }]}>{business?.name || profile?.nickname || 'Empresa'}</Text>
+            <Text style={[styles.businessName, { color: colors.textPrimary }]}>{workerMe?.name || 'Trabajador'}</Text>
           </View>
 
           {/* REVENUE CHART */}
@@ -319,32 +322,12 @@ export default function DashboardCompanyScreen() {
                 ))}
               </View>
               <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
-                Cierre a las {business?.closing_time?.slice(0, 5) || '20:00'}
+                {businessName}
               </Text>
             </View>
           </View>
 
-          {/* WORKERS ACTIVITY */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Rendimiento del Equipo</Text>
-            {workerData.length === 0 ? (
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No hay trabajadores registrados o citas recientes.</Text>
-            ) : workerData.map((worker, i) => (
-              <View key={worker.id} style={[styles.workerRow, i < workerData.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-                <View style={[styles.avatar, { backgroundColor: worker.color + '20', borderColor: worker.color }]}>
-                  <Text style={[styles.avatarInitials, { color: worker.color }]}>{worker.name.substring(0, 2).toUpperCase()}</Text>
-                </View>
-                <View style={styles.workerInfo}>
-                  <Text style={[styles.workerName, { color: colors.textPrimary }]}>{worker.name}</Text>
-                  <Text style={[styles.workerRole, { color: colors.textSecondary }]}>{worker.role}</Text>
-                </View>
-                <View style={styles.workerStats}>
-                  <Text style={[styles.workerServices, { color: colors.textPrimary }]}>{worker.services}</Text>
-                  <Text style={[styles.workerServicesLabel, { color: colors.textSecondary }]}>citas</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+
 
           {/* PUBLIC PROFILE BTN */}
           <TouchableOpacity

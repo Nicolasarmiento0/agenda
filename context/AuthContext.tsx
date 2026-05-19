@@ -12,7 +12,7 @@ type Profile = {
   id: string;
   nickname: string | null;
   avatar_url: string | null;
-  role: 'client' | 'company' | 'admin' | null;
+  role: 'client' | 'company' | 'admin' | 'worker' | null;
 };
 
 export type Business = {
@@ -73,9 +73,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AUTH: profiles query → role:', data?.role ?? null, '| error:', error?.message ?? null);
 
       if (data) {
+        let finalRole = data.role;
+        if (!finalRole || finalRole === 'client') {
+          const { data: workerCheck } = await supabase
+            .from('workers')
+            .select('id, business_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (workerCheck) {
+            console.log('AUTH: User registered in workers table, auto-assigning role: worker');
+            await supabase.from('profiles').update({ role: 'worker' }).eq('id', userId);
+            data.role = 'worker';
+            finalRole = 'worker';
+          }
+        }
+
         setProfile(data);
 
-        if (data.role === 'company') {
+        if (finalRole === 'company') {
           console.log('AUTH: Fetching business for company user...');
           const { data: bData, error: bError } = await supabase
             .from('businesses')
@@ -91,6 +107,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setBusiness(null);
           }
           if (bError) console.error('AUTH: Error fetching business:', bError);
+        } else if (data.role === 'worker') {
+          console.log('AUTH: Fetching business for worker user...');
+          // Suponemos que el worker tiene un registro en la tabla `workers` que vincula a un business
+          const { data: workerData, error: wError } = await supabase
+            .from('workers')
+            .select('business_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          if (workerData?.business_id) {
+            const { data: bData } = await supabase
+              .from('businesses')
+              .select('*')
+              .eq('id', workerData.business_id)
+              .maybeSingle();
+            setBusiness(bData ?? null);
+          } else {
+            setBusiness(null);
+          }
+          if (wError) console.error('AUTH: Error fetching worker data:', wError);
         } else {
           setBusiness(null);
         }
@@ -120,15 +156,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileData) {
+        let finalRole = profileData.role;
+        if (!finalRole || finalRole === 'client') {
+          const { data: workerCheck } = await supabase
+            .from('workers')
+            .select('id, business_id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+          if (workerCheck) {
+            console.log('AUTH: User registered in workers table, auto-assigning role: worker');
+            await supabase.from('profiles').update({ role: 'worker' }).eq('id', data.user.id);
+            profileData.role = 'worker';
+            finalRole = 'worker';
+          }
+        }
+
         setProfile(profileData);
 
-        if (profileData.role === 'company') {
+        if (finalRole === 'company') {
           const { data: bData } = await supabase
             .from('businesses')
             .select('*')
             .eq('owner_id', data.user.id)
             .maybeSingle();
           setBusiness(bData ?? null);
+        } else if (profileData.role === 'worker') {
+          const { data: workerData } = await supabase
+            .from('workers')
+            .select('business_id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+          if (workerData?.business_id) {
+            const { data: bData } = await supabase
+              .from('businesses')
+              .select('*')
+              .eq('id', workerData.business_id)
+              .maybeSingle();
+            setBusiness(bData ?? null);
+          } else {
+            setBusiness(null);
+          }
         } else {
           setBusiness(null);
         }

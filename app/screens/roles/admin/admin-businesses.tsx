@@ -123,7 +123,7 @@ export default function AdminBusinessesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Text style={[styles.hamburger, { color: colors.textPrimary }]}>≡</Text>
+          <Feather name="menu" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>EMPRESAS</Text>
         <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>

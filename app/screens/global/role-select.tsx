@@ -17,7 +17,7 @@ export default function RoleSelectScreen() {
     const { user, updateProfileState } = useAuth();
     const { colors, isDarkMode } = useTheme();
     const { showAlert } = useAlert();
-    const [selected, setSelected] = useState<'client' | 'company' | null>(null);
+    const [selected, setSelected] = useState<'client' | 'company' | 'worker' | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleConfirm = async () => {
@@ -37,7 +37,6 @@ export default function RoleSelectScreen() {
 
             updateProfileState({ role: selected });
 
-            // ✅ Redirigir según el rol elegido
             if (selected === 'company') {
                 router.replace('/screens/roles/company/business-setup' as any);
             } else {
@@ -111,6 +110,7 @@ export default function RoleSelectScreen() {
                         </View>
                     )}
                 </TouchableOpacity>
+
             </View>
 
             <TouchableOpacity

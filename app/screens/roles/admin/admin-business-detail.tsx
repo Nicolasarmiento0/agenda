@@ -303,15 +303,26 @@ export default function AdminBusinessDetailScreen() {
             )}
 
             {business.status === 'approved' && (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.rejectBtn, { opacity: processing ? 0.5 : 1 }]}
-                activeOpacity={0.8}
-                onPress={handleSuspend}
-                disabled={processing}
-              >
-                <Feather name="slash" size={18} color="#EF4444" />
-                <Text style={styles.rejectText}>SUSPENDER</Text>
-              </TouchableOpacity>
+              <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: appColors.primary }]}
+                  activeOpacity={0.8}
+                  onPress={() => router.push((`/screens/roles/admin/admin-business-employees?id=${id}`) as any)}
+                >
+                  <Feather name="users" size={18} color="#fff" />
+                  <Text style={styles.approveText}>EQUIPO</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn, { opacity: processing ? 0.5 : 1 }]}
+                  activeOpacity={0.8}
+                  onPress={handleSuspend}
+                  disabled={processing}
+                >
+                  <Feather name="slash" size={18} color="#EF4444" />
+                  <Text style={styles.rejectText}>SUSPENDER</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {business.status === 'suspended' && (

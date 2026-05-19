@@ -1,12 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
+  Modal,
   PanResponder,
   Platform,
   RefreshControl,
@@ -15,25 +14,26 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator,
+  Pressable,
 } from 'react-native';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Sidebar from '../../../../components/Sidebar';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
-import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
-import { useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useAlert } from '../../../../context/AlertContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors } from '../../../../styles/appStyles';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
   LocaleConfig.locales['es'] = {
-    monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
-    monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-    dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
-    dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+    monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+    monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+    dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
     today: 'Hoy'
   };
   LocaleConfig.defaultLocale = 'es';
@@ -55,7 +55,6 @@ type Appointment = {
   status: 'confirmed' | 'pending' | 'completed' | 'no-show' | 'rescheduled' | 'cancelled';
   date?: string;
   price?: number;
-  isMine?: boolean;
 };
 
 type Worker = {
@@ -63,15 +62,6 @@ type Worker = {
   name: string;
   color: string;
   initials: string;
-};
-
-type Business = {
-  id: string;
-  name: string;
-  description?: string;
-  address?: string;
-  phone?: string;
-  avatar_url?: string;
 };
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -89,6 +79,10 @@ const STATUS_CONFIG = {
   'no-show': { label: 'No Show', bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
   cancelled: { label: 'Cancelado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
 };
+
+// ─── Datos mock ───────────────────────────────────────────────────────────────
+
+// Mocks eliminados, los datos vendrán de Supabase.
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -188,7 +182,7 @@ function AppointmentCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={isBlocked ? 1 : 0.85}
+      activeOpacity={0.85}
       style={[
         styles.apptCard,
         {
@@ -225,6 +219,7 @@ function AppointmentSheet({
   onClose,
   onAction,
   colors,
+  isGym,
   isDarkMode,
 }: {
   appt: Appointment | null;
@@ -232,6 +227,7 @@ function AppointmentSheet({
   onClose: () => void;
   onAction: (action: string, appt: Appointment) => void;
   colors: any;
+  isGym: boolean;
   isDarkMode: boolean;
 }) {
   const slideY = useRef(new Animated.Value(400)).current;
@@ -269,24 +265,23 @@ function AppointmentSheet({
   const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
   const endHour = appt.startHour + appt.durationHours;
 
-  const isMine = appt.isMine;
+  const isBlocked = appt.service === 'BLOQUEO';
 
-  let canCancel = false;
-  if (appt.date) {
-    const apptDate = new Date(`${appt.date}T${String(Math.floor(appt.startHour)).padStart(2, '0')}:${String(Math.round((appt.startHour % 1) * 60)).padStart(2, '0')}:00`);
-    const hoursDiff = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
-    canCancel = hoursDiff > 2;
-  }
-
-  const ACTIONS = isMine ? [
+  const ACTIONS = isBlocked ? [
+    { id: 'cancel', icon: 'unlock', label: 'Desbloquear', color: '#E24B4A' },
+  ] : [
+    { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
+    { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
+    { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
     { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
-    ...(canCancel ? [{ id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' }] : []),
-  ] : [];
+    { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
+    { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
+  ];
 
   return (
-    <View
+    <View 
       style={[
-        StyleSheet.absoluteFill,
+        StyleSheet.absoluteFill, 
         { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
         !visible && { opacity: 0 }
       ]}
@@ -370,9 +365,8 @@ function AppointmentFormModal({
   colors,
   selectedDateStr,
   showAlert,
-  openingTime,
-  closingTime,
-  isGym,
+  openingHour,
+  closingHour,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -381,36 +375,36 @@ function AppointmentFormModal({
   colors: any;
   selectedDateStr: string;
   showAlert: (opts: { title: string; message: string }) => void;
-  openingTime?: string;
-  closingTime?: string;
-  isGym: boolean;
+  openingHour: number;
+  closingHour: number;
 }) {
   const { isDarkMode } = useTheme();
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
   const [workerId, setWorkerId] = useState('');
   const [dateText, setDateText] = useState('');
-  const [startTimeText, setStartTimeText] = useState('09:00');
-  const [endTimeText, setEndTimeText] = useState('10:00');
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [busyIntervals, setBusyIntervals] = useState<Array<{ start: number; end: number }>>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [endSlot, setEndSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pickerActive, setPickerActive] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-
-  const parsedOpeningHour = openingTime ? parseInt(openingTime.split(':')[0], 10) : 7;
-  const parsedClosingHour = closingTime ? parseInt(closingTime.split(':')[0], 10) : 22;
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const formScrollRef = useRef<any>(null);
 
   const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchServices = async () => {
-      if (!visible || !colors.selectedBusinessId) return;
+      if (!visible || !colors.businessId) return;
 
       try {
         // Intentar obtener servicios de business_services
         const { data: bizServices, error: bizError } = await supabase
           .from('business_services')
           .select('name, price')
-          .eq('business_id', colors.selectedBusinessId)
+          .eq('business_id', colors.businessId)
           .eq('is_active', true);
 
         if (!bizError && bizServices && bizServices.length > 0) {
@@ -420,7 +414,7 @@ function AppointmentFormModal({
           const { data: bizData } = await supabase
             .from('businesses')
             .select('category_id')
-            .eq('id', colors.selectedBusinessId)
+            .eq('id', colors.businessId)
             .single();
 
           if (bizData?.category_id) {
@@ -428,11 +422,10 @@ function AppointmentFormModal({
               .from('catalog_services')
               .select('name')
               .eq('category_id', bizData.category_id);
-
+            
             if (catServices && catServices.length > 0) {
               setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
             } else {
-              // Último recurso: hardcoded placeholders
               setServices([
                 { id: 'p1', name: 'Servicio 1', price: 0 },
                 { id: 'p2', name: 'Servicio 2', price: 0 },
@@ -458,7 +451,7 @@ function AppointmentFormModal({
     };
 
     fetchServices();
-  }, [visible, colors.selectedBusinessId]);
+  }, [visible, colors.businessId]);
 
   useEffect(() => {
     if (visible) {
@@ -468,33 +461,83 @@ function AppointmentFormModal({
         setWorkerId(initialData.worker_id);
         const hh = Math.floor(initialData.startHour);
         const mm = Math.round((initialData.startHour - hh) * 60);
-        setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+        setSelectedSlot(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
         const endH = initialData.startHour + initialData.durationHours;
         const endHh = Math.floor(endH);
         const endMm = Math.round(((endH - endHh) * 60) / 15) * 15;
-        setEndTimeText(`${String(endHh).padStart(2, '0')}:${String(Math.min(endMm, 45)).padStart(2, '0')}`);
+        setEndSlot(`${String(endHh).padStart(2, '0')}:${String(Math.min(endMm, 45)).padStart(2, '0')}`);
         setDateText(initialData.date || selectedDateStr);
+        setIsBlocking(initialData.service === 'BLOQUEO');
       } else {
         setClientName('');
         setService('');
         setWorkerId('');
-        setStartTimeText(`${String(parsedOpeningHour).padStart(2, '0')}:00`);
-        setEndTimeText(`${String(parsedOpeningHour + 1).padStart(2, '0')}:00`);
+        setSelectedSlot(`${String(openingHour).padStart(2, '0')}:00`);
+        setEndSlot(`${String(Math.min(openingHour + 1, closingHour - 1)).padStart(2, '0')}:00`);
         setDateText(selectedDateStr);
+        setIsBlocking(false);
       }
       setLoading(false);
       setShowCalendar(false);
     }
   }, [visible, initialData, selectedDateStr]);
 
-  const handleSave = async () => {
-    console.log('handleSave called', { service, workerId, dateText, startTimeText });
-    if (loading) return;
+  // Genera todos los slots de 15 min dentro del horario del negocio
+  const allSlots = useMemo(() => {
+    const slots: string[] = [];
+    let current = openingHour * 60;
+    const end = closingHour * 60;
+    while (current < end) {
+      const hh = Math.floor(current / 60);
+      const mm = current % 60;
+      slots.push(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+      current += 15;
+    }
+    return slots;
+  }, [openingHour, closingHour]);
 
-    // ── Validación de campos obligatorios ──
-    if (!service.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' });
+  // Descarga los turnos ocupados del worker+fecha seleccionados
+  useEffect(() => {
+    if (!workerId || !dateText || !colors.businessId) {
+      setBusyIntervals([]);
       return;
+    }
+    setSlotsLoading(true);
+    supabase
+      .from('appointments')
+      .select('id, start_hour, duration_hours')
+      .eq('business_id', colors.businessId)
+      .eq('worker_id', workerId)
+      .eq('date', dateText)
+      .then(({ data }) => {
+        const intervals = (data ?? [])
+          .filter((a: any) => a.id !== initialData?.id)
+          .map((a: any) => ({ start: Number(a.start_hour), end: Number(a.start_hour) + Number(a.duration_hours) }));
+        setBusyIntervals(intervals);
+        setSlotsLoading(false);
+      });
+  }, [workerId, dateText, colors.businessId, initialData?.id]);
+
+  const isPastSlot = useCallback((slot: string, today: string, date: string) => {
+    if (date !== today) return false;
+    const [hh, mm] = slot.split(':').map(Number);
+    const slotHour = hh + mm / 60;
+    const now = new Date();
+    return slotHour < (now.getHours() + now.getMinutes() / 60);
+  }, []);
+
+  const handleSave = async () => {
+    if (loading) return;
+    // ── Validación de campos obligatorios ──────────────────────────────
+    if (!isBlocking) {
+      if (!clientName.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
+        return;
+      }
+      if (!service.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' });
+        return;
+      }
     }
     if (!workerId) {
       showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
@@ -504,90 +547,32 @@ function AppointmentFormModal({
       showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
       return;
     }
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(startTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+    if (!selectedSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de inicio.' });
       return;
     }
-    if (!timeRegex.test(endTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'La hora de fin no es válida.' });
+    if (!endSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de fin.' });
       return;
     }
 
-    const [hhStr, mmStr] = startTimeText.split(':');
+    const [hhStr, mmStr] = selectedSlot.split(':');
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
-    const [ehStr, emStr] = endTimeText.split(':');
-    const endHour = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
-    const durationHours = endHour - startHour;
-    if (durationHours <= 0) {
+    const [ehStr, emStr] = endSlot.split(':');
+    const endHourCalc = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
+    if (endHourCalc <= startHour) {
       showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
       return;
     }
 
-    // ── Validación de fecha y hora pasada ──
     const now = new Date();
     const todayStr = toLocalISOString(now);
-    const currentHour = now.getHours() + now.getMinutes() / 60;
 
     if (dateText < todayStr) {
       showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
       return;
-    }
-
-    if (isGym) {
-      const paddedHh = hhStr.padStart(2, '0');
-      const paddedMm = (mmStr || '0').padStart(2, '0');
-      const selectedDateObj = new Date(`${dateText}T${paddedHh}:${paddedMm}:00`);
-      const diffMs = selectedDateObj.getTime() - now.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-
-      if (diffHours < 48) {
-        showAlert({ title: 'Reserva no permitida', message: 'Para gimnasios, debes agendar con al menos 48 horas de anticipación.' });
-        return;
-      }
-    }
-
-    const openingTimeHour = openingTime ? parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60 : DEFAULT_START_HOUR;
-    // Si la hora de inicio solicitada es muy cercana a la de apertura (consideramos un bloque de primera hora si está dentro de los primeros 15 min de apertura)
-    const isFirstBlock = Math.abs(startHour - openingTimeHour) <= 0.25;
-
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = toLocalISOString(tomorrow);
-
-    if (isFirstBlock) {
-      if (dateText === todayStr) {
-        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
-        return;
-      }
-      if (dateText === tomorrowStr && currentHour >= 22) {
-        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
-        return;
-      }
-    }
-
-    if (dateText === todayStr) {
-      // Margen de 1 hora mínimo de anticipación
-      if (startHour <= currentHour + 1) {
-        showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
-        return;
-      }
-    }
-
-    // ── Validación de horario de apertura ──
-    if (openingTime && closingTime) {
-      const openH = parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60;
-      const closeH = parseInt(closingTime.split(':')[0]) + parseInt(closingTime.split(':')[1]) / 60;
-
-      if (startHour < openH || endHour > closeH) {
-        showAlert({
-          title: 'Fuera de horario',
-          message: `El negocio atiende de ${openingTime.substring(0, 5)} a ${closingTime.substring(0, 5)}. Ajusta tu cita.`
-        });
-        return;
-      }
     }
 
     setLoading(true);
@@ -595,147 +580,289 @@ function AppointmentFormModal({
     const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
 
     const success = await onSave({
-      clientName,
-      service,
+      clientName: isBlocking ? (clientName || 'No disponible') : clientName,
+      service: isBlocking ? 'BLOQUEO' : service,
       worker_id: workerId,
       startHour,
-      durationHours,
+      durationHours: endHourCalc - startHour,
       date: dateText,
       price,
     });
     setLoading(false);
 
     if (success) {
-      onClose();
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+      }, 1400);
     }
   };
 
   if (!visible) return null;
 
+  const durationForPicker = (() => {
+    if (!selectedSlot || !endSlot) return 60;
+    const [sh, sm] = selectedSlot.split(':').map(Number);
+    const [eh, em] = endSlot.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    return Math.max(15, diff);
+  })();
+
+  const glassInput = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
+    marginBottom: 4,
+  };
+
+  const todayStr = toLocalISOString(new Date());
+
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {initialData ? 'Editar Cita' : 'Nueva Cita'}
-            </Text>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end', padding: 0 }]}>
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
-            <View style={[styles.modalRow, { marginBottom: 16 }]}>
-              {services.map((s, index) => (
+          {/* ── Estado de éxito ─────────────────────────────────── */}
+          {showSuccess && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 10 }]}>
+              <View style={[formStyles.successCard, { overflow: 'hidden' }]}>
+                <BlurView
+                  intensity={isDarkMode ? 70 : 85}
+                  tint={isDarkMode ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={[StyleSheet.absoluteFill, {
+                  backgroundColor: isDarkMode ? 'rgba(12,18,12,0.5)' : 'rgba(240,255,240,0.5)',
+                  borderRadius: 24,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: 'rgba(61,158,90,0.4)',
+                }]} />
+                <Feather name="check-circle" size={52} color="#3D9E5A" />
+                <Text style={[formStyles.successTitle, { color: colors.textPrimary }]}>¡Listo!</Text>
+                <Text style={[formStyles.successSub, { color: colors.textSecondary }]}>
+                  {isBlocking ? 'Horario bloqueado' : 'Cita agendada'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── Bottom sheet glass ──────────────────────────────── */}
+          <View style={[formStyles.sheet, { overflow: 'hidden' }]}>
+            <BlurView
+              intensity={isDarkMode ? 65 : 85}
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
+            />
+            <View style={[StyleSheet.absoluteFill, {
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              backgroundColor: isDarkMode ? 'rgba(10,10,16,0.6)' : 'rgba(248,248,252,0.55)',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }]} />
+
+            {/* Handle */}
+            <View style={[formStyles.handle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)' }]} />
+
+            <ScrollView ref={formScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+
+              {/* Header */}
+              <View style={formStyles.header}>
+                <Text style={[formStyles.title, { color: colors.textPrimary }]}>
+                  {initialData ? 'Editar cita' : isBlocking ? 'Bloquear horario' : 'Nueva cita'}
+                </Text>
+                <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={formStyles.closeBtn}>
+                  <Feather name="x" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Toggle bloqueo */}
+              {!initialData && (
                 <TouchableOpacity
-                  key={s.id || `${s.name}-${index}`}
-                  onPress={() => setService(s.name)}
-                  style={[
-                    styles.modalChip,
-                    service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  ]}
+                  onPress={() => { setIsBlocking(!isBlocking); setClientName(''); }}
+                  style={[formStyles.blockToggle, { borderColor: isBlocking ? 'rgba(227,25,55,0.4)' : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'), backgroundColor: isBlocking ? 'rgba(227,25,55,0.1)' : 'transparent' }]}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.modalChipText, service === s.name ? { color: '#fff' } : { color: colors.textSecondary }]}>
-                    {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
+                  <View style={[formStyles.checkbox, { borderColor: isBlocking ? appColors.primary : colors.textSecondary, backgroundColor: isBlocking ? appColors.primary : 'transparent' }]}>
+                    {isBlocking && <Feather name="lock" size={10} color="#fff" />}
+                  </View>
+                  <Text style={[formStyles.blockToggleText, { color: isBlocking ? appColors.primary : colors.textSecondary }]}>
+                    Bloquear este horario
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              )}
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
-            <View style={styles.modalRow}>
-              {colors.workersList?.map((w: any) => (
-                <TouchableOpacity
-                  key={w.id}
-                  onPress={() => setWorkerId(w.id)}
-                  style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
-                >
-                  <Text style={[styles.modalChipText, workerId === w.id ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              {/* Input principal: cliente o razón de bloqueo */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>
+                {isBlocking ? 'RAZÓN (OPCIONAL)' : 'CLIENTE'}
+              </Text>
+              <TextInput
+                style={[glassInput, { color: colors.textPrimary, justifyContent: 'flex-start' } as any]}
+                value={clientName}
+                onChangeText={setClientName}
+                placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                placeholder={isBlocking ? 'Ej: Colación, Descanso...' : 'Nombre del cliente'}
+              />
 
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha de la Cita</Text>
-            <TouchableOpacity
-              onPress={() => setShowCalendar(!showCalendar)}
-              style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-            >
-              <Text style={{ color: colors.textPrimary }}>{dateText || 'Seleccionar fecha'}</Text>
-              <Feather name="calendar" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
+              {/* Servicios */}
+              {!isBlocking && (
+                <>
+                  <Text style={[formStyles.label, { color: colors.textSecondary }]}>SERVICIO</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} contentContainerStyle={{ gap: 8 }}>
+                    {services.map((s, index) => (
+                      <TouchableOpacity
+                        key={s.id || `${s.name}-${index}`}
+                        onPress={() => setService(s.name)}
+                        style={[formStyles.serviceChip, {
+                          backgroundColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                          borderColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
+                        }]}
+                      >
+                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#fff' : colors.textSecondary }]}>
+                          {s.name}{s.price > 0 ? `  $${Number(s.price).toLocaleString('es-CL')}` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
 
-            {showCalendar && (
-              <View style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
-                <Calendar
-                  minDate={toLocalISOString(new Date())}
-                  onDayPress={(day: any) => {
-                    setDateText(day.dateString);
-                    setShowCalendar(false);
-                  }}
-                  markedDates={dateText ? {
-                    [dateText]: { selected: true, selectedColor: appColors.primary }
-                  } : {}}
-                  theme={{
-                    backgroundColor: colors.surface,
-                    calendarBackground: colors.surface,
-                    textSectionTitleColor: colors.textSecondary,
-                    selectedDayBackgroundColor: appColors.primary,
-                    selectedDayTextColor: '#ffffff',
-                    todayTextColor: appColors.primary,
-                    dayTextColor: colors.textPrimary,
-                    textDisabledColor: colors.border,
-                    monthTextColor: colors.textPrimary,
-                    arrowColor: appColors.primary,
-                  }}
-                />
+              {/* Profesional — círculos de color */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>PROFESIONAL</Text>
+              <View style={formStyles.workerRow}>
+                {colors.workersList?.map((w: any) => {
+                  const selected = workerId === w.id;
+                  return (
+                    <TouchableOpacity
+                      key={w.id}
+                      onPress={() => setWorkerId(w.id)}
+                      activeOpacity={0.8}
+                      style={[formStyles.workerCircle, {
+                        backgroundColor: w.color ?? appColors.primary,
+                        borderWidth: selected ? 3 : 1.5,
+                        borderColor: selected ? '#fff' : (w.color ?? appColors.primary) + '80',
+                        shadowColor: selected ? (w.color ?? appColors.primary) : 'transparent',
+                        shadowOpacity: 0.7,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 0 },
+                      }]}
+                    >
+                      <Text style={formStyles.workerInitial}>
+                        {w.name?.[0]?.toUpperCase() ?? '?'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            )}
+              {colors.workersList && !!workerId ? (
+                <Text style={[formStyles.workerName, { color: colors.textSecondary }]}>
+                  {colors.workersList.find((w: any) => w.id === workerId)?.name ?? ''}
+                </Text>
+              ) : null}
 
-            <View
-              style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}
-              onTouchStart={() => setPickerActive(true)}
-              onTouchEnd={() => setTimeout(() => setPickerActive(false), 500)}
-              onTouchCancel={() => setPickerActive(false)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>DESDE</Text>
-                <TimeWheelPicker
-                  openingHour={parsedOpeningHour}
-                  closingHour={parsedClosingHour}
-                  selectedSlot={startTimeText}
-                  onSlotSelect={setStartTimeText}
-                  busyIntervals={[]}
-                  durationMinutes={60}
-                  isDarkMode={isDarkMode}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>HASTA</Text>
-                <TimeWheelPicker
-                  openingHour={parsedOpeningHour}
-                  closingHour={parsedClosingHour}
-                  selectedSlot={endTimeText}
-                  onSlotSelect={setEndTimeText}
-                  busyIntervals={[]}
-                  durationMinutes={0}
-                  isDarkMode={isDarkMode}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
+              {/* Fecha */}
+              <Text style={[formStyles.label, { color: colors.textSecondary }]}>FECHA</Text>
+              <TouchableOpacity
+                onPress={() => setShowCalendar(!showCalendar)}
+                style={glassInput}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="calendar" size={15} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textPrimary, fontSize: 15 }}>
+                    {dateText || 'Seleccionar fecha'}
+                  </Text>
+                </View>
+                <Feather name={showCalendar ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} />
               </TouchableOpacity>
+
+              {/* Calendario inline */}
+              {showCalendar && (
+                <View style={{ marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}>
+                  <Calendar
+                    minDate={todayStr}
+                    onDayPress={(day: any) => { setDateText(day.dateString); setShowCalendar(false); }}
+                    markedDates={dateText ? { [dateText]: { selected: true, selectedColor: appColors.primary } } : {}}
+                    theme={{
+                      backgroundColor: 'transparent',
+                      calendarBackground: 'transparent',
+                      textSectionTitleColor: colors.textSecondary,
+                      selectedDayBackgroundColor: appColors.primary,
+                      selectedDayTextColor: '#ffffff',
+                      todayTextColor: appColors.primary,
+                      dayTextColor: colors.textPrimary,
+                      textDisabledColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                      monthTextColor: colors.textPrimary,
+                      arrowColor: appColors.primary,
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* Pickers DESDE / HASTA — side by side */}
+              {(!workerId || !dateText) && (
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8, marginBottom: 2 }}>
+                  {!workerId ? '· Selecciona un profesional para ver disponibilidad' : '· Selecciona una fecha para ver disponibilidad'}
+                </Text>
+              )}
+              {slotsLoading && workerId && dateText && (
+                <ActivityIndicator size="small" color={appColors.primary} style={{ alignSelf: 'center', marginVertical: 4 }} />
+              )}
+              <View
+                style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}
+                onTouchStart={() => formScrollRef.current?.setNativeProps({ scrollEnabled: false })}
+                onTouchEnd={() => setTimeout(() => formScrollRef.current?.setNativeProps({ scrollEnabled: true }), 600)}
+                onTouchCancel={() => formScrollRef.current?.setNativeProps({ scrollEnabled: true })}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>DESDE</Text>
+                  <TimeWheelPicker
+                    openingHour={openingHour}
+                    closingHour={closingHour}
+                    selectedSlot={selectedSlot}
+                    onSlotSelect={setSelectedSlot}
+                    busyIntervals={workerId && dateText ? busyIntervals : []}
+                    durationMinutes={durationForPicker}
+                    isDarkMode={isDarkMode}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>HASTA</Text>
+                  <TimeWheelPicker
+                    openingHour={openingHour}
+                    closingHour={closingHour}
+                    selectedSlot={endSlot}
+                    onSlotSelect={setEndSlot}
+                    busyIntervals={[]}
+                    durationMinutes={0}
+                    isDarkMode={isDarkMode}
+                  />
+                </View>
+              </View>
+
+              {/* Botón principal */}
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={loading}
-                style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+                style={[formStyles.saveBtn, { backgroundColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
+                activeOpacity={0.85}
               >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
-                )}
+                {loading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={formStyles.saveBtnText}>{initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
+                }
               </TouchableOpacity>
-            </View>
+
+              <TouchableOpacity onPress={onClose} style={{ alignItems: 'center', paddingVertical: 12 }} activeOpacity={0.6}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 0.5 }}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -745,43 +872,26 @@ function AppointmentFormModal({
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
-export default function ClientAgendaScreen() {
-  const { profile } = useAuth();
+export default function WorkerAgendaScreen() {
+  const { business, profile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
-  const { selectedBusiness: contextBusiness, setSelectedBusiness } = useBusiness();
-  const { id: businessIdParam } = useLocalSearchParams<{ id: string }>();
-  const [business, setBusiness] = useState(contextBusiness);
-
-  // Si el contexto está vacío (recarga de página) pero hay id en la URL, fetchear desde Supabase
-  useEffect(() => {
-    if (contextBusiness) {
-      setBusiness(contextBusiness);
-      return;
-    }
-    if (!businessIdParam) return;
-    supabase
-      .from('businesses')
-      .select('*')
-      .eq('id', businessIdParam)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setBusiness(data);
-          setSelectedBusiness(data);
-        }
-      });
-  }, [businessIdParam, contextBusiness]);
   const [isGym, setIsGym] = useState(false);
 
   useEffect(() => {
-    async function checkGym() {
+    const checkGym = async () => {
       if (!business?.category_id) return;
-      const { data } = await supabase.from('service_categories').select('name').eq('id', business.category_id).single();
+      const { data } = await supabase
+        .from('service_categories')
+        .select('name, parent_id')
+        .eq('id', business.category_id)
+        .single();
+      
       if (data) {
-        setIsGym(data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS'));
+        const isGymCategory = data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS');
+        setIsGym(isGymCategory);
       }
-    }
+    };
     checkGym();
   }, [business?.category_id]);
 
@@ -815,56 +925,54 @@ export default function ClientAgendaScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [profileWorker, setProfileWorker] = useState<Worker | null>(null);
+  const [profileVisible, setProfileVisible] = useState(false);
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
   const fetchWorkers = useCallback(async () => {
-    if (!business?.id) return;
-    const { data, error } = await supabase.from('workers').select('*').eq('business_id', business.id);
+    if (!profile?.id) return;
+    const { data, error } = await supabase.from('workers').select('*').eq('user_id', profile.id).single();
     if (!error && data) {
-      setWorkers(data.map(w => ({
-        id: w.id,
-        name: w.name,
-        color: w.color || '#D00024',
-        initials: w.name.substring(0, 2).toUpperCase(),
-      })));
+      setWorkers([{
+        id: data.id,
+        name: data.name,
+        color: data.color || '#D00024',
+        initials: data.name.substring(0, 2).toUpperCase(),
+      }]);
     }
-  }, [business?.id]);
+  }, [profile?.id]);
 
   const fetchAppointments = useCallback(async () => {
-    if (!business?.id || !weekDays[0] || !weekDays[6]) return;
+    if (!business?.id || !weekDays[0] || !weekDays[6] || workers.length === 0) return;
 
+    const workerId = workers[0].id;
     const startStr = weekDays[0].toISOString().split('T')[0];
     const endStr = weekDays[6].toISOString().split('T')[0];
 
     const { data, error } = await supabase
       .from('appointments')
       .select('*, workers(name, color)')
-      .eq('business_id', business.id)
+      .eq('worker_id', workerId)
       .gte('date', startStr)
       .lte('date', endStr);
 
     if (!error && data) {
-      setAppointments(data.map(a => {
-        const isMine = a.client_name === profile?.nickname || a.client_id === profile?.id;
-        const isBlocked = a.service === 'BLOQUEO';
-        return {
-          id: a.id,
-          isMine,
-          clientName: (isMine || isBlocked) ? a.client_name : '',
-          service: (isMine || isBlocked) ? a.service : 'Reservado',
-          worker_id: a.worker_id,
-          worker: a.workers?.name || 'Desconocido',
-          workerColor: a.workers?.color || '#000',
-          startHour: Number(a.start_hour),
-          durationHours: Number(a.duration_hours),
-          status: a.status as any,
-          date: a.date,
-          price: a.price || 0,
-        };
-      }));
+      setAppointments(data.map(a => ({
+        id: a.id,
+        clientName: a.client_name,
+        service: a.service,
+        worker_id: a.worker_id,
+        worker: a.workers?.name || 'Desconocido',
+        workerColor: a.workers?.color || '#000',
+        startHour: Number(a.start_hour),
+        durationHours: Number(a.duration_hours),
+        status: a.status as any,
+        date: a.date,
+        price: a.price || 0,
+      })));
     }
-  }, [business?.id, weekDays, profile]);
+  }, [business?.id, weekDays, workers]);
 
   useEffect(() => {
     fetchWorkers();
@@ -909,7 +1017,6 @@ export default function ClientAgendaScreen() {
   }, [filteredAppointments]);
 
   const openSheet = useCallback((appt: Appointment) => {
-    if (appt.service === 'BLOQUEO') return;
     setSelectedAppt(appt);
     setSheetVisible(true);
   }, []);
@@ -917,6 +1024,12 @@ export default function ClientAgendaScreen() {
   const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
     if (actionId === 'confirm') {
       const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
+    } else if (actionId === 'complete') {
+      const { error } = await supabase.from('appointments').update({ status: 'completed' }).eq('id', appt.id);
+      if (!error) fetchAppointments();
+    } else if (actionId === 'rescheduled') {
+      const { error } = await supabase.from('appointments').update({ status: 'rescheduled' }).eq('id', appt.id);
       if (!error) fetchAppointments();
     } else if (actionId === 'no-show') {
       const { error } = await supabase.from('appointments').update({ status: 'no-show' }).eq('id', appt.id);
@@ -934,7 +1047,7 @@ export default function ClientAgendaScreen() {
   const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
     try {
       if (!business?.id) {
-        showAlert({ title: 'Sin negocio', message: 'Por favor selecciona un negocio desde la pantalla Explorar.' });
+        showAlert({ title: 'Error', message: 'No se ha seleccionado ningún negocio.' });
         return false;
       }
       const dateStr = data.date || toLocalISOString(selectedDate);
@@ -955,7 +1068,7 @@ export default function ClientAgendaScreen() {
 
       const { data: existingAppts, error: fetchError } = await query;
       if (fetchError) {
-        showAlert({ title: 'Error', message: `No se pudo validar disponibilidad: ${fetchError.message}` });
+        showAlert({ title: 'Error', message: `No se pudo validar el horario: ${fetchError.message}` });
         return false;
       }
 
@@ -966,9 +1079,9 @@ export default function ClientAgendaScreen() {
       });
 
       if (hasCollision) {
-        showAlert({
-          title: 'Horario no disponible',
-          message: 'El profesional ya tiene una cita agendada en este horario. Por favor elige otro.'
+        showAlert({ 
+          title: 'Horario no disponible', 
+          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
         });
         return false;
       }
@@ -976,8 +1089,7 @@ export default function ClientAgendaScreen() {
       const apptData = {
         business_id: business.id,
         worker_id: data.worker_id,
-        client_id: profile?.id,
-        client_name: profile?.nickname || 'Cliente',
+        client_name: data.clientName || 'Sin nombre',
         service: data.service || 'Servicio',
         price: data.price || 0, // El precio ya viene calculado del modal
         date: dateStr,
@@ -989,7 +1101,7 @@ export default function ClientAgendaScreen() {
       if (editingAppt) {
         const { error } = await supabase.from('appointments').update(apptData).eq('id', editingAppt.id);
         if (error) {
-          showAlert({ title: 'Error', message: `No se pudo editar: ${error.message}` });
+          showAlert({ title: 'Error', message: `No se pudo actualizar: ${error.message}` });
           return false;
         }
       } else {
@@ -1007,7 +1119,7 @@ export default function ClientAgendaScreen() {
       showAlert({ title: 'Error Inesperado', message: err.message || 'Ocurrió un error al procesar la cita.' });
       return false;
     }
-  }, [editingAppt, business?.id, selectedDate, fetchAppointments, profile, showAlert]);
+  }, [editingAppt, business?.id, selectedDate, fetchAppointments, showAlert]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -1033,17 +1145,28 @@ export default function ClientAgendaScreen() {
     >
       {/* Cabecera de columnas (trabajadores) */}
       <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
-        {WORKERS.map(w => (
-          <View key={w.id} style={[styles.workerCol, { width: colWidth }]}>
-            <View style={styles.workerAvatarWrapper}>
-              <View style={[styles.workerAvatar, { backgroundColor: w.color + '25', borderColor: w.color }]}>
-                <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
+        {WORKERS.map(w => {
+          const todayAppts = appointments.filter(a => a.worker === w.name && a.date === toLocalISOString(selectedDate)).length;
+          return (
+            <TouchableOpacity
+              key={w.id}
+              style={[styles.workerCol, { width: colWidth }]}
+              onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
+              activeOpacity={0.75}
+            >
+              <View style={styles.workerAvatarWrapper}>
+                <View style={[styles.workerAvatar, { backgroundColor: w.color + '25', borderColor: w.color }]}>
+                  <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
+                </View>
+                <View style={[styles.workerActiveDot, { backgroundColor: '#4CAF50' }]} />
               </View>
-              <View style={[styles.workerActiveDot, { backgroundColor: '#4CAF50' }]} />
-            </View>
-            <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
-          </View>
-        ))}
+              <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+              {todayAppts > 0 && (
+                <Text style={[styles.workerApptCount, { color: w.color }]}>{todayAppts} cita{todayAppts > 1 ? 's' : ''}</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Grid de tiempo */}
@@ -1107,10 +1230,7 @@ export default function ClientAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <ScrollView
-      style={{ flex: 1 }}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de días */}
@@ -1155,8 +1275,8 @@ export default function ClientAgendaScreen() {
                     left: di * weekColWidth,
                     borderLeftColor: colors.border,
                     borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0,
-                    backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
                     height: (endHour - startHour) * HOUR_HEIGHT,
+                    backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent',
                   },
                 ]}
               >
@@ -1222,24 +1342,8 @@ export default function ClientAgendaScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Título del negocio (Liquid Glass) ────────────────────── */}
-      {business && (
-        <View style={[styles.businessHeader, {
-          borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-        }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
-            <Text style={[styles.businessHeaderTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-              {business.name.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-      )}
-
       {/* ── Selector de fecha (modo día) ────────────────────────── */}
       {viewMode === 'day' && (
-
         <View style={styles.dateNav}>
           <TouchableOpacity onPress={() => navigateDay(-1)} style={styles.navBtn} activeOpacity={0.7}>
             <Feather name="chevron-left" size={20} color={colors.textPrimary} />
@@ -1322,22 +1426,19 @@ export default function ClientAgendaScreen() {
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
 
         {isSuspended && (
-          <View style={[styles.suspensionBadge, { backgroundColor: '#EF4444', padding: 12, borderRadius: 8, margin: 16, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' }]}>
+          <View style={{ backgroundColor: '#EF4444', padding: 12, borderRadius: 8, margin: 16, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
             <Feather name="alert-circle" size={16} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>NEGOCIO TEMPORALMENTE SUSPENDIDO</Text>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>TU NEGOCIO ESTÁ SUSPENDIDO POR EL ADMINISTRADOR</Text>
           </View>
         )}
       </View>
+
       {/* ── FAB ──────────────────────────────────────────────────── */}
       {!isSuspended && (
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: appColors.primary }]}
           activeOpacity={0.85}
           onPress={() => {
-            if (!business?.id) {
-              showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
-              return;
-            }
             setEditingAppt(undefined);
             setFormVisible(true);
           }}
@@ -1352,12 +1453,11 @@ export default function ClientAgendaScreen() {
         initialData={editingAppt}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
-        colors={{ ...colors, workersList: workers, selectedBusinessId: business?.id }}
+        colors={{ ...colors, workersList: workers, businessId: business?.id }}
         selectedDateStr={selectedDate.toISOString().split('T')[0]}
         showAlert={showAlert}
-        openingTime={business?.opening_time}
-        closingTime={business?.closing_time}
-        isGym={isGym}
+        openingHour={startHour}
+        closingHour={endHour}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1367,10 +1467,60 @@ export default function ClientAgendaScreen() {
         onClose={() => setSheetVisible(false)}
         onAction={handleSheetAction}
         colors={colors}
+        isGym={isGym}
         isDarkMode={isDarkMode}
       />
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+
+      {/* ── Worker Profile Card ───────────────────────────────────── */}
+      <Modal visible={profileVisible} transparent animationType="fade" onRequestClose={() => setProfileVisible(false)}>
+        <Pressable style={styles.profileOverlay} onPress={() => setProfileVisible(false)}>
+          <Pressable onPress={() => {}}>
+            <BlurView intensity={70} tint="dark" style={styles.profileCard}>
+              <View style={[styles.profileCardInner, { backgroundColor: 'rgba(14,14,14,0.78)' }]}>
+                <TouchableOpacity style={styles.profileClose} onPress={() => setProfileVisible(false)}>
+                  <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' }}>✕</Text>
+                </TouchableOpacity>
+                {profileWorker && (
+                  <>
+                    <View style={[styles.profileAvatar, { backgroundColor: profileWorker.color + '25', borderColor: profileWorker.color }]}>
+                      <Text style={[styles.profileInitials, { color: profileWorker.color }]}>{profileWorker.initials}</Text>
+                    </View>
+                    <Text style={styles.profileName}>{profileWorker.name}</Text>
+                    <View style={styles.profileDivider} />
+                    <View style={styles.profileStats}>
+                      <View style={styles.profileStatItem}>
+                        <Text style={styles.profileStatValue}>
+                          {appointments.filter(a => a.worker === profileWorker.name && a.date === toLocalISOString(selectedDate)).length}
+                        </Text>
+                        <Text style={styles.profileStatLabel}>Hoy</Text>
+                      </View>
+                      <View style={[styles.profileStatItem, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: 'rgba(255,255,255,0.1)' }]}>
+                        <Text style={styles.profileStatValue}>
+                          {appointments.filter(a => a.worker === profileWorker.name).length}
+                        </Text>
+                        <Text style={styles.profileStatLabel}>Semana</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.profileFilterBtn, { backgroundColor: profileWorker.color + '20', borderColor: profileWorker.color + '50' }]}
+                      onPress={() => {
+                        setSelectedWorkerFilter(prev => prev === profileWorker.name ? null : profileWorker.name);
+                        setProfileVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.profileFilterBtnText, { color: profileWorker.color }]}>
+                        {selectedWorkerFilter === profileWorker.name ? 'Ver todos' : 'Filtrar por este trabajador'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </BlurView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1527,6 +1677,102 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 0.3,
   },
+  workerApptCount: {
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  // Worker profile modal
+  profileOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  profileCard: {
+    width: 260,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  profileCardInner: {
+    padding: 28,
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  profileInitials: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  profileDivider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginVertical: 8,
+  },
+  profileStats: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 4,
+  },
+  profileStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
+  },
+  profileStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profileStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    fontWeight: '500',
+  },
+  profileFilterBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 50,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  profileFilterBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   weekDayNum: {
     width: 26,
     height: 26,
@@ -1633,11 +1879,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    ...require('react-native').Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
-      android: { elevation: 6 },
-      web: { boxShadow: '0px 3px 6px rgba(0,0,0,0.25)' },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
 
   // Bottom sheet
@@ -1800,34 +2045,201 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+  suspendedBanner: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  suspendedBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: appColors.error,
+  },
+});
 
-  // Business header (Tesla style)
-  businessHeader: {
+// ─── Estilos del formulario de cita (Liquid Glass) ────────────────────────────
+
+const formStyles = StyleSheet.create({
+  sheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '90%',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  businessHeaderLabel: {
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
     fontSize: 10,
-    letterSpacing: 2,
     fontWeight: '600',
-    marginBottom: 2,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+    marginTop: 16,
   },
-  businessHeaderTitle: {
-    fontSize: 14,
+  blockToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockToggleText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  serviceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  serviceChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  workerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  workerCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workerInitial: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  suspensionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  workerName: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  suspensionText: {
+  quickDates: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  quickChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  quickChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  slotChip: {
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 58,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    paddingVertical: 8,
+  },
+  durationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  durationDisplay: {
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  durationValue: {
+    fontSize: 28,
+    fontWeight: '300',
+    letterSpacing: -0.5,
+  },
+  durationUnit: {
     fontSize: 11,
+    letterSpacing: 1,
+    marginTop: -2,
+  },
+  saveBtn: {
+    alignSelf: 'stretch',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 4,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 13,
     fontWeight: '700',
-    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  successCard: {
+    width: 200,
+    height: 200,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  successSub: {
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
 });

@@ -71,6 +71,9 @@ export default function Index() {
         console.log('INDEX: Company role, business is approved, redirecting to Company Agenda');
         setTimeout(() => router.replace('/screens/roles/company/company-agenda' as any), 0);
       }
+    } else if (profile.role === 'worker') {
+      console.log('INDEX: Worker role, redirecting to Worker Dashboard');
+      setTimeout(() => router.replace('/screens/roles/worker/worker-dashboard' as any), 0);
     } else {
       console.log('INDEX: Unknown role, redirecting to Home');
       setTimeout(() => router.replace('/screens/global/home' as any), 0);

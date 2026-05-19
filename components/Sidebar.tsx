@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { appColors } from '../styles/appStyles';
 
-const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.65;
+const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.45;
 
 type Props = {
   visible: boolean;
@@ -115,7 +115,9 @@ export default function Sidebar({ visible, onClose }: Props) {
                   ? 'ADMINISTRADOR'
                   : profile?.role === 'company'
                     ? 'EMPRESA'
-                    : 'CLIENTE'}
+                    : profile?.role === 'worker'
+                      ? 'TRABAJADOR'
+                      : 'CLIENTE'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -145,6 +147,10 @@ export default function Sidebar({ visible, onClose }: Props) {
             {/* ---- MENU EMPRESA ---- */}
             {profile?.role === 'company' && (
               <>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/dashboard-company')}>
+                  <Feather name="home" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DASHBOARD</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-agenda')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
@@ -178,6 +184,24 @@ export default function Sidebar({ visible, onClose }: Props) {
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/admin/admin-businesses')}>
                   <Feather name="shield" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPRESAS</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* ---- MENU TRABAJADOR ---- */}
+            {profile?.role === 'worker' && (
+              <>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-dashboard')}>
+                  <Feather name="home" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>INICIO</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-agenda')}>
+                  <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI AGENDA</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-history')}>
+                  <Feather name="clock" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI HISTORIAL</Text>
                 </TouchableOpacity>
               </>
             )}

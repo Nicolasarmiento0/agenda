@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Sidebar from '../../../../components/Sidebar';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAlert } from '../../../../context/AlertContext';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -289,11 +288,10 @@ function EmployeeFormModal({
 
 // ─── Pantalla Principal ───────────────────────────────────────────────────────
 
-export default function CompanyEmployeesScreen() {
-  const { business } = useAuth();
+export default function AdminBusinessEmployeesScreen() {
+  const { id: businessId } = useLocalSearchParams<{ id: string }>();
   const { showAlert } = useAlert();
   const { colors, isDarkMode, toggleTheme } = useTheme();
-  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -316,11 +314,11 @@ export default function CompanyEmployeesScreen() {
   }, []);
 
   const fetchEmployees = useCallback(async () => {
-    if (!business?.id) return;
+    if (!businessId) return;
     const { data, error } = await supabase
       .from('workers')
       .select('*')
-      .eq('business_id', business.id)
+      .eq('business_id', businessId)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -341,7 +339,7 @@ export default function CompanyEmployeesScreen() {
       user_id: w.user_id,
     }));
     setEmployees(formatted);
-  }, [business?.id]);
+  }, [businessId]);
 
   // Refresca empleados cada vez que la pantalla gana foco (ej: al volver desde otra pantalla)
   useFocusEffect(useCallback(() => {
@@ -399,7 +397,7 @@ export default function CompanyEmployeesScreen() {
   }, [fetchEmployees]);
 
   const handleSaveEmp = useCallback(async (data: Partial<Employee> & { email?: string, password?: string }) => {
-    if (!business?.id) return;
+    if (!businessId) return;
 
     const workerData: any = {
       name: data.name || 'Sin nombre',
@@ -447,22 +445,22 @@ export default function CompanyEmployeesScreen() {
       }
 
       const { error } = await supabase.from('workers').insert([
-        { ...workerData, business_id: business.id }
+        { ...workerData, business_id: businessId }
       ]);
       
       if (!error) fetchEmployees();
-      else showAlert({ title: 'Error', message: 'No se pudo vincular el empleado a la base de datos.' });
+      else showAlert({ title: 'Error DB', message: `No se pudo vincular: ${error.message}` });
     }
-  }, [editingEmp, business?.id, fetchEmployees]);
+  }, [editingEmp, businessId, fetchEmployees]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn} activeOpacity={0.7}>
-          <Feather name="menu" size={20} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>EMPLEADOS</Text>
+        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>GESTIÓN DE EQUIPO</Text>
         <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.7}>
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -561,8 +559,6 @@ export default function CompanyEmployeesScreen() {
         onSave={handleSaveEmp}
         colors={colors}
       />
-
-      <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </View>
   );
 }

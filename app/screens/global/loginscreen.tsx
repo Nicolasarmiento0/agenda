@@ -207,7 +207,7 @@ export default function LoginScreen() {
                 <>
                   <AntDesign name="google" size={18} color="#4285F4" />
                   <Text style={[loginStyles.googleText, { color: colors.textPrimary }]}>
-                    Continuar con Google
+                    Continuar con Google (Proximamente)
                   </Text>
                 </>
               )}
