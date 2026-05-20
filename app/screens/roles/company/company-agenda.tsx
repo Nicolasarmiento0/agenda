@@ -31,10 +31,10 @@ import { appColors } from '../../../../styles/appStyles';
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
   LocaleConfig.locales['es'] = {
-    monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
-    monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
-    dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+    dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+    dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
     today: 'Hoy'
   };
   LocaleConfig.defaultLocale = 'es';
@@ -136,15 +136,24 @@ function nowLinePosition(startHour: number, endHour: number) {
   return (h - startHour) * HOUR_HEIGHT;
 }
 
-function getPastelColor(id: string, isDarkMode: boolean, alpha: number = 1) {
+const PASTEL_PALETTE = [
+  { light: { bg: '#EDE8F5', border: '#C5B4E8' }, dark: { bg: 'rgba(130,90,200,0.18)', border: 'rgba(160,118,220,0.32)' } },
+  { light: { bg: '#D5EDE0', border: '#9ACBAA' }, dark: { bg: 'rgba(60,152,90,0.16)', border: 'rgba(80,180,108,0.30)' } },
+  { light: { bg: '#FAE3D4', border: '#EEB898' }, dark: { bg: 'rgba(210,118,70,0.17)', border: 'rgba(230,145,90,0.30)' } },
+  { light: { bg: '#D4E8F8', border: '#94C0EE' }, dark: { bg: 'rgba(60,132,220,0.17)', border: 'rgba(80,155,240,0.30)' } },
+  { light: { bg: '#FAD8E4', border: '#EDA0B8' }, dark: { bg: 'rgba(210,80,120,0.17)', border: 'rgba(230,100,140,0.30)' } },
+  { light: { bg: '#F8F0D4', border: '#E0CC80' }, dark: { bg: 'rgba(200,175,50,0.17)', border: 'rgba(220,195,60,0.30)' } },
+  { light: { bg: '#D4F4EC', border: '#86CCBC' }, dark: { bg: 'rgba(50,175,150,0.17)', border: 'rgba(65,195,170,0.30)' } },
+  { light: { bg: '#F0E8D4', border: '#D4C098' }, dark: { bg: 'rgba(190,155,90,0.17)', border: 'rgba(210,175,105,0.30)' } },
+];
+
+function getPastelColors(id: string, isDarkMode: boolean) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const h = Math.abs(hash) % 360;
-  const s = isDarkMode ? 45 : 65;
-  const l = isDarkMode ? 25 : 85;
-  return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+  const p = PASTEL_PALETTE[Math.abs(hash) % PASTEL_PALETTE.length];
+  return isDarkMode ? p.dark : p.light;
 }
 
 // ─── Componente: AppointmentCard ─────────────────────────────────────────────
@@ -171,16 +180,15 @@ function AppointmentCard({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
-  const pastelColor = getPastelColor(appt.id, isDarkMode, isDarkMode ? 0.6 : 0.85);
-  const pastelBorder = getPastelColor(appt.id, isDarkMode, 1);
+  const pastel = getPastelColors(appt.id, isDarkMode);
 
   const glassColor = isBlocked
-    ? (isDarkMode ? 'rgba(60,60,60,0.6)' : 'rgba(220,220,220,0.7)')
-    : pastelColor;
+    ? (isDarkMode ? 'rgba(60,60,60,0.55)' : 'rgba(215,215,215,0.70)')
+    : pastel.bg;
 
   const glassBorder = isBlocked
-    ? (isDarkMode ? 'rgba(120,120,120,0.3)' : 'rgba(160,160,160,0.4)')
-    : pastelBorder;
+    ? (isDarkMode ? 'rgba(120,120,120,0.30)' : 'rgba(155,155,155,0.40)')
+    : pastel.border;
 
   return (
     <TouchableOpacity
@@ -282,9 +290,9 @@ function AppointmentSheet({
   ];
 
   return (
-    <View 
+    <View
       style={[
-        StyleSheet.absoluteFill, 
+        StyleSheet.absoluteFill,
         { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
         !visible && { opacity: 0 }
       ]}
@@ -425,7 +433,7 @@ function AppointmentFormModal({
               .from('catalog_services')
               .select('name')
               .eq('category_id', bizData.category_id);
-            
+
             if (catServices && catServices.length > 0) {
               setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
             } else {
@@ -889,7 +897,7 @@ export default function CompanyAgendaScreen() {
         .select('name, parent_id')
         .eq('id', business.category_id)
         .single();
-      
+
       if (data) {
         const isGymCategory = data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS');
         setIsGym(isGymCategory);
@@ -1086,9 +1094,9 @@ export default function CompanyAgendaScreen() {
       });
 
       if (hasCollision) {
-        showAlert({ 
-          title: 'Horario no disponible', 
-          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
+        showAlert({
+          title: 'Horario no disponible',
+          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.'
         });
         return false;
       }
@@ -1241,35 +1249,35 @@ export default function CompanyAgendaScreen() {
   const weekColWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 7);
 
   const renderWeekGrid = () => (
-    <View style={{ flex: 1}}>
+    <View style={{ flex: 1 }}>
       {/* Selector de trabajador — fijo, no scrollea verticalmente */}
       <View style={{ flexShrink: 0 }}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        //style={{ height: 160 }}
-        style={{ flexGrow: 0 }}
-        contentContainerStyle={{ paddingHorizontal: PADDING, paddingTop: 15, paddingBottom: 10, gap: 20 }}
-      >
-        {workers.map(w => {
-          const isSelected = selectedWorkerFilter === w.name;
-          return (
-            <TouchableOpacity
-              key={w.id}
-              onPress={() => setSelectedWorkerFilter(w.name)}
-              activeOpacity={0.75}
-              style={{ alignItems: 'center', gap: 5, opacity: isSelected ? 1 : 0.40 }}
-            >
-              <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={100} showDot={isSelected} />
-              <Text style={[styles.workerName, { color: isSelected ? w.color : colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
-              {w.specialty ? (
-                <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
-              ) : null}
-            </TouchableOpacity>
-           
-          );
-        })}
-      </ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          //style={{ height: 160 }}
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={{ paddingHorizontal: PADDING, paddingTop: 15, paddingBottom: 10, gap: 20 }}
+        >
+          {workers.map(w => {
+            const isSelected = selectedWorkerFilter === w.name;
+            return (
+              <TouchableOpacity
+                key={w.id}
+                onPress={() => setSelectedWorkerFilter(w.name)}
+                activeOpacity={0.75}
+                style={{ alignItems: 'center', gap: 5, opacity: isSelected ? 1 : 0.40 }}
+              >
+                <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={90} showDot={isSelected} />
+                <Text style={[styles.workerName, { color: isSelected ? w.color : colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+                {w.specialty ? (
+                  <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+                ) : null}
+              </TouchableOpacity>
+
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Cabecera de días — fija, no scrollea verticalmente */}
@@ -1424,9 +1432,9 @@ export default function CompanyAgendaScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
           <TouchableOpacity
             style={[styles.filterChip,
-              !selectedWorkerFilter
-                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            !selectedWorkerFilter
+              ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+              : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
             ]}
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
@@ -1437,9 +1445,9 @@ export default function CompanyAgendaScreen() {
             <TouchableOpacity
               key={w.id}
               style={[styles.filterChip,
-                selectedWorkerFilter === w.name
-                  ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+              selectedWorkerFilter === w.name
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
               ]}
               onPress={() => setSelectedWorkerFilter(w.name)}
               activeOpacity={0.8}
@@ -1528,7 +1536,7 @@ export default function CompanyAgendaScreen() {
       {/* ── Worker Profile Card ───────────────────────────────────── */}
       <Modal visible={profileVisible} transparent animationType="fade" onRequestClose={() => setProfileVisible(false)}>
         <Pressable style={styles.profileOverlay} onPress={() => setProfileVisible(false)}>
-          <Pressable onPress={() => {}}>
+          <Pressable onPress={() => { }}>
             <BlurView intensity={70} tint="dark" style={styles.profileCard}>
               <View style={[styles.profileCardInner, { backgroundColor: 'rgba(14,14,14,0.78)' }]}>
                 <TouchableOpacity style={styles.profileClose} onPress={() => setProfileVisible(false)}>
@@ -1536,8 +1544,14 @@ export default function CompanyAgendaScreen() {
                 </TouchableOpacity>
                 {profileWorker && (
                   <>
-                    <View style={[styles.profileAvatar, { backgroundColor: profileWorker.color + '25', borderColor: profileWorker.color }]}>
-                      <Text style={[styles.profileInitials, { color: profileWorker.color }]}>{profileWorker.initials}</Text>
+                    <View style={{ marginTop: 8, marginBottom: 4 }}>
+                      <WorkerAvatar
+                        avatarUrl={profileWorker.avatar_url}
+                        name={profileWorker.name}
+                        color={profileWorker.color}
+                        size={72}
+                        borderWidth={2.5}
+                      />
                     </View>
                     <Text style={styles.profileName}>{profileWorker.name}</Text>
                     <View style={styles.profileDivider} />
@@ -1882,8 +1896,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 3,
     borderLeftWidth: 3,
-    borderRadius: 6,
-    padding: 6,
+    borderRadius: 10,
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 5,
@@ -1897,7 +1913,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   apptTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.1,
   },

@@ -27,3 +27,5 @@ Asegúrate de que toda la app esté utilizando la fuente sans-serif "Inter".
 Elimina cualquier sombra pesada o líneas de división muy marcadas; prioriza el espacio negativo.
 
 Por favor, modifica los archivos de configuración de estilos (como tu ThemeProvider, o constantes de colores) y ajusta un par de componentes principales (como el Dashboard) para confirmar que el toggle de Modo Oscuro/Claro funciona perfectamente con esta nueva paleta. Entrégame el código de los archivos modificados.
+
+https://www.behance.net/gallery/205111609/ERPPOS-System?action=moodboard&utm_source=Pinterest&utm_medium=organic

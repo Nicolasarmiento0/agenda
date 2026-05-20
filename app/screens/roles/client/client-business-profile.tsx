@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -17,9 +18,9 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SelectedBusiness, useBusiness } from '../../../../context/BusinessContext';
-import { useAuth } from '../../../../context/AuthContext';
 import { useAlert } from '../../../../context/AlertContext';
+import { useAuth } from '../../../../context/AuthContext';
+import { SelectedBusiness, useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
@@ -259,7 +260,8 @@ export default function ClientBusinessProfileScreen() {
           <TouchableWithoutFeedback onPress={() => setShowReviewModal(false)}>
             <View style={StyleSheet.absoluteFill} />
           </TouchableWithoutFeedback>
-          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurCard}>
+            <View style={[styles.glassContent, !isDarkMode && styles.glassContentLight]}>
             
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
             
@@ -290,6 +292,7 @@ export default function ClientBusinessProfileScreen() {
               {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
             </TouchableOpacity>
           </View>
+        </BlurView>
         </View>
       </Modal>
 
@@ -420,6 +423,23 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
+  },
+  blurCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    borderTopWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  glassContent: {
+    backgroundColor: 'rgba(16,16,16,0.82)',
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  glassContentLight: {
+    backgroundColor: 'rgba(250,250,250,0.90)',
   },
   modalCard: {
     borderTopLeftRadius: 24,

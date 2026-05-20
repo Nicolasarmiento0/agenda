@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useFocusEffect, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useColorScheme,
   View
 } from 'react-native';
 import { useAuth } from '../../../../context/AuthContext';
@@ -164,6 +166,8 @@ function EmployeeFormModal({
   const [availableDays, setAvailableDays] = useState<number[]>([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     if (visible) {
@@ -197,7 +201,8 @@ function EmployeeFormModal({
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+        <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={styles.blurCard}>
+          <View style={[styles.glassContent, !isDark && styles.glassContentLight]}>
           <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
             {initialData ? 'Editar Empleado' : 'Invitar Empleado'}
           </Text>
@@ -280,7 +285,8 @@ function EmployeeFormModal({
               <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
             </TouchableOpacity>
           </View>
-        </View>
+          </View>
+        </BlurView>
       </View>
     </Modal>
   );
@@ -790,6 +796,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
+  },
+  blurCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  glassContent: {
+    backgroundColor: 'rgba(16,16,16,0.82)',
+    padding: 24,
+  },
+  glassContentLight: {
+    backgroundColor: 'rgba(250,250,250,0.90)',
   },
   modalContent: {
     borderRadius: 12,

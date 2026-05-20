@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -271,7 +272,8 @@ export default function CompanyBusinessScreen() {
       <Modal transparent visible={editModalVisible} animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={[localStyles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-            <View style={[localStyles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={localStyles.blurCard}>
+              <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary }]}>Editar Negocio</Text>
 
               <TouchableOpacity style={localStyles.imagePickerContainer} onPress={pickImage} disabled={isUploading}>
@@ -359,7 +361,8 @@ export default function CompanyBusinessScreen() {
                   <Text style={[localStyles.modalButtonText, { color: '#fff' }]}>{isSaving ? 'Guardando...' : 'Guardar'}</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+              </View>
+            </BlurView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -420,6 +423,19 @@ const localStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
+  },
+  blurCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  glassContent: {
+    backgroundColor: 'rgba(16,16,16,0.82)',
+    padding: 24,
+  },
+  glassContentLight: {
+    backgroundColor: 'rgba(250,250,250,0.90)',
   },
   modalContent: {
     borderWidth: 1,

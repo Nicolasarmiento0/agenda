@@ -133,15 +133,24 @@ function nowLinePosition(startHour: number, endHour: number) {
   return (h - startHour) * HOUR_HEIGHT;
 }
 
-function getPastelColor(id: string, isDarkMode: boolean, alpha: number = 1) {
+const PASTEL_PALETTE = [
+  { light: { bg: '#EDE8F5', border: '#C5B4E8' }, dark: { bg: 'rgba(130,90,200,0.18)', border: 'rgba(160,118,220,0.32)' } },
+  { light: { bg: '#D5EDE0', border: '#9ACBAA' }, dark: { bg: 'rgba(60,152,90,0.16)', border: 'rgba(80,180,108,0.30)' } },
+  { light: { bg: '#FAE3D4', border: '#EEB898' }, dark: { bg: 'rgba(210,118,70,0.17)', border: 'rgba(230,145,90,0.30)' } },
+  { light: { bg: '#D4E8F8', border: '#94C0EE' }, dark: { bg: 'rgba(60,132,220,0.17)', border: 'rgba(80,155,240,0.30)' } },
+  { light: { bg: '#FAD8E4', border: '#EDA0B8' }, dark: { bg: 'rgba(210,80,120,0.17)', border: 'rgba(230,100,140,0.30)' } },
+  { light: { bg: '#F8F0D4', border: '#E0CC80' }, dark: { bg: 'rgba(200,175,50,0.17)', border: 'rgba(220,195,60,0.30)' } },
+  { light: { bg: '#D4F4EC', border: '#86CCBC' }, dark: { bg: 'rgba(50,175,150,0.17)', border: 'rgba(65,195,170,0.30)' } },
+  { light: { bg: '#F0E8D4', border: '#D4C098' }, dark: { bg: 'rgba(190,155,90,0.17)', border: 'rgba(210,175,105,0.30)' } },
+];
+
+function getPastelColors(id: string, isDarkMode: boolean) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const h = Math.abs(hash) % 360;
-  const s = isDarkMode ? 45 : 65;
-  const l = isDarkMode ? 25 : 85;
-  return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+  const p = PASTEL_PALETTE[Math.abs(hash) % PASTEL_PALETTE.length];
+  return isDarkMode ? p.dark : p.light;
 }
 
 // ─── Componente: AppointmentCard ─────────────────────────────────────────────
@@ -168,16 +177,15 @@ function AppointmentCard({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
-  const pastelColor = getPastelColor(appt.id, isDarkMode, isDarkMode ? 0.6 : 0.85);
-  const pastelBorder = getPastelColor(appt.id, isDarkMode, 1);
+  const pastel = getPastelColors(appt.id, isDarkMode);
 
   const glassColor = isBlocked
-    ? (isDarkMode ? 'rgba(60,60,60,0.6)' : 'rgba(220,220,220,0.7)')
-    : pastelColor;
+    ? (isDarkMode ? 'rgba(60,60,60,0.55)' : 'rgba(215,215,215,0.70)')
+    : pastel.bg;
 
   const glassBorder = isBlocked
-    ? (isDarkMode ? 'rgba(120,120,120,0.3)' : 'rgba(160,160,160,0.4)')
-    : pastelBorder;
+    ? (isDarkMode ? 'rgba(120,120,120,0.30)' : 'rgba(155,155,155,0.40)')
+    : pastel.border;
 
   return (
     <TouchableOpacity
@@ -1372,9 +1380,9 @@ export default function WorkerAgendaScreen() {
         </View>
       )}
 
-      {/* ── Filtro por trabajador — glass chips ───────────────────── */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
-        {viewMode === 'day' && (
+      {/* ── Filtro por trabajador — solo en vista día ────────────── */}
+      {viewMode === 'day' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
           <TouchableOpacity
             style={[styles.filterChip,
               !selectedWorkerFilter
@@ -1386,41 +1394,43 @@ export default function WorkerAgendaScreen() {
           >
             <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
           </TouchableOpacity>
-        )}
-        {workers.map(w => (
-          <TouchableOpacity
-            key={w.id}
-            style={[styles.filterChip,
-              selectedWorkerFilter === w.name
-                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
-            ]}
-            onPress={() => setSelectedWorkerFilter(w.name)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {workers.map(w => (
+            <TouchableOpacity
+              key={w.id}
+              style={[styles.filterChip,
+                selectedWorkerFilter === w.name
+                  ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                  : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+              ]}
+              onPress={() => setSelectedWorkerFilter(w.name)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
-      {/* ── Stats row (Liquid Glass) ─────────────────────────────── */}
-      <View style={styles.statsRow}>
-        {stats.map((s, i) => (
-          <View key={i} style={[styles.statCard, {
-            backgroundColor: i === 0
-              ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
-              : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
-            borderColor: i === 0
-              ? 'rgba(227,25,55,0.3)'
-              : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
-          }]}>
-            <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
-              {s.value}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
+      {/* ── Stats row (Liquid Glass) — solo en vista día ────────── */}
+      {viewMode === 'day' && (
+        <View style={styles.statsRow}>
+          {stats.map((s, i) => (
+            <View key={i} style={[styles.statCard, {
+              backgroundColor: i === 0
+                ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+              borderColor: i === 0
+                ? 'rgba(227,25,55,0.3)'
+                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
+            }]}>
+              <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
+                {s.value}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={[styles.gridContainer, { borderTopColor: colors.border }]}>
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
@@ -1825,8 +1835,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 3,
     borderLeftWidth: 3,
-    borderRadius: 6,
-    padding: 6,
+    borderRadius: 10,
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 5,
@@ -1840,7 +1852,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   apptTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.1,
   },

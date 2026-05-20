@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -343,7 +344,8 @@ export default function AdminBusinessDetailScreen() {
       {/* Modal de rechazo con motivo opcional */}
       <Modal visible={rejectModal} transparent animationType="fade" onRequestClose={() => setRejectModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurCard}>
+            <View style={[styles.glassContent, !isDarkMode && styles.glassContentLight]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rechazar solicitud</Text>
             <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
               Puedes dejar un motivo opcional. La empresa verá que fue rechazada.
@@ -372,7 +374,8 @@ export default function AdminBusinessDetailScreen() {
                 <Text style={[styles.modalBtnText, { color: '#fff' }]}>CONFIRMAR RECHAZO</Text>
               </TouchableOpacity>
             </View>
-          </View>
+            </View>
+          </BlurView>
         </View>
       </Modal>
 
@@ -402,6 +405,9 @@ const styles = StyleSheet.create({
   rejectText: { color: '#EF4444', fontWeight: '700', fontSize: 13, letterSpacing: 1.5 },
   approveText: { color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1.5 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  blurCard: { width: '100%', borderRadius: 20, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)' },
+  glassContent: { backgroundColor: 'rgba(16,16,16,0.82)', padding: 24, gap: 16 },
+  glassContentLight: { backgroundColor: 'rgba(250,250,250,0.90)' },
   modalCard: { width: '100%', borderWidth: 1, borderRadius: 10, padding: 24, gap: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', letterSpacing: 1 },
   modalSubtitle: { fontSize: 13, letterSpacing: 0.3, lineHeight: 20 },

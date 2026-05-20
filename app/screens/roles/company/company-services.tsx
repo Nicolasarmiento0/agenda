@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -274,7 +275,8 @@ export default function CompanyServicesScreen() {
       {/* Modal de Edición / Creación */}
       <Modal visible={!!editingService} transparent animationType="fade">
         <View style={localStyles.modalOverlay}>
-          <View style={[localStyles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={localStyles.blurCard}>
+            <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
             <View style={localStyles.modalHeader}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
                 {editingService?.id === 'new' ? 'Nuevo Servicio' : 'Editar Servicio'}
@@ -324,7 +326,8 @@ export default function CompanyServicesScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+            </View>
+          </BlurView>
         </View>
       </Modal>
 
@@ -394,6 +397,19 @@ const localStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     padding: 24,
+  },
+  blurCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  glassContent: {
+    backgroundColor: 'rgba(16,16,16,0.82)',
+    padding: 24,
+  },
+  glassContentLight: {
+    backgroundColor: 'rgba(250,250,250,0.90)',
   },
   modalContent: {
     borderRadius: 16,

@@ -16,7 +16,7 @@ export default function TeslaAlert() {
   const { visible, hideAlert, alertConfig } = useAlert();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -25,17 +25,17 @@ export default function TeslaAlert() {
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
-          damping: 18,
-          stiffness: 280,
+          damping: 20,
+          stiffness: 300,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 180,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      scaleAnim.setValue(0.85);
+      scaleAnim.setValue(0.88);
       opacityAnim.setValue(0);
     }
   }, [visible]);
@@ -53,6 +53,8 @@ export default function TeslaAlert() {
     ? [cancelBtn, ...actionBtns]
     : alertButtons;
 
+  const isTwoButtons = orderedButtons.length === 2;
+
   return (
     <Modal
       visible={visible}
@@ -69,32 +71,46 @@ export default function TeslaAlert() {
           ]}
         >
           <Pressable onPress={() => { }}>
-            <BlurView intensity={12} tint={isDark ? 'dark' : 'light'} style={[styles.blurCard, !isDark && styles.blurCardLight]}>
+            <BlurView
+              intensity={45}
+              tint={isDark ? 'dark' : 'light'}
+              style={[styles.blurCard, !isDark && styles.blurCardLight]}
+            >
               <View style={[styles.glassOverlay, !isDark && styles.glassOverlayLight]}>
-                <TouchableOpacity style={[styles.closeButton, !isDark && styles.closeButtonLight]} onPress={hideAlert}>
+                {/* Close button */}
+                <TouchableOpacity
+                  style={[styles.closeButton, !isDark && styles.closeButtonLight]}
+                  onPress={hideAlert}
+                >
                   <Text style={[styles.closeText, !isDark && styles.closeTextLight]}>✕</Text>
                 </TouchableOpacity>
 
-                <Text style={[styles.title, !isDark && styles.titleLight]}>{title}</Text>
-                <Text style={[styles.message, !isDark && styles.messageLight]}>{message}</Text>
+                {/* Content */}
+                <View style={styles.contentArea}>
+                  <Text style={[styles.title, !isDark && styles.titleLight]}>{title}</Text>
+                  {!!message && (
+                    <Text style={[styles.message, !isDark && styles.messageLight]}>{message}</Text>
+                  )}
+                </View>
 
-                <View style={styles.buttonContainer}>
+
+
+                {/* Buttons */}
+                <View style={[styles.buttonContainer, isTwoButtons && styles.buttonContainerRow]}>
                   {orderedButtons.map((btn, index) => {
                     const isDestructive = btn.style === 'destructive';
                     const isCancel = btn.style === 'cancel';
-                    const isDefault = !isDestructive && !isCancel;
 
                     return (
                       <TouchableOpacity
                         key={index}
-                        activeOpacity={0.75}
+                        activeOpacity={0.52}
                         style={[
                           styles.button,
-                          isCancel && styles.cancelButton,
-                          isCancel && !isDark && styles.cancelButtonLight,
-                          (isDestructive || isDefault) && styles.actionButton,
-                          isDefault && !isDark && styles.actionButtonLight,
-                          isDestructive && styles.destructiveAction,
+                          isTwoButtons && styles.buttonFlex,
+                          isCancel && (isDark ? styles.cancelButton : styles.cancelButtonLight),
+                          isDestructive && styles.destructiveButton,
+                          !isCancel && !isDestructive && (isDark ? styles.actionButton : styles.actionButtonLight),
                         ]}
                         onPress={() => {
                           hideAlert();
@@ -104,11 +120,9 @@ export default function TeslaAlert() {
                         <Text
                           style={[
                             styles.buttonText,
-                            isCancel && styles.cancelText,
-                            isCancel && !isDark && styles.cancelTextLight,
-                            isDefault && styles.actionText,
-                            isDefault && !isDark && styles.actionTextLight,
+                            isCancel && (isDark ? styles.cancelText : styles.cancelTextLight),
                             isDestructive && styles.destructiveText,
+                            !isCancel && !isDestructive && (isDark ? styles.actionText : styles.actionTextLight),
                           ]}
                           numberOfLines={1}
                           adjustsFontSizeToFit
@@ -131,7 +145,7 @@ export default function TeslaAlert() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.60)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 28,
@@ -139,26 +153,31 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: '100%',
     maxWidth: 360,
-    borderRadius: 42,
+    borderRadius: 32,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.55,
+    shadowRadius: 32,
+    elevation: 24,
   },
   blurCard: {
-    borderRadius: 42,
+    borderRadius: 32,
     overflow: 'hidden',
-    borderWidth: 0.2,
-    borderColor: 'rgba(255,255,255,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  blurCardLight: {
+    borderColor: 'rgba(255, 255, 255, 0.7)',
   },
   glassOverlay: {
-    backgroundColor: 'rgba(18,18,18,0.72)',
-    padding: 28,
-    paddingTop: 36,
+    paddingTop: 44,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     alignItems: 'center',
-    gap: 8,
+  },
+  glassOverlayLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
   },
   closeButton: {
     position: 'absolute',
@@ -167,51 +186,94 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  closeButtonLight: {
+    backgroundColor: 'rgba(0,0,0,0.07)',
+  },
   closeText: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 11,
     fontWeight: '600',
   },
+  closeTextLight: {
+    color: 'rgba(0,0,0,0.35)',
+  },
+  contentArea: {
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    gap: 8,
+    paddingBottom: 20,
+  },
   title: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 4,
     letterSpacing: 0.2,
+  },
+  titleLight: {
+    color: '#0A0A0A',
   },
   message: {
     fontSize: 14,
     lineHeight: 21,
-    color: 'rgba(255,255,255,0.62)',
+    color: 'rgba(255,255,255,0.58)',
     textAlign: 'center',
-    marginBottom: 20,
     paddingHorizontal: 4,
+  },
+  messageLight: {
+    color: 'rgba(0,0,0,0.52)',
+  },
+  divider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    marginBottom: 16,
+  },
+  dividerLight: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
   buttonContainer: {
     width: '100%',
+    flexDirection: 'column',
     gap: 10,
   },
+  buttonContainerRow: {
+    flexDirection: 'row',
+  },
   button: {
-    width: '100%',
     paddingVertical: 15,
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+  buttonFlex: {
+    flex: 1,
   },
+  // Cancel — dark glass filled (dark mode)
+  cancelButton: {
+    backgroundColor: 'rgba(50,50,50,0.95)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  cancelButtonLight: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.10)',
+  },
+  // Action — white pill (dark mode) / dark pill (light mode)
   actionButton: {
     backgroundColor: '#FFFFFF',
   },
-  destructiveAction: {
+  actionButtonLight: {
+    backgroundColor: '#0A0A0A',
+  },
+  // Destructive — always red
+  destructiveButton: {
     backgroundColor: '#E31937',
   },
   buttonText: {
@@ -220,44 +282,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   cancelText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.72)',
+  },
+  cancelTextLight: {
+    color: 'rgba(0,0,0,0.60)',
   },
   actionText: {
     color: '#0A0A0A',
   },
-  destructiveText: {
+  actionTextLight: {
     color: '#FFFFFF',
   },
-  // Light mode overrides
-  blurCardLight: {
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  glassOverlayLight: {
-    backgroundColor: 'rgba(248,248,248,0.88)',
-  },
-  closeButtonLight: {
-    backgroundColor: 'rgba(0,0,0,0.07)',
-  },
-  closeTextLight: {
-    color: 'rgba(0,0,0,0.4)',
-  },
-  titleLight: {
-    color: '#0A0A0A',
-  },
-  messageLight: {
-    color: 'rgba(0,0,0,0.55)',
-  },
-  cancelButtonLight: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  cancelTextLight: {
-    color: 'rgba(0,0,0,0.65)',
-  },
-  actionButtonLight: {
-    backgroundColor: '#0A0A0A',
-  },
-  actionTextLight: {
+  destructiveText: {
     color: '#FFFFFF',
   },
 });

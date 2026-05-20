@@ -11,6 +11,8 @@ codegraph index
 - **Mentalidad Bootstrap:** Construir rápido para validar el mercado, pero con una base arquitectónica que soporte escalar a millones de usuarios sin rehacer el código.
 - **Calidad Silicon Valley:** Código limpio, mantenible y un producto final visualmente impactante.
 
+Reglas de Búsqueda y Contexto: "Para buscar contexto, entender dependencias o leer el código del repositorio, DEBES utilizar la herramienta/comando de CodeGraph.
+
 ---
 
 ## ⚠️ 2. REGLA DE ORO: PREGUNTAR ANTES DE ACTUAR
