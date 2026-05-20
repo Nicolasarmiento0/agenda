@@ -11,10 +11,10 @@ import {
   View,
 } from 'react-native';
 
-const ITEM_HEIGHT = 56; // Un poco más alto para mejorar la accesibilidad táctil
-const VISIBLE_ITEMS = 5;
+const ITEM_HEIGHT = 44;
+const VISIBLE_ITEMS = 3;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-const PADDING = ITEM_HEIGHT * 2;
+const PADDING = ITEM_HEIGHT;
 
 type BusyInterval = { start: number; end: number };
 
@@ -116,22 +116,19 @@ function WheelColumn({
         {items.map((item, i) => {
           const centerAt = i * ITEM_HEIGHT;
 
-          // Interpolaciones fluidas de opacidad y escala (Espacio negativo radical)
           const opacity = scrollY.interpolate({
             inputRange: [
-              centerAt - ITEM_HEIGHT * 2,
               centerAt - ITEM_HEIGHT,
               centerAt,
               centerAt + ITEM_HEIGHT,
-              centerAt + ITEM_HEIGHT * 2,
             ],
-            outputRange: [0.1, 0.35, 1, 0.35, 0.1],
+            outputRange: [0.35, 1, 0.35],
             extrapolate: 'clamp',
           });
 
           const scale = scrollY.interpolate({
             inputRange: [centerAt - ITEM_HEIGHT, centerAt, centerAt + ITEM_HEIGHT],
-            outputRange: [0.88, 1.05, 0.88],
+            outputRange: [0.9, 1.05, 0.9],
             extrapolate: 'clamp',
           });
 
@@ -353,8 +350,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   itemText: {
-    fontSize: 26,
-    fontWeight: '400',
+    fontSize: 22,
+    fontWeight: '500',
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },

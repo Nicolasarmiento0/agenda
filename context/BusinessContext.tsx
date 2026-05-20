@@ -9,10 +9,13 @@ export type SelectedBusiness = {
   avatar_url?: string;
   status: string;
   category_id?: string;
-  opening_time?: string; // Formato 'HH:mm:ss'
-  closing_time?: string; // Formato 'HH:mm:ss'
+  opening_time?: string;
+  closing_time?: string;
   maps_url?: string;
   instagram_url?: string;
+  booking_window_day?: number;
+  booking_window_open_time?: string;
+  booking_window_close_time?: string;
 };
 
 type BusinessContextType = {

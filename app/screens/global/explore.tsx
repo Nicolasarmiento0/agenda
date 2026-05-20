@@ -2,7 +2,10 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
+  Image,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
@@ -18,6 +21,21 @@ import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import { appColors } from '../../../styles/appStyles';
 
+const H_PADDING = 16;
+
+const BIZ_COLORS = [
+  '#E31937', '#5C90D2', '#3D9E5A', '#F39C12', '#9B59B6',
+  '#1ABC9C', '#E67E22', '#2980B9', '#8E44AD', '#27AE60',
+];
+
+function getBizColor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return BIZ_COLORS[Math.abs(hash) % BIZ_COLORS.length];
+}
+
 type Category = {
   id: string;
   name: string;
@@ -25,17 +43,30 @@ type Category = {
   parent_id: string | null;
 };
 
-type BusinessWithCategory = SelectedBusiness & {
+type Business = {
+  id: string;
+  name: string;
+  description?: string | null;
+  address?: string | null;
+  maps_url?: string | null;
+  instagram_url?: string | null;
+  avatar_url?: string | null;
   category_id: string;
+  status: string;
+  opening_time?: string | null;
+  closing_time?: string | null;
 };
+
+type RatingInfo = { avg: number; count: number };
 
 export default function ExploreScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { setSelectedBusiness } = useBusiness();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [search, setSearch] = useState('');
-  const [businesses, setBusinesses] = useState<BusinessWithCategory[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [ratingsMap, setRatingsMap] = useState<Record<string, RatingInfo>>({});
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,25 +87,29 @@ export default function ExploreScreen() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [bizRes, catRes] = await Promise.all([
-      supabase
-        .from('businesses')
-        .select('*')
-        .in('status', ['approved', 'suspended'])
-        .order('name'),
-      supabase
-        .from('service_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name')
+    const [bizRes, catRes, reviewsRes] = await Promise.all([
+      supabase.from('businesses').select('*').eq('status', 'approved').order('name'),
+      supabase.from('service_categories').select('*').eq('is_active', true).order('name'),
+      supabase.from('reviews').select('business_id, score'),
     ]);
 
-    if (!bizRes.error && bizRes.data) {
-      setBusinesses(bizRes.data as BusinessWithCategory[]);
+    if (!bizRes.error && bizRes.data) setBusinesses(bizRes.data as Business[]);
+    if (!catRes.error && catRes.data) setCategories(catRes.data as Category[]);
+
+    if (!reviewsRes.error && reviewsRes.data) {
+      const sums: Record<string, { sum: number; count: number }> = {};
+      reviewsRes.data.forEach((r: any) => {
+        if (!sums[r.business_id]) sums[r.business_id] = { sum: 0, count: 0 };
+        sums[r.business_id].sum += Number(r.score);
+        sums[r.business_id].count += 1;
+      });
+      const map: Record<string, RatingInfo> = {};
+      Object.entries(sums).forEach(([id, { sum, count }]) => {
+        map[id] = { avg: sum / count, count };
+      });
+      setRatingsMap(map);
     }
-    if (!catRes.error && catRes.data) {
-      setCategories(catRes.data as Category[]);
-    }
+
     setLoading(false);
   }, []);
 
@@ -86,16 +121,17 @@ export default function ExploreScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
-  const handleSelectBusiness = (b: SelectedBusiness) => {
-    setSelectedBusiness(b);
-    router.push((`/screens/roles/client/client-business-profile?id=${b.id}`) as any);
+  const handleSelectBusiness = (b: Business) => {
+    setSelectedBusiness(b as unknown as SelectedBusiness);
+    router.push(`/screens/roles/client/client-business-profile?id=${b.id}` as any);
   };
 
   const parentCategories = categories.filter(c => !c.parent_id);
   const subCategories = categories.filter(c => c.parent_id === selectedParentId);
 
   const filtered = businesses.filter(b => {
-    const matchesSearch = !search.trim() ||
+    const matchesSearch =
+      !search.trim() ||
       b.name.toLowerCase().includes(search.toLowerCase()) ||
       b.description?.toLowerCase().includes(search.toLowerCase()) ||
       b.address?.toLowerCase().includes(search.toLowerCase());
@@ -104,23 +140,28 @@ export default function ExploreScreen() {
     if (selectedSubId) {
       matchesCategory = b.category_id === selectedSubId;
     } else if (selectedParentId) {
-      // Si solo hay un padre seleccionado, buscar todos los hijos de ese padre
-      const validSubIds = categories.filter(c => c.parent_id === selectedParentId).map(c => c.id);
+      const validSubIds = categories
+        .filter(c => c.parent_id === selectedParentId)
+        .map(c => c.id);
       matchesCategory = validSubIds.includes(b.category_id);
     }
-
     return matchesSearch && matchesCategory;
   });
+
+  const glassChip = {
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
 
-      {/* ── Header ─────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
         <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={styles.iconBtn}>
           <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>EXPLORAR</Text>
+        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>DESCUBRIR</Text>
         <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={styles.iconBtn}>
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -128,164 +169,278 @@ export default function ExploreScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingBottom: 52 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />
         }
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-          {/* ── Buscador ─────────────────────────────────────────────── */}
-          <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Feather name="search" size={15} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.textPrimary }]}
-              placeholder="Buscar negocios..."
-              placeholderTextColor={colors.textSecondary}
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
-                <Feather name="x" size={15} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
+          {/* ── Buscador ─────────────────────────────────────────── */}
+          <View style={{ paddingHorizontal: H_PADDING }}>
+            <View style={[
+              styles.searchBox,
+              {
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+              },
+            ]}>
+              <Feather name="search" size={15} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.textPrimary }]}
+                placeholder="Buscar negocios, categorías..."
+                placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.28)'}
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+                  <Feather name="x" size={15} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
-          {/* ── Sectores Principales ─────────────────────────────────────── */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CATEGORÍAS</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 10 }}>
+          {/* ── Categorías principales ────────────────────────────── */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: 16 }}
+            contentContainerStyle={{ paddingHorizontal: H_PADDING, gap: 8 }}
+          >
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => {
-                setSelectedParentId(null);
-                setSelectedSubId(null);
-              }}
-              style={[
-                styles.categoryChip,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-                !selectedParentId && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-              ]}
+              onPress={() => { setSelectedParentId(null); setSelectedSubId(null); }}
+              style={[styles.chip, !selectedParentId ? styles.chipActive : glassChip]}
             >
-              <Feather name="grid" size={16} color={!selectedParentId ? '#fff' : appColors.primary} />
-              <Text style={[styles.categoryLabel, { color: !selectedParentId ? '#fff' : colors.textPrimary }]}>TODOS</Text>
+              <Feather name="grid" size={13} color={!selectedParentId ? '#fff' : colors.textSecondary} />
+              <Text style={[styles.chipText, { color: !selectedParentId ? '#fff' : colors.textSecondary }]}>
+                TODOS
+              </Text>
             </TouchableOpacity>
 
-            {parentCategories.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSelectedParentId(cat.id === selectedParentId ? null : cat.id);
-                  setSelectedSubId(null);
-                }}
-                style={[
-                  styles.categoryChip,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  selectedParentId === cat.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                ]}
-              >
-                <Feather name={(cat.icon || 'tag') as any} size={16} color={selectedParentId === cat.id ? '#fff' : appColors.primary} />
-                <Text style={[styles.categoryLabel, { color: selectedParentId === cat.id ? '#fff' : colors.textPrimary }]}>
-                  {cat.name.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {parentCategories.map(cat => {
+              const active = selectedParentId === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  activeOpacity={0.7}
+                  onPress={() => { setSelectedParentId(active ? null : cat.id); setSelectedSubId(null); }}
+                  style={[styles.chip, active ? styles.chipActive : glassChip]}
+                >
+                  <Feather
+                    name={(cat.icon || 'tag') as any}
+                    size={13}
+                    color={active ? '#fff' : appColors.primary}
+                  />
+                  <Text style={[styles.chipText, { color: active ? '#fff' : colors.textPrimary }]}>
+                    {cat.name.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
-          {/* ── Especialidades (Subcategorías) ─────────────────────────── */}
+          {/* ── Subcategorías ─────────────────────────────────────── */}
           {selectedParentId && subCategories.length > 0 && (
-            <Animated.View style={{ opacity: fadeAnim }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 28 }} contentContainerStyle={{ gap: 8 }}>
-                {subCategories.map((cat) => (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginTop: 8 }}
+              contentContainerStyle={{ paddingHorizontal: H_PADDING, gap: 8 }}
+            >
+              {subCategories.map(cat => {
+                const active = selectedSubId === cat.id;
+                return (
                   <TouchableOpacity
                     key={cat.id}
                     activeOpacity={0.7}
-                    onPress={() => setSelectedSubId(cat.id === selectedSubId ? null : cat.id)}
+                    onPress={() => setSelectedSubId(active ? null : cat.id)}
                     style={[
-                      styles.subCategoryChip,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
-                      selectedSubId === cat.id && { backgroundColor: appColors.primary, borderColor: 'transparent' }
+                      styles.subChip,
+                      active ? styles.chipActive : { backgroundColor: colors.surface, borderColor: colors.border },
                     ]}
                   >
-                    <Text style={[styles.subCategoryLabel, { color: selectedSubId === cat.id ? '#fff' : colors.textSecondary }]}>
+                    <Text style={[styles.subChipText, { color: active ? '#fff' : colors.textSecondary }]}>
                       {cat.name}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </Animated.View>
+                );
+              })}
+            </ScrollView>
           )}
 
-          {/* ── Lista de negocios ────────────────────────────────────── */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            {search.trim() ? 'RESULTADOS' : 'NEGOCIOS DISPONIBLES'}
-          </Text>
+          {/* ── Contador ─────────────────────────────────────────── */}
+          {!loading && (
+            <View style={[styles.countRow, { paddingHorizontal: H_PADDING }]}>
+              <Text style={[styles.countLabel, { color: colors.textSecondary }]}>
+                {search.trim() ? 'RESULTADOS' : 'NEGOCIOS DISPONIBLES'}
+              </Text>
+              <View style={[
+                styles.countBadge,
+                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' },
+              ]}>
+                <Text style={[styles.countBadgeText, { color: colors.textSecondary }]}>
+                  {filtered.length}
+                </Text>
+              </View>
+            </View>
+          )}
 
+          {/* ── Lista de negocios ─────────────────────────────────── */}
           {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Cargando...</Text>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={appColors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>CARGANDO</Text>
             </View>
           ) : filtered.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Feather name="map-pin" size={28} color={colors.textSecondary} />
+            <View style={[styles.emptyCard, { marginHorizontal: H_PADDING, borderColor: colors.border }]}>
+              <View style={[
+                styles.emptyIcon,
+                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: colors.border },
+              ]}>
+                <Feather name="compass" size={28} color={colors.textSecondary} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
                 {search.trim() ? 'SIN RESULTADOS' : 'SIN NEGOCIOS'}
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
                 {search.trim()
-                  ? 'Intenta con otra búsqueda.'
+                  ? 'Intenta con otra búsqueda o categoría.'
                   : 'Aún no hay negocios disponibles.'}
               </Text>
             </View>
           ) : (
-            filtered.map((b) => (
-              <TouchableOpacity
-                key={b.id}
-                activeOpacity={0.75}
-                onPress={() => handleSelectBusiness(b)}
-                style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              >
-                {/* Avatar */}
-                <View style={[styles.businessAvatar, { backgroundColor: appColors.primary + '18' }]}>
-                  <Text style={[styles.businessInitial, { color: appColors.primary }]}>
-                    {b.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+            <View style={{ paddingHorizontal: H_PADDING, gap: 12 }}>
+              {filtered.map(b => {
+                const bizColor = getBizColor(b.id);
+                const categoryName = categories.find(c => c.id === b.category_id)?.name;
+                const rating = ratingsMap[b.id];
+                const hasBody = b.description || b.maps_url || b.instagram_url || b.opening_time || b.closing_time;
 
-                {/* Info */}
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                    <Text style={[styles.businessName, { color: colors.textPrimary }]} numberOfLines={1}>
-                      {b.name}
-                    </Text>
-                    {b.status === 'suspended' && (
-                      <View style={styles.suspendedBadge}>
-                        <Text style={styles.suspendedText}>SUSPENDIDO</Text>
+                return (
+                  <TouchableOpacity
+                    key={b.id}
+                    activeOpacity={0.72}
+                    onPress={() => handleSelectBusiness(b)}
+                    style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  >
+
+                    {/* ── Cabecera: avatar + nombre + categoría + rating ── */}
+                    <View style={styles.cardHeader}>
+                      {/* Avatar */}
+                      {b.avatar_url ? (
+                        <Image
+                          source={{ uri: b.avatar_url }}
+                          style={[styles.avatarImg, { borderColor: bizColor + '50' }]}
+                        />
+                      ) : (
+                        <View style={[styles.avatarInitial, { backgroundColor: bizColor + '18', borderColor: bizColor + '35' }]}>
+                          <Text style={[styles.avatarInitialText, { color: bizColor }]}>
+                            {b.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Info */}
+                      <View style={{ flex: 1, gap: 5 }}>
+                        <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={2}>
+                          {b.name}
+                        </Text>
+
+                        {categoryName ? (
+                          <View style={[styles.catPill, { backgroundColor: bizColor + '15', borderColor: bizColor + '30' }]}>
+                            <Text style={[styles.catPillText, { color: bizColor }]}>{categoryName}</Text>
+                          </View>
+                        ) : null}
+
+                        {/* Rating */}
+                        {rating ? (
+                          <View style={styles.ratingRow}>
+                            {[1, 2, 3, 4, 5].map(s => (
+                              <Feather
+                                key={s}
+                                name="star"
+                                size={11}
+                                color={s <= Math.round(rating.avg)
+                                  ? '#F59E0B'
+                                  : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}
+                              />
+                            ))}
+                            <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
+                            <Text style={[styles.ratingCount, { color: colors.textSecondary }]}>
+                              ({rating.count})
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={[styles.noRating, { color: colors.textSecondary }]}>
+                            Aún sin valoración
+                          </Text>
+                        )}
                       </View>
-                    )}
-                  </View>
-                  {b.description ? (
-                    <Text style={[styles.businessDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                      {b.description}
-                    </Text>
-                  ) : null}
-                  {b.address ? (
-                    <View style={styles.addressRow}>
-                      <Feather name="map-pin" size={10} color={colors.textSecondary} />
-                      <Text style={[styles.addressText, { color: colors.textSecondary }]} numberOfLines={1}>
-                        {'  '}{b.address}
-                      </Text>
                     </View>
-                  ) : null}
-                </View>
 
-                {/* CTA */}
-                <View style={[styles.bookBtn, { backgroundColor: appColors.primary }]}>
-                  <Feather name="calendar" size={14} color="#fff" />
-                </View>
-              </TouchableOpacity>
-            ))
+                    {/* ── Cuerpo: detalles ─────────────────────────────── */}
+                    {hasBody ? (
+                      <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+                    ) : null}
+
+                    {/* Acerca de */}
+                    {b.description ? (
+                      <View style={styles.bodyRow}>
+                        <Feather name="info" size={12} color={colors.textSecondary} style={{ marginTop: 1 }} />
+                        <Text style={[styles.bodyText, { color: colors.textSecondary }]} numberOfLines={3}>
+                          {b.description}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {/* Google Maps */}
+                    {b.maps_url ? (
+                      <TouchableOpacity
+                        style={styles.bodyRow}
+                        activeOpacity={0.7}
+                        onPress={e => { e.stopPropagation?.(); Linking.openURL(b.maps_url!); }}
+                      >
+                        <Feather name="map-pin" size={12} color={appColors.primary} />
+                        <Text style={[styles.linkText, { color: appColors.primary }]}>Ver en Google Maps</Text>
+                        <Feather name="external-link" size={11} color={appColors.primary} />
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {/* Instagram */}
+                    {b.instagram_url ? (
+                      <TouchableOpacity
+                        style={styles.bodyRow}
+                        activeOpacity={0.7}
+                        onPress={e => { e.stopPropagation?.(); Linking.openURL(b.instagram_url!); }}
+                      >
+                        <Feather name="instagram" size={12} color="#E1306C" />
+                        <Text style={[styles.linkText, { color: '#E1306C' }]}>Instagram</Text>
+                        <Feather name="external-link" size={11} color="#E1306C" />
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {/* Horario */}
+                    {(b.opening_time || b.closing_time) ? (
+                      <View style={styles.bodyRow}>
+                        <Feather name="clock" size={12} color={colors.textSecondary} />
+                        <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
+                          {b.opening_time?.substring(0, 5) ?? '--:--'}{' – '}{b.closing_time?.substring(0, 5) ?? '--:--'}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {/* ── CTA ──────────────────────────────────────────── */}
+                    <View style={styles.ctaRow}>
+                      <Text style={[styles.ctaText, { color: appColors.primary }]}>Ver perfil completo</Text>
+                      <Feather name="arrow-right" size={14} color={appColors.primary} />
+                    </View>
+
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
 
         </Animated.View>
@@ -299,12 +454,11 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: H_PADDING,
     paddingBottom: 8,
   },
   iconBtn: {
@@ -320,143 +474,217 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Search
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 13,
     marginTop: 12,
-    marginBottom: 24,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
-    letterSpacing: 0.4,
+    fontSize: 14,
+    letterSpacing: 0.3,
   },
 
-  // Sections
-  sectionLabel: {
-    fontSize: 10,
-    letterSpacing: 3,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-
-  // Categories horizontal
-  categoriesRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  categoryChip: {
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
+    borderRadius: 20,
   },
-  categoryLabel: {
+  chipActive: {
+    backgroundColor: appColors.primary,
+    borderColor: appColors.primary,
+  },
+  chipText: {
     fontSize: 10,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     fontWeight: '700',
   },
-  subCategoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+
+  subChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  subCategoryLabel: {
+  subChipText: {
     fontSize: 12,
     fontWeight: '500',
   },
 
-  // Business cards
-  businessCard: {
+  countRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginTop: 22,
+    marginBottom: 14,
+  },
+  countLabel: {
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  countBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  loadingContainer: {
+    paddingVertical: 64,
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 10,
+    letterSpacing: 3,
+    fontWeight: '600',
+  },
+
+  // Card
+  card: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 10,
+    gap: 0,
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 14,
   },
-  businessAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 4,
+
+  avatarImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    flexShrink: 0,
+  },
+  avatarInitial: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  businessInitial: {
-    fontSize: 20,
+  avatarInitialText: {
+    fontSize: 26,
     fontWeight: '700',
-    letterSpacing: 1,
   },
-  businessName: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+
+  cardName: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    lineHeight: 20,
   },
-  suspendedBadge: {
-    backgroundColor: '#EF444420',
-    borderColor: '#EF4444',
-    borderWidth: 0.5,
-    borderRadius: 3,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+
+  catPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  suspendedText: {
-    color: '#EF4444',
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 1,
+  catPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
-  businessDesc: {
+
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingAvg: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  ratingCount: {
+    fontSize: 10,
+    marginLeft: 1,
+  },
+  noRating: {
+    fontSize: 10,
+    fontStyle: 'italic',
+    letterSpacing: 0.2,
+  },
+
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 12,
+  },
+
+  // Body rows
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 8,
+  },
+  bodyText: {
+    flex: 1,
     fontSize: 12,
     lineHeight: 17,
     letterSpacing: 0.2,
   },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 5,
-  },
-  addressText: {
-    fontSize: 11,
-    letterSpacing: 0.3,
+  linkText: {
     flex: 1,
-  },
-  bookBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 
-  // Empty states
-  emptyState: {
-    paddingVertical: 40,
+  // CTA
+  ctaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 4,
   },
-  emptyText: {
+  ctaText: {
     fontSize: 12,
-    letterSpacing: 2,
+    fontWeight: '600',
+    letterSpacing: 0.4,
   },
+
+  // Empty
   emptyCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
-    padding: 36,
+    borderRadius: 16,
+    padding: 40,
     alignItems: 'center',
     gap: 12,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   emptyTitle: {
     fontSize: 14,
@@ -465,7 +693,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 12,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
     textAlign: 'center',
     lineHeight: 18,
   },

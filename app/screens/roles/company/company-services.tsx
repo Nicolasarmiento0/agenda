@@ -34,10 +34,23 @@ export default function CompanyServicesScreen() {
   const [editPrice, setEditPrice] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isGym, setIsGym] = useState(false);
+
   const fetchServices = React.useCallback(async () => {
     if (!business?.id) return;
 
     try {
+      let gymFlag = false;
+      if (business?.category_id) {
+        const { data: cat } = await supabase
+          .from('service_categories')
+          .select('name')
+          .eq('id', business.category_id)
+          .single();
+        gymFlag = !!(cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS'));
+        setIsGym(gymFlag);
+      }
+
       const { data, error } = await supabase
         .from('business_services')
         .select('*')
@@ -45,19 +58,42 @@ export default function CompanyServicesScreen() {
         .eq('is_active', true);
 
       if (error) {
-        console.warn('Error fetching services, using placeholders:', error);
-        // No alertar en cada fetch para no molestar, pero dejar log
+        console.warn('Error fetching services:', error);
+      }
+
+      if (gymFlag) {
+        // Enforce the existence of the 3 plans
+        const planNames = ['Plan Básico', 'Plan Premium', 'Plan VIP'];
+        const existingPlans = data ? data.filter(s => planNames.includes(s.name)) : [];
+        if (existingPlans.length < 3) {
+          const defaultPrices: Record<string, number> = { 'Plan Básico': 15000, 'Plan Premium': 25000, 'Plan VIP': 35000 };
+          const plansToCreate = planNames.filter(name => !existingPlans.some(p => p.name === name));
+          
+          if (plansToCreate.length > 0) {
+            const inserts = plansToCreate.map(name => ({
+              business_id: business.id,
+              name,
+              price: defaultPrices[name],
+              duration_min: 30,
+              is_active: true
+            }));
+            const { data: newPlans, error: insertError } = await supabase
+              .from('business_services')
+              .insert(inserts)
+              .select('*');
+              
+            if (!insertError && newPlans) {
+              setServices([...(data || []), ...newPlans].sort((a, b) => a.name.localeCompare(b.name)));
+              return;
+            }
+          }
+        }
       }
 
       if (!error && data && data.length > 0) {
-        setServices(data);
+        setServices(data.sort((a, b) => a.name.localeCompare(b.name)));
       } else {
-        // Fallback to defaults
-        setServices([
-          { id: 'p1', name: 'Servicio 1', price: 10000 },
-          { id: 'p2', name: 'Servicio 2', price: 10000 },
-          { id: 'p3', name: 'Servicio 3', price: 10000 },
-        ]);
+        setServices([]);
       }
     } catch (err) {
       console.error('Error fetching services:', err);
@@ -91,36 +127,53 @@ export default function CompanyServicesScreen() {
     if (!editingService || isSaving) return;
     setIsSaving(true);
     try {
+      let finalName = editName;
+
       if (editingService.id === 'new' || (typeof editingService.id === 'string' && editingService.id.startsWith('p'))) {
         if (!business?.id) {
           showAlert({ title: 'Error', message: 'No se encontró la información del negocio. Intenta recargar.' });
           return;
         }
+
+        if (isGym) {
+          // Si es gym, solo puede crear estos servicios extra, no puede crear planes adicionales
+          if (editName !== 'Taller Extraprogramático' && editName !== 'Evaluación') {
+            showAlert({ title: 'Atención', message: 'Los gimnasios solo pueden agregar "Taller Extraprogramático" o "Evaluación". Los planes base ya existen.' });
+            setIsSaving(false);
+            return;
+          }
+        }
+
         const { error } = await supabase
           .from('business_services')
           .insert({
             business_id: business.id,
-            name: editName,
+            name: finalName,
             price: parseFloat(editPrice) || 0,
             duration_min: 30,
             is_active: true
           });
         if (error) throw error;
       } else {
+        const isBasePlan = ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService.name);
+        if (isGym && isBasePlan) {
+          finalName = editingService.name; // Cannot change name of base plan
+        }
+
         const { error } = await supabase
           .from('business_services')
           .update({ 
-            name: editName, 
+            name: finalName, 
             price: parseFloat(editPrice) || 0 
           })
           .eq('id', editingService.id);
         if (error) throw error;
 
         // Si el nombre cambió, actualizar todas las citas existentes que usaban el nombre antiguo
-        if (editingService.name && editingService.name !== editName && business?.id) {
+        if (editingService.name && editingService.name !== finalName && business?.id) {
           const { error: apptError } = await supabase
             .from('appointments')
-            .update({ service: editName })
+            .update({ service: finalName })
             .eq('business_id', business.id)
             .eq('service', editingService.name);
           
@@ -142,6 +195,12 @@ export default function CompanyServicesScreen() {
     // Guardamos la referencia antes de cerrar el modal
     const serviceToDelete = editingService;
     if (!serviceToDelete || serviceToDelete.id === 'new') return;
+
+    const isBasePlan = ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(serviceToDelete.name);
+    if (isGym && isBasePlan) {
+      showAlert({ title: 'No Permitido', message: 'Los planes de gimnasio no se pueden eliminar. Solo puedes modificar su precio.' });
+      return;
+    }
 
     // Cerramos el modal de edición primero para evitar que bloquee la alerta
     setEditingService(null);
@@ -289,13 +348,34 @@ export default function CompanyServicesScreen() {
             </View>
             
             <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 20 }]}>NOMBRE DEL SERVICIO</Text>
-            <TextInput
-              style={[localStyles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Ej: Corte y Barba"
-              placeholderTextColor={colors.textSecondary}
-            />
+            {isGym && editingService?.id !== 'new' && ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService?.name) ? (
+              <Text style={[localStyles.input, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background, opacity: 0.6 }]}>
+                {editName}
+              </Text>
+            ) : isGym && editingService?.id === 'new' ? (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity 
+                  onPress={() => setEditName('Taller Extraprogramático')}
+                  style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Taller Extraprogramático' ? appColors.primary : colors.border }]}
+                >
+                  <Text style={{ fontSize: 12, color: editName === 'Taller Extraprogramático' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Taller Extraprogramático</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setEditName('Evaluación')}
+                  style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Evaluación' ? appColors.primary : colors.border }]}
+                >
+                  <Text style={{ fontSize: 12, color: editName === 'Evaluación' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Evaluación</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TextInput
+                style={[localStyles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Ej: Corte y Barba"
+                placeholderTextColor={colors.textSecondary}
+              />
+            )}
 
             <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 16 }]}>PRECIO ($)</Text>
             <TextInput

@@ -159,25 +159,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.55,
     shadowRadius: 32,
-    elevation: 24,
   },
   blurCard: {
     borderRadius: 32,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   blurCardLight: {
-    borderColor: 'rgba(255, 255, 255, 0.7)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   glassOverlay: {
     paddingTop: 44,
     paddingHorizontal: 20,
     paddingBottom: 20,
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)', // Light tint to enhance glass effect
   },
   glassOverlayLight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   closeButton: {
     position: 'absolute',

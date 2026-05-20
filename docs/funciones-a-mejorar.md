@@ -25,11 +25,3 @@ Barbero confirma en la app
 Resend ofrece **3.000 emails/mes gratis**. Para una barbería con 20–100 citas al mes, nunca vas a pasarte del límite
 
 ----------------------------------------
-#### Opciones que darán plus a las pymes
-
--mejorar la vista de los trabajadores en la agenda del rol company y client, utiliza la guia docs/Guia-VISTA-DE-TRABAJADORES-EN-LA-AGENDA.png. soluciona el error que está en la imagen docs/ERROR-GRID-desajustado.png 
--mejorar vista en docs/Error-ajustar-ingresos-y-horarios-en-ajustar-a-todas-las-screensdashboards.png
-
-REALIZAME PREGUNTAS ANTES DE COMENZAR A CODEAR Y RECOMENDACIONES VAMOS PASO A PASO.
-
-- La vista de ingresos en dashboard company, que muestre numeros, asi coomo en historial que muestra ingresos, manten la opción que sean valores diarios, semanales o mensuales.

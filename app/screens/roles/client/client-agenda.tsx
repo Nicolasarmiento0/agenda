@@ -7,13 +7,16 @@ import {
   Animated,
   Dimensions,
   KeyboardAvoidingView,
+  Modal,
   PanResponder,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -75,6 +78,29 @@ type Business = {
   address?: string;
   phone?: string;
   avatar_url?: string;
+  opening_time?: string;
+  closing_time?: string;
+  booking_window_day?: number;
+  booking_window_open_time?: string;
+  booking_window_close_time?: string;
+};
+
+type GymMembership = {
+  id: string;
+  client_type: 'static' | 'dynamic';
+  plan: 'basic' | 'premium' | 'vip';
+  status: 'active' | 'inactive' | 'suspended';
+};
+
+type MembershipRequest = {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+};
+
+const PLAN_LIMITS: Record<string, number> = {
+  basic: 1,
+  premium: 3,
+  vip: 5,
 };
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -377,6 +403,12 @@ function AppointmentSheet({
 
 // ─── Componente: Formulario Cita ──────────────────────────────────────────────
 
+const GYM_SERVICES = [
+  { name: 'CLASE', price: 0 },
+  { name: 'Taller Extraprogramático', price: 0 },
+  { name: 'Evaluación', price: 0 },
+];
+
 function AppointmentFormModal({
   visible,
   initialData,
@@ -388,6 +420,7 @@ function AppointmentFormModal({
   openingTime,
   closingTime,
   isGym,
+  gymMembership,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -399,6 +432,7 @@ function AppointmentFormModal({
   openingTime?: string;
   closingTime?: string;
   isGym: boolean;
+  gymMembership?: GymMembership | null;
 }) {
   const { isDarkMode } = useTheme();
   const [clientName, setClientName] = useState('');
@@ -417,6 +451,10 @@ function AppointmentFormModal({
   const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isGym) {
+      setServices(GYM_SERVICES);
+      return;
+    }
     const fetchServices = async () => {
       if (!visible || !colors.selectedBusinessId) return;
 
@@ -473,7 +511,7 @@ function AppointmentFormModal({
     };
 
     fetchServices();
-  }, [visible, colors.selectedBusinessId]);
+  }, [visible, colors.selectedBusinessId, isGym]);
 
   useEffect(() => {
     if (visible) {
@@ -551,15 +589,15 @@ function AppointmentFormModal({
       return;
     }
 
-    if (isGym) {
+    if (isGym && gymMembership?.client_type === 'dynamic') {
       const paddedHh = hhStr.padStart(2, '0');
       const paddedMm = (mmStr || '0').padStart(2, '0');
       const selectedDateObj = new Date(`${dateText}T${paddedHh}:${paddedMm}:00`);
       const diffMs = selectedDateObj.getTime() - now.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
 
-      if (diffHours < 48) {
-        showAlert({ title: 'Reserva no permitida', message: 'Para gimnasios, debes agendar con al menos 48 horas de anticipación.' });
+      if (diffHours < 2) {
+        showAlert({ title: 'Reserva no permitida', message: 'Debes reservar con al menos 2 horas de anticipación a la clase.' });
         return;
       }
     }
@@ -800,6 +838,102 @@ export default function ClientAgendaScreen() {
     checkGym();
   }, [business?.category_id]);
 
+  // ─── Gym: membresía del cliente ──────────────────────────────
+  const [gymMembership, setGymMembership] = useState<GymMembership | null>(null);
+  const [membershipRequest, setMembershipRequest] = useState<MembershipRequest | null>(null);
+  const [gymMembershipLoading, setGymMembershipLoading] = useState(false);
+  const [showMembershipModal, setShowMembershipModal] = useState(false);
+  const [membershipMessage, setMembershipMessage] = useState('');
+  const [sendingRequest, setSendingRequest] = useState(false);
+  // Banner de selección semanal para clientes estáticos (domingo en ventana horaria)
+  const [showWeeklyBanner, setShowWeeklyBanner] = useState(false);
+  const [showWeeklyModal, setShowWeeklyModal] = useState(false);
+  const [weeklySlotsByWorker, setWeeklySlotsByWorker] = useState<Record<string, string[]>>({});
+  const [weeklySelectedSlots, setWeeklySelectedSlots] = useState<{ workerId: string; date: string; startHour: number }[]>([]);
+  const [savingWeekly, setSavingWeekly] = useState(false);
+  const [weeklyClassesUsed, setWeeklyClassesUsed] = useState(0);
+
+  const fetchGymMembership = useCallback(async () => {
+    if (!isGym || !business?.id || !profile?.id) return;
+    setGymMembershipLoading(true);
+    const [{ data: mem }, { data: req }] = await Promise.all([
+      supabase.from('gym_memberships').select('*').eq('business_id', business.id).eq('client_id', profile.id).maybeSingle(),
+      supabase.from('membership_requests').select('id, status').eq('business_id', business.id).eq('client_id', profile.id).maybeSingle(),
+    ]);
+    setGymMembership(mem ?? null);
+    setMembershipRequest(req ?? null);
+    setGymMembershipLoading(false);
+  }, [isGym, business?.id, profile?.id]);
+
+  useEffect(() => {
+    if (isGym) fetchGymMembership();
+  }, [isGym, fetchGymMembership]);
+
+  const fetchWeeklyClassesUsed = useCallback(async () => {
+    if (!isGym || gymMembership?.status !== 'active' || !business?.id || !profile?.id) return;
+    const today = new Date();
+    const currentWeek = getWeekDays(today);
+    const weekStart = toLocalISOString(currentWeek[0]);
+    const weekEnd = toLocalISOString(currentWeek[6]);
+    const { count } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .eq('client_id', profile.id)
+      .eq('service', 'CLASE')
+      .gte('date', weekStart)
+      .lte('date', weekEnd)
+      .in('status', ['confirmed', 'pending']);
+    setWeeklyClassesUsed(count ?? 0);
+  }, [isGym, gymMembership?.status, business?.id, profile?.id]);
+
+  useEffect(() => {
+    if (isGym && gymMembership?.status === 'active') fetchWeeklyClassesUsed();
+  }, [isGym, gymMembership, fetchWeeklyClassesUsed]);
+
+  // Banner dominical para clientes estáticos
+  useEffect(() => {
+    if (!isGym || !gymMembership || gymMembership.client_type !== 'static') {
+      setShowWeeklyBanner(false);
+      return;
+    }
+    const now = new Date();
+    const bookingDay = business?.booking_window_day ?? 0;
+    const isBookingDay = now.getDay() === bookingDay;
+    const openTimeStr = business?.booking_window_open_time;
+    const closeTimeStr = business?.booking_window_close_time;
+    if (!isBookingDay || !openTimeStr || !closeTimeStr) {
+      setShowWeeklyBanner(false);
+      return;
+    }
+    const [openH, openM] = openTimeStr.split(':').map(Number);
+    const [closeH, closeM] = closeTimeStr.split(':').map(Number);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const openMinutes = openH * 60 + openM;
+    const closeMinutes = closeH * 60 + closeM;
+    setShowWeeklyBanner(nowMinutes >= openMinutes && nowMinutes <= closeMinutes);
+  }, [isGym, gymMembership, business]);
+
+  const handleSendMembershipRequest = async () => {
+    if (!business?.id || !profile?.id) return;
+    setSendingRequest(true);
+    const { error } = await supabase.from('membership_requests').insert({
+      business_id: business.id,
+      client_id: profile.id,
+      message: membershipMessage.trim() || null,
+      status: 'pending',
+    });
+    setSendingRequest(false);
+    if (error) {
+      showAlert({ title: 'Error', message: 'No se pudo enviar la solicitud. Intenta nuevamente.' });
+    } else {
+      setShowMembershipModal(false);
+      setMembershipMessage('');
+      showAlert({ title: '¡Solicitud enviada!', message: 'El gimnasio revisará tu solicitud y te asignará un plan.' });
+      fetchGymMembership();
+    }
+  };
+
   // Horas dinámicas
   const startHour = useMemo(() => {
     if (!business?.opening_time) return DEFAULT_START_HOUR;
@@ -897,9 +1031,9 @@ export default function ClientAgendaScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchWorkers(), fetchAppointments()]);
+    await Promise.all([fetchWorkers(), fetchAppointments(), fetchWeeklyClassesUsed()]);
     setRefreshing(false);
-  }, [fetchWorkers, fetchAppointments]);
+  }, [fetchWorkers, fetchAppointments, fetchWeeklyClassesUsed]);
 
   useEffect(() => {
     if (viewMode === 'week' && !selectedWorkerFilter && workers.length > 0) {
@@ -994,6 +1128,29 @@ export default function ClientAgendaScreen() {
         return false;
       }
 
+      // ── Plan limit para clientes de gym (solo aplica a CLASE) ──
+      if (isGym && gymMembership?.status === 'active' && profile?.id && data.service === 'CLASE') {
+        const weekStart = toLocalISOString(weekDays[0]);
+        const weekEnd = toLocalISOString(weekDays[6]);
+        const { count } = await supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', business.id)
+          .eq('client_id', profile.id)
+          .gte('date', weekStart)
+          .lte('date', weekEnd)
+          .in('status', ['confirmed', 'pending']);
+
+        const limit = PLAN_LIMITS[gymMembership.plan] ?? 1;
+        if ((count ?? 0) >= limit) {
+          showAlert({
+            title: 'Límite de plan alcanzado',
+            message: `Tu plan ${gymMembership.plan.toUpperCase()} permite ${limit} clase${limit > 1 ? 's' : ''} por semana. Ya tienes ${count} agendada${(count ?? 0) > 1 ? 's' : ''} esta semana.`,
+          });
+          return false;
+        }
+      }
+
       const apptData = {
         business_id: business.id,
         worker_id: data.worker_id,
@@ -1022,13 +1179,14 @@ export default function ClientAgendaScreen() {
       }
 
       fetchAppointments();
+      fetchWeeklyClassesUsed();
       return true;
     } catch (err: any) {
       console.error('Error in handleSaveAppt:', err);
       showAlert({ title: 'Error Inesperado', message: err.message || 'Ocurrió un error al procesar la cita.' });
       return false;
     }
-  }, [editingAppt, business?.id, selectedDate, fetchAppointments, profile, showAlert]);
+  }, [editingAppt, business?.id, selectedDate, fetchAppointments, fetchWeeklyClassesUsed, profile, showAlert]);
 
   const navigateDay = (delta: number) => {
     const d = new Date(selectedDate);
@@ -1262,6 +1420,35 @@ export default function ClientAgendaScreen() {
         </View>
       )}
 
+      {/* ── Indicador de clases semanales (solo gym con membresía activa) ── */}
+      {isGym && gymMembership?.status === 'active' && (() => {
+        const limit = PLAN_LIMITS[gymMembership.plan] ?? 1;
+        const used = Math.min(weeklyClassesUsed, limit);
+        const pct = limit > 0 ? (used / limit) * 100 : 0;
+        const isFull = used >= limit;
+        return (
+          <View style={[styles.gymClassesBanner, {
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+          }]}>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={[styles.gymClassesLabel, { color: colors.textPrimary }]}>
+                Plan {gymMembership.plan.toUpperCase()} · {used}/{limit} clases
+              </Text>
+              <View style={[styles.gymClassesTrack, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+                <View style={[styles.gymClassesFill, {
+                  width: `${pct}%`,
+                  backgroundColor: isFull ? '#E24B4A' : appColors.primary,
+                }]} />
+              </View>
+            </View>
+            <Text style={[styles.gymClassesWeekLabel, { color: isFull ? '#E24B4A' : colors.textSecondary }]}>
+              {isFull ? 'Límite alcanzado' : 'esta semana'}
+            </Text>
+          </View>
+        );
+      })()}
+
       {/* ── Selector de fecha (modo día) ────────────────────────── */}
       {viewMode === 'day' && (
 
@@ -1373,6 +1560,19 @@ export default function ClientAgendaScreen() {
         </View>
       )}
 
+      {/* ── Banner dominical para clientes estáticos ────────────── */}
+      {showWeeklyBanner && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setShowWeeklyModal(true)}
+          style={[styles.weeklyBanner, { backgroundColor: appColors.primary }]}
+        >
+          <Feather name="calendar" size={16} color="#fff" />
+          <Text style={styles.weeklyBannerText}>¡Hoy puedes elegir tus clases de la semana!</Text>
+          <Feather name="chevron-right" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
+
       <View style={[styles.gridContainer, { borderTopColor: colors.border }]}>
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
 
@@ -1383,23 +1583,78 @@ export default function ClientAgendaScreen() {
           </View>
         )}
       </View>
-      {/* ── FAB ──────────────────────────────────────────────────── */}
-      {!isSuspended && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: appColors.primary }]}
-          activeOpacity={0.85}
-          onPress={() => {
-            if (!business?.id) {
-              showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
-              return;
-            }
-            setEditingAppt(undefined);
-            setFormVisible(true);
-          }}
-        >
-          <Feather name="plus" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
+
+      {/* ── FAB / Gym membership CTA ─────────────────────────────── */}
+      {!isSuspended && (() => {
+        // Negocio normal: FAB estándar
+        if (!isGym) {
+          return (
+            <TouchableOpacity
+              style={[styles.fab, { backgroundColor: appColors.primary }]}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (!business?.id) {
+                  showAlert({ title: 'Sin negocio', message: 'Debes seleccionar un negocio desde la pantalla Explorar.' });
+                  return;
+                }
+                setEditingAppt(undefined);
+                setFormVisible(true);
+              }}
+            >
+              <Feather name="plus" size={24} color="#fff" />
+            </TouchableOpacity>
+          );
+        }
+
+        // Gym: cargando estado de membresía
+        if (gymMembershipLoading) {
+          return (
+            <View style={[styles.fab, { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+              <ActivityIndicator size="small" color={appColors.primary} />
+            </View>
+          );
+        }
+
+        // Gym: membresía activa → puede reservar
+        if (gymMembership?.status === 'active') {
+          return (
+            <TouchableOpacity
+              style={[styles.fab, { backgroundColor: appColors.primary }]}
+              activeOpacity={0.85}
+              onPress={() => {
+                setEditingAppt(undefined);
+                setFormVisible(true);
+              }}
+            >
+              <Feather name="plus" size={24} color="#fff" />
+            </TouchableOpacity>
+          );
+        }
+
+        // Gym: solicitud pendiente
+        if (membershipRequest?.status === 'pending') {
+          return (
+            <View style={[styles.membershipBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Feather name="clock" size={16} color="#F0A030" />
+              <Text style={[styles.membershipBadgeText, { color: colors.textSecondary }]}>Solicitud pendiente de aprobación</Text>
+            </View>
+          );
+        }
+
+        // Gym: solicitud rechazada o sin solicitud → botón para solicitar
+        return (
+          <TouchableOpacity
+            style={[styles.membershipBtn, { backgroundColor: appColors.primary }]}
+            activeOpacity={0.85}
+            onPress={() => setShowMembershipModal(true)}
+          >
+            <Feather name="user-plus" size={18} color="#fff" />
+            <Text style={styles.membershipBtnText}>
+              {membershipRequest?.status === 'rejected' ? 'Volver a solicitar membresía' : 'Solicitar membresía'}
+            </Text>
+          </TouchableOpacity>
+        );
+      })()}
 
       {/* ── Modal Formulario ─────────────────────────────────────── */}
       <AppointmentFormModal
@@ -1413,6 +1668,7 @@ export default function ClientAgendaScreen() {
         openingTime={business?.opening_time}
         closingTime={business?.closing_time}
         isGym={isGym}
+        gymMembership={gymMembership}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1424,6 +1680,100 @@ export default function ClientAgendaScreen() {
         colors={colors}
         isDarkMode={isDarkMode}
       />
+
+      {/* ── Modal: Solicitud de membresía ────────────────────────── */}
+      <Modal visible={showMembershipModal} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setShowMembershipModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.membershipModalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.membershipModalTitle, { color: colors.textPrimary }]}>Unirme a {business?.name}</Text>
+                <Text style={[styles.membershipModalSub, { color: colors.textSecondary }]}>
+                  El gimnasio revisará tu solicitud y te asignará un tipo de membresía y plan. Tu cita quedará pendiente de confirmación.
+                </Text>
+                <Text style={[{ fontSize: 12, color: colors.textSecondary, marginBottom: 6, letterSpacing: 0.5 }]}>MENSAJE OPCIONAL</Text>
+                <TextInput
+                  style={[styles.membershipInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  placeholder="Cuéntale algo al gimnasio (objetivos, experiencia...)"
+                  placeholderTextColor={colors.textSecondary}
+                  value={membershipMessage}
+                  onChangeText={setMembershipMessage}
+                  multiline
+                  maxLength={200}
+                />
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                  <TouchableOpacity
+                    style={[styles.membershipModalBtn, { borderColor: colors.border }]}
+                    onPress={() => setShowMembershipModal(false)}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, flex: 1 }]}
+                    onPress={handleSendMembershipRequest}
+                    disabled={sendingRequest}
+                  >
+                    {sendingRequest
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Enviar solicitud</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Modal: Selección semanal de clases (clientes estáticos) ─ */}
+      <Modal visible={showWeeklyModal} transparent animationType="slide">
+        <View style={[styles.modalOverlay, { justifyContent: 'flex-end', padding: 0 }]}>
+          <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
+            <View style={[styles.weeklyModalContent, { backgroundColor: isDarkMode ? 'rgba(15,15,20,0.7)' : 'rgba(255,255,255,0.6)', borderColor: colors.border }]}>
+              <View style={[styles.sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', alignSelf: 'center' }]} />
+              <Text style={[styles.membershipModalTitle, { color: colors.textPrimary, marginBottom: 6 }]}>Clases de la semana</Text>
+              <Text style={[styles.membershipModalSub, { color: colors.textSecondary, marginBottom: 16 }]}>
+                Plan {gymMembership?.plan?.toUpperCase()} · Puedes elegir hasta {PLAN_LIMITS[gymMembership?.plan ?? 'basic']} clase{PLAN_LIMITS[gymMembership?.plan ?? 'basic'] > 1 ? 's' : ''} esta semana.
+              </Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
+                {weekDays.map((d, i) => {
+                  const dateStr = toLocalISOString(d);
+                  const dayAppts = appointments.filter(a => a.date === dateStr && a.isMine);
+                  const isTodayOrPast = d <= new Date(new Date().setHours(0, 0, 0, 0));
+                  return (
+                    <View key={i} style={[styles.weeklyDayRow, { borderColor: colors.border, opacity: isTodayOrPast ? 0.4 : 1 }]}>
+                      <Text style={[{ fontSize: 13, fontWeight: '600', color: colors.textPrimary, width: 80 }]}>
+                        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]} {d.getDate()}
+                      </Text>
+                      {dayAppts.length > 0
+                        ? dayAppts.map(a => (
+                          <View key={a.id} style={[styles.weeklyApptChip, { backgroundColor: appColors.primary + '22', borderColor: appColors.primary + '44' }]}>
+                            <Text style={{ fontSize: 11, color: appColors.primary }}>{formatHour(a.startHour)} · {a.service}</Text>
+                          </View>
+                        ))
+                        : !isTodayOrPast && (
+                          <Text style={{ fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' }}>Sin clase agendada</Text>
+                        )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <TouchableOpacity
+                style={[styles.membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, marginTop: 16, alignSelf: 'stretch', alignItems: 'center' }]}
+                onPress={() => {
+                  setShowWeeklyModal(false);
+                  setEditingAppt(undefined);
+                  setFormVisible(true);
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Agendar nueva clase</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }} onPress={() => setShowWeeklyModal(false)}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </View>
@@ -1891,5 +2241,149 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+
+  // Gym membership
+  membershipBtn: {
+    position: 'absolute',
+    bottom: 28,
+    left: 24,
+    right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+      android: { elevation: 6 },
+    }),
+  },
+  membershipBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  membershipBadge: {
+    position: 'absolute',
+    bottom: 28,
+    left: 24,
+    right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  membershipBadgeText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  membershipModalCard: {
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 24,
+    marginHorizontal: 4,
+  },
+  membershipModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  membershipModalSub: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  membershipInput: {
+    height: 90,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 12,
+    paddingTop: 12,
+    fontSize: 13,
+    textAlignVertical: 'top',
+  },
+  membershipModalBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Weekly selection
+  weeklyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  weeklyBannerText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  weeklyModalContent: {
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+  },
+  weeklyDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexWrap: 'wrap',
+  },
+  weeklyApptChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+
+  // Gym classes indicator
+  gymClassesBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  gymClassesLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  gymClassesTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  gymClassesFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  gymClassesWeekLabel: {
+    fontSize: 11,
+    flexShrink: 0,
   },
 });

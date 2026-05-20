@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabase';
 import { appColors } from '../styles/appStyles';
 
 const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.45;
@@ -27,6 +28,42 @@ type Props = {
 export default function Sidebar({ visible, onClose }: Props) {
   const { profile, signOut } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
+
+  const [inboxCount, setInboxCount] = useState(0);
+
+  useEffect(() => {
+    if (!profile?.id || !profile?.role) return;
+    async function fetchBadge() {
+      try {
+        const role = profile!.role;
+        let count = 0;
+        if (role === 'admin') {
+          const { count: c } = await supabase.from('businesses').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+          count = c ?? 0;
+        } else if (role === 'company') {
+          const { data: biz } = await supabase.from('businesses').select('id').eq('owner_id', profile!.id).eq('status', 'approved').maybeSingle();
+          if (biz) {
+            const [{ count: a }, { count: m }] = await Promise.all([
+              supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', biz.id).eq('status', 'pending'),
+              supabase.from('membership_requests').select('id', { count: 'exact', head: true }).eq('business_id', biz.id).eq('status', 'pending'),
+            ]);
+            count = (a ?? 0) + (m ?? 0);
+          }
+        } else if (role === 'worker') {
+          const { data: worker } = await supabase.from('workers').select('id').eq('profile_id', profile!.id).maybeSingle();
+          if (worker) {
+            const { count: c } = await supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('worker_id', worker.id).eq('status', 'pending');
+            count = c ?? 0;
+          }
+        } else if (role === 'client') {
+          const { count: c } = await supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('client_id', profile!.id).eq('status', 'confirmed');
+          count = c ?? 0;
+        }
+        setInboxCount(count);
+      } catch {}
+    }
+    if (visible) fetchBadge();
+  }, [visible, profile?.id, profile?.role]);
 
   // 1. Estado para mantener el Modal renderizado durante la animación
   const [showModal, setShowModal] = useState(visible);
@@ -130,12 +167,8 @@ export default function Sidebar({ visible, onClose }: Props) {
             {profile?.role === 'client' && (
               <>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
-                  <Feather name="search" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>EXPLORAR</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
-                  <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>RESERVAR</Text>
+                  <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/my-appointments')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
@@ -171,6 +204,14 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-members')}>
+                  <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIEMBROS GYM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-booking-window')}>
+                  <Feather name="clock" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>TOMA DE HORARIO</Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -199,6 +240,10 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI AGENDA</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
+                  <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-history')}>
                   <Feather name="clock" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI HISTORIAL</Text>
@@ -211,6 +256,25 @@ export default function Sidebar({ visible, onClose }: Props) {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+          {/* Bandeja de entrada — todos los roles */}
+          <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/inbox')}>
+            <View style={styles.iconWidth}>
+              <Feather name="bell" size={20} color={colors.textSecondary} />
+              {inboxCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>BANDEJA DE ENTRADA</Text>
+            {inboxCount > 0 && (
+              <View style={[styles.badgePill, { backgroundColor: appColors.primary }]}>
+                <Text style={styles.badgePillText}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Cerrar sesión */}
           <TouchableOpacity style={[styles.menuItem, { marginTop: 'auto' }]} onPress={handleLogout}>
@@ -298,10 +362,40 @@ const styles = StyleSheet.create({
   iconWidth: {
     width: 24,
     textAlign: 'center',
+    position: 'relative',
   },
   menuText: {
     fontSize: 13,
     letterSpacing: 2,
     fontWeight: '500',
+    flex: 1,
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: appColors.primary,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  badgePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 22,
+    alignItems: 'center',
+  },
+  badgePillText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

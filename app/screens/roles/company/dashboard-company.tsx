@@ -23,6 +23,8 @@ import { appColors, appStyles } from '../../../../styles/appStyles';
 
 const { width } = Dimensions.get('window');
 
+const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
+
 // ─── MOCK DATA FALLBACKS ──────────────────────────────────────────────
 const SCHEDULE_DATA = [
   { day: 'L', active: true },
@@ -113,11 +115,56 @@ export default function DashboardCompanyScreen() {
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
 
+  // Gym state
+  const [isGym, setIsGym] = useState(false);
+  const [gymStats, setGymStats] = useState({ basic: 0, premium: 0, vip: 0, revenue: 0, prices: GYM_PLAN_PRICE });
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   const fetchDashboardData = useCallback(async () => {
     if (!business?.id) return;
+
+    // 0. Detect gym + fetch gym stats
+    if (business?.category_id) {
+      const { data: cat } = await supabase
+        .from('service_categories')
+        .select('name')
+        .eq('id', business.category_id)
+        .single();
+      const gymFlag = !!(cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS'));
+      setIsGym(gymFlag);
+      if (gymFlag) {
+        // Fetch current plan prices
+        const { data: servicesData } = await supabase
+          .from('business_services')
+          .select('name, price')
+          .eq('business_id', business.id);
+
+        const currentPrices = {
+          basic: servicesData?.find((s: any) => s.name === 'Plan Básico')?.price || GYM_PLAN_PRICE.basic,
+          premium: servicesData?.find((s: any) => s.name === 'Plan Premium')?.price || GYM_PLAN_PRICE.premium,
+          vip: servicesData?.find((s: any) => s.name === 'Plan VIP')?.price || GYM_PLAN_PRICE.vip,
+        };
+
+        const { data: members } = await supabase
+          .from('gym_memberships')
+          .select('plan')
+          .eq('business_id', business.id)
+          .eq('status', 'active');
+        const stats = { basic: 0, premium: 0, vip: 0, revenue: 0, prices: currentPrices };
+        (members ?? []).forEach((m: any) => {
+          if (m.plan === 'basic') stats.basic++;
+          else if (m.plan === 'premium') stats.premium++;
+          else if (m.plan === 'vip') stats.vip++;
+          
+          if (m.plan === 'basic' || m.plan === 'premium' || m.plan === 'vip') {
+            stats.revenue += currentPrices[m.plan as keyof typeof currentPrices];
+          }
+        });
+        setGymStats(stats);
+      }
+    }
 
     // 1. Fetch Workers
     const { data: workers } = await supabase
@@ -300,33 +347,72 @@ export default function DashboardCompanyScreen() {
           </View>
 
           {/* REVENUE CHART */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.chartHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos</Text>
+          {!isGym && (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.chartHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos por Citas</Text>
 
-              <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
-                {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
-                  <TouchableOpacity
-                    key={filter}
-                    activeOpacity={0.8}
-                    onPress={() => setTimeFilter(filter)}
-                    style={[
-                      styles.filterBtn,
-                      timeFilter === filter && { backgroundColor: appColors.primary }
-                    ]}
-                  >
-                    <Text style={[
-                      styles.filterText,
-                      { color: timeFilter === filter ? '#fff' : colors.textSecondary }
-                    ]}>
-                      {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
+                  {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      activeOpacity={0.8}
+                      onPress={() => setTimeFilter(filter)}
+                      style={[
+                        styles.filterBtn,
+                        timeFilter === filter && { backgroundColor: appColors.primary }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.filterText,
+                        { color: timeFilter === filter ? '#fff' : colors.textSecondary }
+                      ]}>
+                        {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <BarChart data={revenueData} colors={colors} filter={timeFilter} />
+            </View>
+          )}
+
+          {/* GYM MEMBERSHIPS REVENUE */}
+          {isGym && (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.cardHeader}>
+                <Feather name="users" size={16} color={colors.textSecondary} />
+                <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>MEMBRESÍAS MENSUALES</Text>
+              </View>
+              <Text style={[styles.scoreText, { color: colors.textPrimary }]}>
+                ${gymStats.revenue.toLocaleString('es-CL')}
+              </Text>
+              <Text style={[styles.subText, { color: colors.textSecondary }]}>ingresos estimados del mes</Text>
+              <View style={{ gap: 6, marginTop: 12 }}>
+                {gymStats.basic > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={[styles.subText, { color: colors.textSecondary }]}>Básico × {gymStats.basic}</Text>
+                    <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.basic * gymStats.prices.basic).toLocaleString('es-CL')}</Text>
+                  </View>
+                )}
+                {gymStats.premium > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={[styles.subText, { color: colors.textSecondary }]}>Premium × {gymStats.premium}</Text>
+                    <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.premium * gymStats.prices.premium).toLocaleString('es-CL')}</Text>
+                  </View>
+                )}
+                {gymStats.vip > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={[styles.subText, { color: colors.textSecondary }]}>VIP × {gymStats.vip}</Text>
+                    <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.vip * gymStats.prices.vip).toLocaleString('es-CL')}</Text>
+                  </View>
+                )}
+                {gymStats.basic === 0 && gymStats.premium === 0 && gymStats.vip === 0 && (
+                  <Text style={[styles.subText, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin miembros activos aún.</Text>
+                )}
               </View>
             </View>
-            <BarChart data={revenueData} colors={colors} filter={timeFilter} />
-          </View>
+          )}
 
           <View style={styles.rowGrid}>
             {/* REVIEWS CARD */}
