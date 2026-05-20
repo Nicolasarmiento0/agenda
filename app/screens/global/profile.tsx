@@ -32,10 +32,9 @@ export default function ProfileScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [stats, setStats] = useState({
-    completed: 0,
-    upcoming: 0
-  });
+  const [stats, setStats] = useState({ completed: 0, upcoming: 0, reviews: 0 });
+  const [myReviews, setMyReviews] = useState<any[]>([]);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -51,18 +50,27 @@ export default function ProfileScreen() {
   const fetchStats = async () => {
     if (!user?.id) return;
     try {
-      const { data: appts, error } = await supabase
-        .from('appointments')
-        .select('status')
-        .or(`client_id.eq.${user.id},client_name.eq.${profile?.nickname}`);
+      const [apptsRes, reviewsRes] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('status')
+          .or(`client_id.eq.${user.id},client_name.eq.${profile?.nickname}`),
+        supabase
+          .from('reviews')
+          .select('id, score, comment, created_at, businesses(name)')
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false }),
+      ]);
 
-      if (error) throw error;
-      if (appts) {
-        setStats({
-          completed: appts.filter(a => a.status === 'completed').length,
-          upcoming: appts.filter(a => a.status === 'confirmed' || a.status === 'pending').length
-        });
-      }
+      const appts = apptsRes.data ?? [];
+      const reviews = reviewsRes.data ?? [];
+
+      setStats({
+        completed: appts.filter(a => a.status === 'completed').length,
+        upcoming: appts.filter(a => a.status === 'confirmed' || a.status === 'pending').length,
+        reviews: reviews.length,
+      });
+      setMyReviews(reviews);
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -308,10 +316,23 @@ export default function ProfileScreen() {
 
           {profile?.role === 'client' && (
             <View style={[localStyles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={localStyles.activityHeader}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => myReviews.length > 3 && setShowAllReviews(v => !v)}
+                style={localStyles.activityHeader}
+              >
                 <Feather name="zap" size={18} color="#FF7A00" />
                 <Text style={[localStyles.activityTitle, { color: colors.textPrimary }]}>ACTIVIDAD</Text>
-              </View>
+                {myReviews.length > 3 && (
+                  <Feather
+                    name={showAllReviews ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textSecondary}
+                    style={{ marginLeft: 'auto' }}
+                  />
+                )}
+              </TouchableOpacity>
+
               <View style={{ flexDirection: 'row' }}>
                 <View style={localStyles.statItem}>
                   <Text style={[localStyles.statLabel, { color: colors.textSecondary }]}>COMPLETADAS</Text>
@@ -321,7 +342,67 @@ export default function ProfileScreen() {
                   <Text style={[localStyles.statLabel, { color: colors.textSecondary }]}>PRÓXIMAS</Text>
                   <Text style={[localStyles.statValue, { color: colors.textPrimary }]}>{stats.upcoming}</Text>
                 </View>
+                <View style={localStyles.statItem}>
+                  <Text style={[localStyles.statLabel, { color: colors.textSecondary }]}>RESEÑAS</Text>
+                  <Text style={[localStyles.statValue, { color: colors.textPrimary }]}>{stats.reviews}</Text>
+                </View>
               </View>
+
+              {myReviews.length > 0 && (
+                <>
+                  <View style={[localStyles.reviewsDivider, { backgroundColor: colors.border }]} />
+                  <View style={localStyles.reviewsHeader}>
+                    <Feather name="star" size={14} color="#F0A030" />
+                    <Text style={[localStyles.reviewsTitle, { color: colors.textSecondary }]}>MIS RESEÑAS</Text>
+                  </View>
+                  {(showAllReviews ? myReviews : myReviews.slice(0, 3)).map((r: any, i: number) => (
+                    <View
+                      key={r.id}
+                      style={[
+                        localStyles.reviewItem,
+                        { borderTopColor: colors.border },
+                        i === 0 && { borderTopWidth: 0 },
+                      ]}
+                    >
+                      <View style={localStyles.reviewTop}>
+                        <Text style={[localStyles.reviewBiz, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {(r.businesses as any)?.name ?? 'Negocio'}
+                        </Text>
+                        <View style={localStyles.starsRow}>
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <Feather
+                              key={s}
+                              name="star"
+                              size={11}
+                              color={s <= r.score ? '#F0A030' : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                      {!!r.comment && (
+                        <Text style={[localStyles.reviewComment, { color: colors.textSecondary }]} numberOfLines={2}>
+                          "{r.comment}"
+                        </Text>
+                      )}
+                      <Text style={[localStyles.reviewDate, { color: colors.textSecondary }]}>
+                        {new Date(r.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  ))}
+                  {myReviews.length > 3 && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowAllReviews(v => !v)}
+                      style={localStyles.showAllBtn}
+                    >
+                      <Text style={[localStyles.showAllText, { color: appColors.primary }]}>
+                        {showAllReviews ? 'Ver menos' : `Ver todas (${myReviews.length})`}
+                      </Text>
+                      <Feather name={showAllReviews ? 'chevron-up' : 'chevron-down'} size={13} color={appColors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
             </View>
           )}
 
@@ -423,4 +504,16 @@ const localStyles = StyleSheet.create({
   menuIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   menuItemTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
   menuItemSubtitle: { fontSize: 12, fontWeight: '500', opacity: 0.8 },
+
+  reviewsDivider: { height: StyleSheet.hairlineWidth, marginVertical: 20 },
+  reviewsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  reviewsTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+  reviewItem: { paddingTop: 14, marginTop: 14, borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
+  reviewTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  reviewBiz: { fontSize: 13, fontWeight: '700', flex: 1, marginRight: 8 },
+  starsRow: { flexDirection: 'row', gap: 2 },
+  reviewComment: { fontSize: 12, lineHeight: 17, fontStyle: 'italic' },
+  reviewDate: { fontSize: 10, letterSpacing: 0.3, opacity: 0.6 },
+  showAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14, marginTop: 14 },
+  showAllText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
 });

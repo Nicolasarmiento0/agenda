@@ -1,16 +1,14 @@
 ***ARREGLOS Proximos A LA APP!!
 
-1. Verificar la logica en rol client al momento de querer reservar una cita en un negocio tipo "Gimnasio" si se está preguntando si es cliente dinamico o estatico. Recuerda que el cliente del gimnasio es o dinamico o fijo, si es dinamico, puede tomar sus citas hasta 2h antes de la hora solicitada y notiene acceso a la funcionalidad escogida por el gym que decide un domingo en un rango horario hacer que los clientes etaticos escogan sus clases semanalmente. ***solo semanalmente***, tambien identificar que plan tiene el usuario ya que el plan basico tiene 1 clase a la semana disponible, el plan premium 3 clases a la semana disponible y el plan vip 5 veces a la semana. El tipo de plan lo decide el rol company dueño de un negocio tipo gimanasio solamente. Para ello los clientes deben mandar una solicitud al rol company para que los acepte y sea el quien decida tpo de cliente(esatico o dinamico) y plan(basico, premiun o vip).Además agrega la funcionalidad para que clientes que quieran entrenar 1 o más dias puedan ver la agenda y si tiene disponibilidad poder tomar la cita hasta 2h antes de la hora solicitada (esperando aprobación del rol company) sin importar si eres cliente estatico o dinamico, para esto tendremos que crear una bandeja de entrada(estilo notificaciones ACIVOS DE CITAS NUEVAS) en el side bar para rol admin, client, worker y company. donde se veran reflejadas las citas solicitadas por clientes pendientes de confirmación. En el caso de admin la bandeja de entrada servira para ver nuevas empresas que soliciten ser aprobadas. ESTADO: LISTO
+1. Cambiar paleta de colores con el archivo NUEVA PALETA DE COLORES Y DISEÑO.md que existe. Utilizando la guia de la carpeta guias de diseño, exactamente en la imagen Guia peerfil de trabajadores en vista agenda.PNG modifica todos los componentes y manten el liquid glass o en este caso expo-blur
+
+2. agregar en actividad screen profile, mis reseñas las valoraciones y comentarios agregados.
 
 
-2. Cambiar paleta de colores con el archivo NUEVA PALETA DE COLORES Y DISEÑO.md que existe. Utilizando la guia de la carpeta guias de diseño, exactamente en la imagen Guia peerfil de trabajadores en vista agenda.PNG modifica todos los componentes y manten el liquid glass o en este caso expo-blur
-
-3. agregar en actividad screen profile, mis reseñas las valoraciones y comentarios agregados.
-
-4. Ahora debemos cambiar el crear cita del cliente de un negocio estilo gimnasio, ya que los servicios en gym deben cambiar, ya que hay planes definidos, solo mantengamos los servicios de taller extraprogramatico y evaluación ya que el cliente dependiendo de su plan pueda agregar sus citas, (plan basico, solo 1 clase semanal, plan premiun 3 clases semanales y plan premiun 5.) Además agrega la funcionalidad para que clientes que quieran entrenar 1 o más dias puedan ver la agenda y si tiene disponibilidad poder tomar la cita hasta 2h antes de la hora solicitada (esperando aprobación del rol company) sin importar si eres cliente estatico o dinamico. Tambien crea dentro del sidebar, para rol company de gimnasios una nueva screen llamada cambio toma de horario para modificar el horario en el cual los clientes fijos puedan tomar sus citas, los ingresos se calcularan solamente mensualmente en la vista dashboard company gimnsaio, ya que los alumnos tendran planes mensuales, alumno activo es mensualidad que se suma a la vista de ingresos mensuales. Tambien añade en la vista de client-agenda de gimansio un indicador de tus clases semanales disponibles y las utilizadas. Agrega tus sugerencias y preguntas antes de codear.
-
-5. Agrega la screen en side bar de toma de hoarios para los clientes de gimanasios de tipo esaticos, para poder ver la agenda cuando este en el rango hoario que indico el negocio.
 
 ***Nuevas Funciones de la APP!!
 
 1. Bienvenida de cada usuario sin importar el rol registrado saludando si es de mañana 08:00 a 12:00 MENSAJE DE BUENOS DIAS*Nombre de usuario*, si es de tarde desde las 12:01 a las 19:59 MENSASJE DE BUENAS TARDES*Nombre de usuario* y si es de noche desde las 20:00 a las 23:59 MENSAJE DE BUENAS NOCHES*Nombre de usuario*.
+
+***Solucion error
+rm -rf node_modules package-lock.json npm install npx expo install --fix npm install react-is npx expo doctor npx expo start --clear

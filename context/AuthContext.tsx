@@ -26,6 +26,7 @@ export type Business = {
   opening_time?: string;
   closing_time?: string;
   category_id?: string;
+  category_name?: string | null;
 };
 
 type AuthContextType = {
@@ -93,15 +94,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (finalRole === 'company') {
           console.log('AUTH: Fetching business for company user...');
-          const { data: bData, error: bError } = await supabase
+          const { data: bRaw, error: bError } = await supabase
             .from('businesses')
-            .select('*')
+            .select('*, service_categories(name)')
             .eq('owner_id', userId)
             .maybeSingle();
 
-          if (bData) {
-            console.log('AUTH: Business found:', bData.id, '| Status:', bData.status);
-            setBusiness(bData);
+          if (bRaw) {
+            console.log('AUTH: Business found:', bRaw.id, '| Status:', bRaw.status);
+            const { service_categories, ...bData } = bRaw as any;
+            setBusiness({ ...bData, category_name: service_categories?.name ?? null });
           } else {
             console.log('AUTH: No business found for this company user');
             setBusiness(null);
@@ -175,12 +177,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(profileData);
 
         if (finalRole === 'company') {
-          const { data: bData } = await supabase
+          const { data: bRaw } = await supabase
             .from('businesses')
-            .select('*')
+            .select('*, service_categories(name)')
             .eq('owner_id', data.user.id)
             .maybeSingle();
-          setBusiness(bData ?? null);
+          if (bRaw) {
+            const { service_categories, ...bData } = bRaw as any;
+            setBusiness({ ...bData, category_name: service_categories?.name ?? null });
+          } else {
+            setBusiness(null);
+          }
         } else if (profileData.role === 'worker') {
           const { data: workerData } = await supabase
             .from('workers')

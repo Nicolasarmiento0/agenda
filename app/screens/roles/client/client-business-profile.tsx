@@ -195,6 +195,7 @@ export default function ClientBusinessProfileScreen() {
   }
 
   const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url } = fetchedBusiness;
+  const isPreviewMode = profile?.role === 'company';
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -282,69 +283,73 @@ export default function ClientBusinessProfileScreen() {
               </TouchableOpacity>
             )}
             
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.detailRow}>
-              <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Ionicons name="chatbubble-outline" size={16} color={appColors.primary} />
-              </View>
-              <View style={styles.detailTextContainer}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Reputación</Text>
-                <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
-                  Escribir una opinión
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={14} color={colors.textSecondary} />
-            </TouchableOpacity>
+            {!isPreviewMode && (
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.detailRow}>
+                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Ionicons name="chatbubble-outline" size={16} color={appColors.primary} />
+                </View>
+                <View style={styles.detailTextContainer}>
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Reputación</Text>
+                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                    Escribir una opinión
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
 
         </Animated.View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-        {isGym && membershipStatus === 'active' ? (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[appStyles.primaryButton, { width: '100%' }]}
-            onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
-          >
-            <Text style={appStyles.primaryButtonText}>VER CLASES Y RESERVAR</Text>
-          </TouchableOpacity>
-        ) : isGym && membershipStatus === 'pending' ? (
-          <View style={{ gap: 12 }}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[appStyles.primaryButton, { width: '100%', opacity: 0.6 }]}
-              disabled
-            >
-              <Text style={appStyles.primaryButtonText}>SOLICITUD EN REVISIÓN</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
-              <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
-            </TouchableOpacity>
-          </View>
-        ) : isGym ? (
-          <View style={{ gap: 12 }}>
+      {!isPreviewMode && (
+        <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {isGym && membershipStatus === 'active' ? (
             <TouchableOpacity
               activeOpacity={0.8}
               style={[appStyles.primaryButton, { width: '100%' }]}
-              onPress={handleRequestMembership}
-              disabled={isSubmitting}
+              onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
             >
-              {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
+              <Text style={appStyles.primaryButtonText}>VER CLASES Y RESERVAR</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
-              <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
+          ) : isGym && membershipStatus === 'pending' ? (
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[appStyles.primaryButton, { width: '100%', opacity: 0.6 }]}
+                disabled
+              >
+                <Text style={appStyles.primaryButtonText}>SOLICITUD EN REVISIÓN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
+                <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
+              </TouchableOpacity>
+            </View>
+          ) : isGym ? (
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[appStyles.primaryButton, { width: '100%' }]}
+                onPress={handleRequestMembership}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
+                <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[appStyles.primaryButton, { width: '100%' }]}
+              onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
+            >
+              <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
             </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[appStyles.primaryButton, { width: '100%' }]}
-            onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
-          >
-            <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          )}
+        </View>
+      )}
 
       {/* MODAL DE RESEÑAS */}
       <Modal visible={showReviewModal} transparent animationType="fade">

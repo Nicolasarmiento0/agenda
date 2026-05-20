@@ -1,5 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -17,6 +18,7 @@ import {
 import Sidebar from '../../../../components/Sidebar';
 import WorkerAvatar from '../../../../components/WorkerAvatar';
 import { useAuth } from '../../../../context/AuthContext';
+import { useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
@@ -101,6 +103,7 @@ const BarChart = ({ data, colors, filter }: { data: { label: string, value: numb
 
 export default function DashboardCompanyScreen() {
   const { profile, business, refreshProfile } = useAuth();
+  const { setSelectedBusiness } = useBusiness();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -374,15 +377,31 @@ export default function DashboardCompanyScreen() {
                 </View>
               </View>
               <BarChart data={revenueData} colors={colors} filter={timeFilter} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  const rangeParam = timeFilter === 'daily' ? 'day' : timeFilter === 'weekly' ? 'week' : 'month';
+                  router.push(`/screens/roles/company/company-history?range=${rangeParam}` as any);
+                }}
+                style={[styles.historialCta, { borderTopColor: colors.border }]}
+              >
+                <Text style={[styles.historialCtaText, { color: appColors.primary }]}>Ver historial completo</Text>
+                <Feather name="arrow-right" size={14} color={appColors.primary} />
+              </TouchableOpacity>
             </View>
           )}
 
           {/* GYM MEMBERSHIPS REVENUE */}
           {isGym && (
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/screens/roles/company/company-history' as any)}
+              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
               <View style={styles.cardHeader}>
                 <Feather name="users" size={16} color={colors.textSecondary} />
                 <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>MEMBRESÍAS MENSUALES</Text>
+                <Feather name="chevron-right" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
               </View>
               <Text style={[styles.scoreText, { color: colors.textPrimary }]}>
                 ${gymStats.revenue.toLocaleString('es-CL')}
@@ -411,7 +430,7 @@ export default function DashboardCompanyScreen() {
                   <Text style={[styles.subText, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin miembros activos aún.</Text>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           )}
 
           <View style={styles.rowGrid}>
@@ -484,6 +503,11 @@ export default function DashboardCompanyScreen() {
           <TouchableOpacity
             style={[styles.publicBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={0.8}
+            onPress={() => {
+              if (!business) return;
+              setSelectedBusiness(business as any);
+              router.push(`/screens/roles/client/client-business-profile?id=${business.id}` as any);
+            }}
           >
             <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
               <Feather name="external-link" size={20} color={appColors.primary} />
@@ -838,5 +862,20 @@ const styles = StyleSheet.create({
   publicBtnSub: {
     fontSize: 12,
     marginTop: 2,
+  },
+
+  historialCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  historialCtaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
   },
 });
