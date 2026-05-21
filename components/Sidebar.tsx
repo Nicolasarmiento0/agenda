@@ -7,6 +7,7 @@ import {
   Dimensions,
   Image,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -197,8 +198,8 @@ export default function Sidebar({ visible, onClose }: Props) {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Navegación Dinámica según Rol */}
-          <>
+          {/* Navegación Dinámica según Rol — scrollable para web */}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
             {/* ---- MENU CLIENTE ---- */}
             {profile?.role === 'client' && (
               <>
@@ -291,26 +292,24 @@ export default function Sidebar({ visible, onClose }: Props) {
               </>
             )}
 
-          </>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Bandeja de entrada — todos los roles */}
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/inbox')}>
-            <Feather name="bell" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-            <Text style={[styles.menuText, { color: colors.textPrimary }]}>BANDEJA DE ENTRADA</Text>
-            {inboxCount > 0 && (
-              <View style={[styles.badgePill, { backgroundColor: appColors.primary }]}>
-                <Text style={styles.badgePillText}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+            {/* Bandeja de entrada — todos los roles */}
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/inbox')}>
+              <Feather name="bell" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+              <Text style={[styles.menuText, { color: colors.textPrimary }]}>BANDEJA DE ENTRADA</Text>
+              {inboxCount > 0 && (
+                <View style={[styles.badgePill, { backgroundColor: appColors.primary }]}>
+                  <Text style={styles.badgePillText}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Cerrar sesión */}
-          <TouchableOpacity style={[styles.menuItem, styles.logoutItem, { marginTop: 'auto' }]} onPress={handleLogout}>
+          {/* Cerrar sesión — fijo al fondo */}
+          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
             <Feather name="log-out" size={18} color={appColors.primary} style={styles.iconWidth} />
             <Text style={[styles.menuText, { color: appColors.primary }]}>CERRAR SESIÓN</Text>
           </TouchableOpacity>

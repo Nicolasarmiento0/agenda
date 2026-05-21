@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -74,7 +74,6 @@ type Worker = {
 const HOUR_HEIGHT = 72; // px por hora
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 22;
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const STATUS_CONFIG = {
   confirmed: { label: 'Confirmado', bg: '#EEF8F0', text: '#2E7D45', dot: '#3D9E5A' },
@@ -928,6 +927,7 @@ function AppointmentFormModal({
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function CompanyAgendaScreen() {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const { business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
@@ -1230,6 +1230,7 @@ export default function CompanyAgendaScreen() {
   const PADDING = 16;
   const WORKERS = selectedWorkerFilter ? workers.filter(w => w.name === selectedWorkerFilter) : workers;
   const colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / Math.max(WORKERS.length, 1));
+  const avatarSize = Math.min(52, Math.max(28, colWidth - 24));
 
   const renderDayGrid = () => (
     <ScrollView
@@ -1239,13 +1240,13 @@ export default function CompanyAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
-      <View style={[styles.workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
+      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING, paddingRight: PADDING }]}>
         {WORKERS.map(w => {
           const todayAppts = appointments.filter(a => a.worker === w.name && a.date === toLocalISOString(selectedDate)).length;
           return (
             <TouchableOpacity
               key={w.id}
-              style={[styles.workerCol, { flex: 1 }]}
+              style={[styles.workerCol, { width: colWidth }]}
               onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
               activeOpacity={0.75}
             >
@@ -1253,7 +1254,7 @@ export default function CompanyAgendaScreen() {
                 avatarUrl={w.avatar_url}
                 name={w.name}
                 color={w.color}
-                size={100}
+                size={avatarSize}
                 showDot={true}
               />
               <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
