@@ -23,7 +23,7 @@ import { appColors } from '../../../styles/appStyles';
 
 type InboxItem = {
   id: string;
-  type: 'appointment_pending' | 'business_pending' | 'membership_request' | 'membership_approved' | 'membership_rejected';
+  type: 'appointment_pending' | 'appointment_confirmed' | 'appointment_completed' | 'appointment_rescheduled' | 'appointment_noshow' | 'appointment_cancelled' | 'business_pending' | 'membership_request' | 'membership_approved' | 'membership_rejected';
   title: string;
   subtitle: string;
   date: string;
@@ -44,7 +44,12 @@ function timeAgo(dateStr: string): string {
 }
 
 const TYPE_ICON: Record<string, { name: string; color: string }> = {
-  appointment_pending: { name: 'calendar', color: '#F0A030' },
+  appointment_pending: { name: 'calendar', color: '#B4F736' },
+  appointment_confirmed: { name: 'check-circle', color: '#3D9E5A' },
+  appointment_completed: { name: 'check-square', color: '#5C90D2' },
+  appointment_rescheduled: { name: 'clock', color: '#F39C12' },
+  appointment_noshow: { name: 'user-x', color: '#D00024' },
+  appointment_cancelled: { name: 'x-circle', color: '#888888' },
   business_pending: { name: 'briefcase', color: '#3B7BE0' },
   membership_request: { name: 'user-plus', color: appColors.primary },
   membership_approved: { name: 'check-circle', color: '#3D9E5A' },
@@ -208,16 +213,16 @@ export default function InboxScreen() {
       }
     }
 
-    // ── CLIENT: confirmaciones + estado membresía ─────────────────
+    // ── CLIENT: resoluciones de citas + estado membresía ──────────
     if (role === 'client') {
       const [apptRes, memRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, service, date, status, created_at, businesses(name)')
+          .select('id, service, date, status, created_at, updated_at, businesses(name)')
           .eq('client_id', profile.id)
-          .in('status', ['confirmed', 'cancelled', 'no-show'])
-          .order('created_at', { ascending: false })
-          .limit(30),
+          .in('status', ['confirmed', 'completed', 'rescheduled', 'no-show', 'cancelled'])
+          .order('updated_at', { ascending: false })
+          .limit(40),
         supabase
           .from('membership_requests')
           .select('id, status, created_at, businesses(name)')
@@ -227,15 +232,29 @@ export default function InboxScreen() {
           .limit(20),
       ]);
 
+      const STATUS_TYPE: Record<string, InboxItem['type']> = {
+        confirmed: 'appointment_confirmed',
+        completed: 'appointment_completed',
+        rescheduled: 'appointment_rescheduled',
+        'no-show': 'appointment_noshow',
+        cancelled: 'appointment_cancelled',
+      };
+      const STATUS_LABEL: Record<string, string> = {
+        confirmed: '✓ Confirmada',
+        completed: '✓ Completada',
+        rescheduled: '↩ Reprogramada',
+        'no-show': '✕ No se presentó',
+        cancelled: '✕ Cancelada',
+      };
+
       (apptRes.data as any[] ?? []).forEach((a: any) => {
         const bizName = a.businesses?.name ?? 'Negocio';
-        const statusLabel = a.status === 'confirmed' ? '✓ Confirmada' : a.status === 'cancelled' ? '✕ Cancelada' : '✕ No presentado';
         newItems.push({
           id: `appt-${a.id}`,
-          type: 'appointment_pending',
-          title: `${statusLabel}: ${a.service}`,
+          type: STATUS_TYPE[a.status] ?? 'appointment_pending',
+          title: `${STATUS_LABEL[a.status] ?? a.status}: ${a.service}`,
           subtitle: `${bizName} · ${a.date}`,
-          date: a.created_at,
+          date: a.updated_at ?? a.created_at,
         });
       });
 

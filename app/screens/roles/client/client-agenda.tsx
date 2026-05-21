@@ -59,6 +59,7 @@ type Appointment = {
   status: 'confirmed' | 'pending' | 'completed' | 'no-show' | 'rescheduled' | 'cancelled';
   date?: string;
   price?: number;
+  notes?: string;
   isMine?: boolean;
 };
 
@@ -142,7 +143,7 @@ function toLocalISOString(date: Date) {
 
 function formatHour(h: number) {
   const hh = Math.floor(h);
-  const mm = h % 1 === 0.5 ? '30' : '00';
+  const mm = String(Math.round((h % 1) * 60)).padStart(2, '0');
   return `${String(hh).padStart(2, '0')}:${mm}`;
 }
 
@@ -383,6 +384,14 @@ function AppointmentSheet({
               {appt.worker}
             </Text>
           </View>
+          {!!appt.notes && (
+            <View style={styles.sheetDetailRow}>
+              <Feather name="file-text" size={14} color={colors.textSecondary} />
+              <Text style={[styles.sheetDetailText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={3}>
+                {appt.notes}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Acciones rápidas */}
@@ -420,7 +429,6 @@ function AppointmentFormModal({
   openingTime,
   closingTime,
   isGym,
-  gymMembership,
 }: {
   visible: boolean;
   initialData?: Appointment;
@@ -432,7 +440,6 @@ function AppointmentFormModal({
   openingTime?: string;
   closingTime?: string;
   isGym: boolean;
-  gymMembership?: GymMembership | null;
 }) {
   const { isDarkMode } = useTheme();
   const [clientName, setClientName] = useState('');
@@ -441,6 +448,7 @@ function AppointmentFormModal({
   const [dateText, setDateText] = useState('');
   const [startTimeText, setStartTimeText] = useState('09:00');
   const [endTimeText, setEndTimeText] = useState('10:00');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [pickerActive, setPickerActive] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -516,6 +524,7 @@ function AppointmentFormModal({
         setClientName(initialData.clientName);
         setService(initialData.service);
         setWorkerId(initialData.worker_id);
+        setNotes(initialData.notes || '');
         const hh = Math.floor(initialData.startHour);
         const mm = Math.round((initialData.startHour - hh) * 60);
         setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
@@ -528,6 +537,7 @@ function AppointmentFormModal({
         setClientName('');
         setService('');
         setWorkerId('');
+        setNotes('');
         setStartTimeText(`${String(parsedOpeningHour).padStart(2, '0')}:00`);
         setEndTimeText(`${String(parsedOpeningHour + 1).padStart(2, '0')}:00`);
         setDateText(selectedDateStr);
@@ -588,28 +598,20 @@ function AppointmentFormModal({
       return;
     }
 
-    // ── Validación para Clientes de Gimnasio (Dynamic) ──
-    if (isGym && gymMembership?.client_type === 'dynamic') {
-      const paddedHh = hhStr.padStart(2, '0');
-      const paddedMm = (mmStr || '0').padStart(2, '0');
-      // Usamos parseo local para evitar problemas con la zona horaria en el objeto Date
-      const [yStr, mStr, dStr] = dateText.split('-');
-      const selectedDateObj = new Date(
-        parseInt(yStr, 10),
-        parseInt(mStr, 10) - 1, // meses en Date van de 0 a 11
-        parseInt(dStr, 10),
-        parseInt(paddedHh, 10),
-        parseInt(paddedMm, 10),
-        0
-      );
-
-      const diffMs = selectedDateObj.getTime() - now.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-
-      if (diffHours < 2) {
-        showAlert({ title: 'Reserva no permitida', message: 'Debes reservar con al menos 2 horas de anticipación a la clase.' });
-        return;
-      }
+    // ── Validación universal: 2h mínimo de anticipación ──
+    const [yStr, mStr, dStr] = dateText.split('-');
+    const apptDateTime = new Date(
+      parseInt(yStr, 10),
+      parseInt(mStr, 10) - 1,
+      parseInt(dStr, 10),
+      hh,
+      mm,
+      0
+    );
+    const diffHours = (apptDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (diffHours < 2) {
+      showAlert({ title: 'Reserva no permitida', message: 'Debes reservar con al menos 2 horas de anticipación.' });
+      return;
     }
 
     // ── Primer Bloque del Día (Hasta 22:00 día anterior) ──
@@ -626,15 +628,6 @@ function AppointmentFormModal({
       }
       if (dateText === tomorrowStr && currentHour >= 22) {
         showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
-        return;
-      }
-    }
-
-    // ── Margen estándar (no gimnasio dinámico) ──
-    if (dateText === todayStr) {
-      // Margen de 1 hora mínimo de anticipación para citas de hoy
-      if (startHour <= currentHour + 1) {
-        showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
         return;
       }
     }
@@ -665,6 +658,7 @@ function AppointmentFormModal({
       durationHours,
       date: dateText,
       price,
+      notes: notes.trim() || undefined,
     });
     setLoading(false);
 
@@ -782,6 +776,17 @@ function AppointmentFormModal({
                 />
               </View>
             </View>
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary, marginTop: 8 }]}>Mensaje para el negocio (opcional)</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, height: 72, textAlignVertical: 'top', paddingTop: 10 }]}
+              placeholder="Agrega información adicional..."
+              placeholderTextColor={colors.textSecondary}
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              maxLength={200}
+            />
 
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
@@ -1006,7 +1011,8 @@ export default function ClientAgendaScreen() {
       .select('*, workers(name, color, profiles(avatar_url))')
       .eq('business_id', business.id)
       .gte('date', startStr)
-      .lte('date', endStr);
+      .lte('date', endStr)
+      .neq('status', 'cancelled');
 
     if (!error && data) {
       setAppointments(data.map(a => {
@@ -1026,6 +1032,7 @@ export default function ClientAgendaScreen() {
           status: a.status as any,
           date: a.date,
           price: a.price || 0,
+          notes: isMine ? (a.notes || undefined) : undefined,
         };
       }));
     }
@@ -1038,6 +1045,24 @@ export default function ClientAgendaScreen() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  const fetchAppointmentsRef = useRef(fetchAppointments);
+  useEffect(() => { fetchAppointmentsRef.current = fetchAppointments; }, [fetchAppointments]);
+
+  useEffect(() => {
+    if (!business?.id) return;
+    const channelName = `client-agenda-${business.id}`;
+    const existing = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
+    if (existing) supabase.removeChannel(existing);
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments', filter: `business_id=eq.${business.id}` },
+        () => { fetchAppointmentsRef.current(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [business?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1080,21 +1105,27 @@ export default function ClientAgendaScreen() {
   }, []);
 
   const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
-    if (actionId === 'confirm') {
-      const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
-    } else if (actionId === 'no-show') {
-      const { error } = await supabase.from('appointments').update({ status: 'no-show' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
-    } else if (actionId === 'cancel') {
-      const { error } = await supabase.from('appointments').delete().eq('id', appt.id);
-      if (!error) fetchAppointments();
+    if (actionId === 'cancel') {
+      if (appt.date) {
+        const [y, m, d] = appt.date.split('-').map(Number);
+        const startH = Math.floor(appt.startHour);
+        const startM = Math.round((appt.startHour % 1) * 60);
+        const apptTime = new Date(y, m - 1, d, startH, startM, 0);
+        const diffHours = (apptTime.getTime() - Date.now()) / (1000 * 60 * 60);
+        if (diffHours <= 2) {
+          showAlert({ title: 'No puedes cancelar', message: 'Solo puedes cancelar con al menos 2 horas de anticipación.' });
+          return;
+        }
+      }
+      const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+      if (error) showAlert({ title: 'Error', message: error.message });
+      else fetchAppointments();
     } else if (actionId === 'edit') {
       setEditingAppt(appt);
       setSheetVisible(false);
       setFormVisible(true);
     }
-  }, [fetchAppointments]);
+  }, [fetchAppointments, showAlert]);
 
   const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
     try {
@@ -1107,12 +1138,13 @@ export default function ClientAgendaScreen() {
       const newStart = data.startHour ?? 9;
       const newEnd = newStart + (data.durationHours ?? 0.5);
 
-      // ── Validar colisiones de horario ──
+      // ── Validar colisiones de horario (solo citas activas) ──
       let query = supabase
         .from('appointments')
         .select('id, start_hour, duration_hours')
         .eq('worker_id', data.worker_id)
-        .eq('date', dateStr);
+        .eq('date', dateStr)
+        .in('status', ['confirmed', 'pending', 'rescheduled']);
 
       if (editingAppt) {
         query = query.neq('id', editingAppt.id);
@@ -1167,11 +1199,12 @@ export default function ClientAgendaScreen() {
         client_id: profile?.id,
         client_name: profile?.nickname || 'Cliente',
         service: data.service || 'Servicio',
-        price: data.price || 0, // El precio ya viene calculado del modal
+        price: data.price || 0,
         date: dateStr,
         start_hour: newStart,
         duration_hours: data.durationHours || 0.5,
         status: 'pending',
+        notes: data.notes ?? null,
       };
 
       if (editingAppt) {
@@ -1277,7 +1310,8 @@ export default function ClientAgendaScreen() {
               ]}
             >
               {filteredAppointments
-                .filter(a => a.worker === w.name && a.date === selectedDateStr)
+                .filter(a => a.worker === w.name && a.date === selectedDateStr
+                  && a.status !== 'completed' && a.status !== 'no-show')
                 .map(appt => (
                   <AppointmentCard
                     key={appt.id}
@@ -1372,7 +1406,8 @@ export default function ClientAgendaScreen() {
                 ]}
               >
                 {filteredAppointments
-                  .filter(a => a.date === dateStr)
+                  .filter(a => a.date === dateStr
+                    && a.status !== 'completed' && a.status !== 'no-show')
                   .map(appt => (
                     <AppointmentCard
                       key={appt.id}
@@ -1696,7 +1731,6 @@ export default function ClientAgendaScreen() {
         openingTime={business?.opening_time}
         closingTime={business?.closing_time}
         isGym={isGym}
-        gymMembership={gymMembership}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}

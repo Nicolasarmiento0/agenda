@@ -56,6 +56,8 @@ type Appointment = {
   status: 'confirmed' | 'pending' | 'completed' | 'no-show' | 'rescheduled' | 'cancelled';
   date?: string;
   price?: number;
+  notes?: string;
+  client_id?: string;
 };
 
 type Worker = {
@@ -106,7 +108,7 @@ function toLocalISOString(date: Date) {
 
 function formatHour(h: number) {
   const hh = Math.floor(h);
-  const mm = h % 1 === 0.5 ? '30' : '00';
+  const mm = String(Math.round((h % 1) * 60)).padStart(2, '0');
   return `${String(hh).padStart(2, '0')}:${mm}`;
 }
 
@@ -133,14 +135,14 @@ function nowLinePosition(startHour: number, endHour: number) {
 }
 
 const PASTEL_PALETTE = [
-  { light: { bg: '#EDE8F5', border: '#C5B4E8' }, dark: { bg: 'rgba(130,90,200,0.18)', border: 'rgba(160,118,220,0.32)' } },
-  { light: { bg: '#D5EDE0', border: '#9ACBAA' }, dark: { bg: 'rgba(60,152,90,0.16)', border: 'rgba(80,180,108,0.30)' } },
-  { light: { bg: '#FAE3D4', border: '#EEB898' }, dark: { bg: 'rgba(210,118,70,0.17)', border: 'rgba(230,145,90,0.30)' } },
-  { light: { bg: '#D4E8F8', border: '#94C0EE' }, dark: { bg: 'rgba(60,132,220,0.17)', border: 'rgba(80,155,240,0.30)' } },
-  { light: { bg: '#FAD8E4', border: '#EDA0B8' }, dark: { bg: 'rgba(210,80,120,0.17)', border: 'rgba(230,100,140,0.30)' } },
-  { light: { bg: '#F8F0D4', border: '#E0CC80' }, dark: { bg: 'rgba(200,175,50,0.17)', border: 'rgba(220,195,60,0.30)' } },
-  { light: { bg: '#D4F4EC', border: '#86CCBC' }, dark: { bg: 'rgba(50,175,150,0.17)', border: 'rgba(65,195,170,0.30)' } },
-  { light: { bg: '#F0E8D4', border: '#D4C098' }, dark: { bg: 'rgba(190,155,90,0.17)', border: 'rgba(210,175,105,0.30)' } },
+  { light: { bg: '#EDE8F5', border: '#C5B4E8' }, dark: { bg: 'rgba(130,90,200,0.98)', border: '#C5B4E8' } },
+  { light: { bg: '#D5EDE0', border: '#9ACBAA' }, dark: { bg: 'rgba(60,152,90,0.96)', border: '#9ACBAA' } },
+  { light: { bg: '#FAE3D4', border: '#EEB898' }, dark: { bg: 'rgba(210,118,70,0.97)', border: '#EEB898' } },
+  { light: { bg: '#D4E8F8', border: '#94C0EE' }, dark: { bg: 'rgba(60,132,220,0.97)', border: '#94C0EE' } },
+  { light: { bg: '#FAD8E4', border: '#EDA0B8' }, dark: { bg: 'rgba(210,80,120,0.97)', border: '#EDA0B8' } },
+  { light: { bg: '#F8F0D4', border: '#E0CC80' }, dark: { bg: 'rgba(200,175,50,0.97)', border: '#E0CC80' } },
+  { light: { bg: '#D4F4EC', border: '#86CCBC' }, dark: { bg: 'rgba(50,175,150,0.97)', border: '#86CCBC' } },
+  { light: { bg: '#F0E8D4', border: '#D4C098' }, dark: { bg: 'rgba(190,155,90,0.97)', border: '#D4C098' } },
 ];
 
 function getPastelColors(id: string, isDarkMode: boolean) {
@@ -274,16 +276,33 @@ function AppointmentSheet({
 
   const isBlocked = appt.service === 'BLOQUEO';
 
-  const ACTIONS = isBlocked ? [
-    { id: 'cancel', icon: 'unlock', label: 'Desbloquear', color: '#E24B4A' },
-  ] : [
-    { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
-    { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
-    { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
-    { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
-    { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
-    { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
-  ];
+  const ACTIONS = isBlocked
+    ? [{ id: 'cancel', icon: 'unlock', label: 'Desbloquear', color: '#E24B4A' }]
+    : appt.status === 'pending'
+    ? [
+        { id: 'confirm',     icon: 'check-circle', label: 'Confirmar',                         color: '#3D9E5A' },
+        { id: 'rescheduled', icon: 'clock',         label: 'Reprogramar',                       color: '#F39C12' },
+        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
+        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
+        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
+      ]
+    : appt.status === 'confirmed'
+    ? [
+        { id: 'complete',    icon: 'check-square',  label: isGym ? 'Asistió' : 'Completar',    color: '#5C90D2' },
+        { id: 'rescheduled', icon: 'clock',         label: 'Reprogramar',                       color: '#F39C12' },
+        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
+        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
+        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
+      ]
+    : appt.status === 'rescheduled'
+    ? [
+        { id: 'confirm',     icon: 'check-circle', label: 'Confirmar',                         color: '#3D9E5A' },
+        { id: 'complete',    icon: 'check-square',  label: isGym ? 'Asistió' : 'Completar',    color: '#5C90D2' },
+        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
+        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
+        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
+      ]
+    : [];
 
   return (
     <View
@@ -335,7 +354,7 @@ function AppointmentSheet({
             <Feather name="clock" size={14} color={colors.textSecondary} />
             <Text style={[styles.sheetDetailText, { color: colors.textSecondary }]}>
               {formatHour(appt.startHour)} – {formatHour(endHour)}
-              {'  ·  '}{appt.durationHours * 60} min
+              {'  ·  '}{Math.round(appt.durationHours * 60)} min
             </Text>
           </View>
           <View style={styles.sheetDetailRow}>
@@ -344,6 +363,14 @@ function AppointmentSheet({
               {appt.worker}
             </Text>
           </View>
+          {!!appt.notes && (
+            <View style={styles.sheetDetailRow}>
+              <Feather name="file-text" size={14} color={colors.textSecondary} />
+              <Text style={[styles.sheetDetailText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={3}>
+                {appt.notes}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Acciones rápidas */}
@@ -367,6 +394,7 @@ function AppointmentSheet({
 function AppointmentFormModal({
   visible,
   initialData,
+  isRescheduling,
   onClose,
   onSave,
   colors,
@@ -377,6 +405,7 @@ function AppointmentFormModal({
 }: {
   visible: boolean;
   initialData?: Appointment;
+  isRescheduling?: boolean;
   onClose: () => void;
   onSave: (appt: Partial<Appointment>) => Promise<boolean>;
   colors: any;
@@ -398,6 +427,7 @@ function AppointmentFormModal({
   const [showCalendar, setShowCalendar] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [notes, setNotes] = useState('');
   const formScrollRef = useRef<any>(null);
 
   const [services, setServices] = useState<any[]>([]);
@@ -473,6 +503,7 @@ function AppointmentFormModal({
         setEndSlot(`${String(endHh).padStart(2, '0')}:${String(Math.min(endMm, 45)).padStart(2, '0')}`);
         setDateText(initialData.date || selectedDateStr);
         setIsBlocking(initialData.service === 'BLOQUEO');
+        setNotes(initialData.notes || '');
       } else {
         setClientName('');
         setService('');
@@ -481,6 +512,7 @@ function AppointmentFormModal({
         setEndSlot(`${String(Math.min(openingHour + 1, closingHour - 1)).padStart(2, '0')}:00`);
         setDateText(selectedDateStr);
         setIsBlocking(false);
+        setNotes('');
       }
       setLoading(false);
       setShowCalendar(false);
@@ -593,6 +625,7 @@ function AppointmentFormModal({
       durationHours: endHourCalc - startHour,
       date: dateText,
       price,
+      notes: notes.trim() || undefined,
     });
     setLoading(false);
 
@@ -682,7 +715,7 @@ function AppointmentFormModal({
               {/* Header */}
               <View style={formStyles.header}>
                 <Text style={[formStyles.title, { color: colors.textPrimary }]}>
-                  {initialData ? 'Editar cita' : isBlocking ? 'Bloquear horario' : 'Nueva cita'}
+                  {isRescheduling ? 'Reprogramar cita' : initialData ? 'Editar cita' : isBlocking ? 'Bloquear horario' : 'Nueva cita'}
                 </Text>
                 <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={formStyles.closeBtn}>
                   <Feather name="x" size={18} color={colors.textSecondary} />
@@ -852,6 +885,22 @@ function AppointmentFormModal({
                 </View>
               </View>
 
+              {/* Notas internas */}
+              {!isBlocking && (
+                <>
+                  <Text style={[formStyles.label, { color: colors.textSecondary }]}>NOTAS INTERNAS (OPCIONAL)</Text>
+                  <TextInput
+                    style={[glassInput, { color: colors.textPrimary, justifyContent: 'flex-start', minHeight: 72, textAlignVertical: 'top', alignItems: 'flex-start' } as any]}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholderTextColor={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                    placeholder="Notas para el equipo..."
+                    multiline
+                    numberOfLines={3}
+                  />
+                </>
+              )}
+
               {/* Botón principal */}
               <TouchableOpacity
                 onPress={handleSave}
@@ -861,7 +910,7 @@ function AppointmentFormModal({
               >
                 {loading
                   ? <ActivityIndicator size="small" color="#111827" />
-                  : <Text style={formStyles.saveBtnText}>{initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
+                  : <Text style={formStyles.saveBtnText}>{isRescheduling ? 'CONFIRMAR CAMBIO' : initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
                 }
               </TouchableOpacity>
 
@@ -926,6 +975,7 @@ export default function CompanyAgendaScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
+  const isReschedulingRef = useRef(false);
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -965,7 +1015,8 @@ export default function CompanyAgendaScreen() {
       .select('*, workers(name, color)')
       .eq('business_id', business.id)
       .gte('date', startStr)
-      .lte('date', endStr);
+      .lte('date', endStr)
+      .neq('status', 'cancelled');
 
     if (!error && data) {
       setAppointments(data.map(a => ({
@@ -980,6 +1031,8 @@ export default function CompanyAgendaScreen() {
         status: a.status as any,
         date: a.date,
         price: a.price || 0,
+        notes: a.notes || undefined,
+        client_id: a.client_id || undefined,
       })));
     }
   }, [business?.id, weekDays]);
@@ -991,6 +1044,23 @@ export default function CompanyAgendaScreen() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  const fetchAppointmentsRef = useRef(fetchAppointments);
+  useEffect(() => { fetchAppointmentsRef.current = fetchAppointments; }, [fetchAppointments]);
+
+  useEffect(() => {
+    if (!business?.id) return;
+    const channelName = `company-agenda-${business.id}`;
+    const existing = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
+    if (existing) supabase.removeChannel(existing);
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `business_id=eq.${business.id}` },
+        () => { fetchAppointmentsRef.current(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [business?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1034,25 +1104,32 @@ export default function CompanyAgendaScreen() {
   const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
     if (actionId === 'confirm') {
       const { error } = await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
+      if (error) showAlert({ title: 'Error', message: error.message });
+      else fetchAppointments();
     } else if (actionId === 'complete') {
       const { error } = await supabase.from('appointments').update({ status: 'completed' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
+      if (error) showAlert({ title: 'Error', message: error.message });
+      else fetchAppointments();
     } else if (actionId === 'rescheduled') {
-      const { error } = await supabase.from('appointments').update({ status: 'rescheduled' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
+      isReschedulingRef.current = true;
+      setEditingAppt(appt);
+      setSheetVisible(false);
+      setFormVisible(true);
     } else if (actionId === 'no-show') {
       const { error } = await supabase.from('appointments').update({ status: 'no-show' }).eq('id', appt.id);
-      if (!error) fetchAppointments();
+      if (error) showAlert({ title: 'Error', message: error.message });
+      else fetchAppointments();
     } else if (actionId === 'cancel') {
-      const { error } = await supabase.from('appointments').delete().eq('id', appt.id);
-      if (!error) fetchAppointments();
+      const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+      if (error) showAlert({ title: 'Error', message: error.message });
+      else fetchAppointments();
     } else if (actionId === 'edit') {
+      isReschedulingRef.current = false;
       setEditingAppt(appt);
       setSheetVisible(false);
       setFormVisible(true);
     }
-  }, [fetchAppointments]);
+  }, [fetchAppointments, showAlert]);
 
   const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
     try {
@@ -1098,16 +1175,21 @@ export default function CompanyAgendaScreen() {
         return false;
       }
 
-      const apptData = {
+      const newStatus = editingAppt
+        ? (isReschedulingRef.current ? 'rescheduled' : editingAppt.status)
+        : 'pending';
+
+      const apptData: Record<string, any> = {
         business_id: business.id,
         worker_id: data.worker_id,
         client_name: data.clientName || 'Sin nombre',
         service: data.service || 'Servicio',
-        price: data.price || 0, // El precio ya viene calculado del modal
+        price: data.price || 0,
         date: dateStr,
         start_hour: newStart,
         duration_hours: data.durationHours || 0.5,
-        status: 'pending',
+        status: newStatus,
+        notes: data.notes ?? null,
       };
 
       if (editingAppt) {
@@ -1124,6 +1206,7 @@ export default function CompanyAgendaScreen() {
         }
       }
 
+      isReschedulingRef.current = false;
       await fetchAppointments();
       return true;
     } catch (err: any) {
@@ -1223,7 +1306,8 @@ export default function CompanyAgendaScreen() {
               ]}
             >
               {filteredAppointments
-                .filter(a => a.worker === w.name && a.date === selectedDateStr)
+                .filter(a => a.worker === w.name && a.date === selectedDateStr
+                  && a.status !== 'completed' && a.status !== 'no-show')
                 .map(appt => (
                   <AppointmentCard
                     key={appt.id}
@@ -1341,7 +1425,8 @@ export default function CompanyAgendaScreen() {
                   ]}
                 >
                   {filteredAppointments
-                    .filter(a => a.date === dateStr)
+                    .filter(a => a.date === dateStr
+                      && a.status !== 'completed' && a.status !== 'no-show')
                     .map(appt => (
                       <AppointmentCard
                         key={appt.id}
@@ -1517,7 +1602,8 @@ export default function CompanyAgendaScreen() {
       <AppointmentFormModal
         visible={formVisible}
         initialData={editingAppt}
-        onClose={() => setFormVisible(false)}
+        isRescheduling={isReschedulingRef.current}
+        onClose={() => { isReschedulingRef.current = false; setFormVisible(false); }}
         onSave={handleSaveAppt}
         colors={{ ...colors, workersList: workers, businessId: business?.id }}
         selectedDateStr={selectedDateStr}

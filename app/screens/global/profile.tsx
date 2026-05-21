@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
@@ -353,7 +353,7 @@ export default function ProfileScreen() {
                 <>
                   <View style={[localStyles.reviewsDivider, { backgroundColor: colors.border }]} />
                   <View style={localStyles.reviewsHeader}>
-                    <Feather name="star" size={14} color="#F0A030" />
+                    <Ionicons name="star" size={14} color="#F59E0B" />
                     <Text style={[localStyles.reviewsTitle, { color: colors.textSecondary }]}>MIS RESEÑAS</Text>
                   </View>
                   {(showAllReviews ? myReviews : myReviews.slice(0, 3)).map((r: any, i: number) => (
@@ -371,11 +371,11 @@ export default function ProfileScreen() {
                         </Text>
                         <View style={localStyles.starsRow}>
                           {[1, 2, 3, 4, 5].map(s => (
-                            <Feather
+                            <Ionicons
                               key={s}
-                              name="star"
+                              name={s <= r.score ? 'star' : 'star-outline'}
                               size={11}
-                              color={s <= r.score ? '#F0A030' : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}
+                              color={s <= r.score ? '#F59E0B' : (isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)')}
                             />
                           ))}
                         </View>
