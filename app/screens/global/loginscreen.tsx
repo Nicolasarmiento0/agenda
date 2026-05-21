@@ -181,7 +181,7 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={colors.white} />
+                <ActivityIndicator color='#111827' />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Ingresar</Text>
               )}
@@ -236,7 +236,7 @@ const loginStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     gap: 10,
   },
@@ -244,5 +244,6 @@ const loginStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: 0.3,
+    fontFamily: 'Inter_500Medium',
   },
 });

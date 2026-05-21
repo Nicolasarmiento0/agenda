@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../components/GlassCard';
 import Sidebar from '../../../components/Sidebar';
 import { SelectedBusiness, useBusiness } from '../../../context/BusinessContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -34,6 +35,21 @@ function getBizColor(id: string) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   }
   return BIZ_COLORS[Math.abs(hash) % BIZ_COLORS.length];
+}
+
+// Paleta curada para chips de categoría — evita el lime primario reservado para CTAs
+const CATEGORY_PALETTE = [
+  '#5C90D2', '#3D9E5A', '#F39C12', '#9B59B6',
+  '#1ABC9C', '#E67E22', '#E31937', '#2980B9',
+  '#8E44AD', '#27AE60', '#D35400', '#16A085',
+];
+
+function getCategoryColor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return CATEGORY_PALETTE[Math.abs(hash) % CATEGORY_PALETTE.length];
 }
 
 type Category = {
@@ -213,27 +229,33 @@ export default function ExploreScreen() {
               onPress={() => { setSelectedParentId(null); setSelectedSubId(null); }}
               style={[styles.chip, !selectedParentId ? styles.chipActive : glassChip]}
             >
-              <Feather name="grid" size={13} color={!selectedParentId ? '#fff' : colors.textSecondary} />
-              <Text style={[styles.chipText, { color: !selectedParentId ? '#fff' : colors.textSecondary }]}>
+              <Feather name="grid" size={13} color={!selectedParentId ? '#111827' : colors.textSecondary} />
+              <Text style={[styles.chipText, { color: !selectedParentId ? '#111827' : colors.textSecondary }]}>
                 TODOS
               </Text>
             </TouchableOpacity>
 
             {parentCategories.map(cat => {
               const active = selectedParentId === cat.id;
+              const catColor = getCategoryColor(cat.id);
               return (
                 <TouchableOpacity
                   key={cat.id}
                   activeOpacity={0.7}
                   onPress={() => { setSelectedParentId(active ? null : cat.id); setSelectedSubId(null); }}
-                  style={[styles.chip, active ? styles.chipActive : glassChip]}
+                  style={[
+                    styles.chip,
+                    active
+                      ? { backgroundColor: catColor, borderColor: catColor }
+                      : { backgroundColor: catColor + '14', borderColor: catColor + '40' },
+                  ]}
                 >
                   <Feather
                     name={(cat.icon || 'tag') as any}
                     size={13}
-                    color={active ? '#fff' : appColors.primary}
+                    color={active ? '#fff' : catColor}
                   />
-                  <Text style={[styles.chipText, { color: active ? '#fff' : colors.textPrimary }]}>
+                  <Text style={[styles.chipText, { color: active ? '#fff' : catColor }]}>
                     {cat.name.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -251,6 +273,7 @@ export default function ExploreScreen() {
             >
               {subCategories.map(cat => {
                 const active = selectedSubId === cat.id;
+                const parentColor = selectedParentId ? getCategoryColor(selectedParentId) : appColors.primary;
                 return (
                   <TouchableOpacity
                     key={cat.id}
@@ -258,10 +281,12 @@ export default function ExploreScreen() {
                     onPress={() => setSelectedSubId(active ? null : cat.id)}
                     style={[
                       styles.subChip,
-                      active ? styles.chipActive : { backgroundColor: colors.surface, borderColor: colors.border },
+                      active
+                        ? { backgroundColor: parentColor, borderColor: parentColor }
+                        : { backgroundColor: parentColor + '12', borderColor: parentColor + '35' },
                     ]}
                   >
-                    <Text style={[styles.subChipText, { color: active ? '#fff' : colors.textSecondary }]}>
+                    <Text style={[styles.subChipText, { color: active ? '#fff' : parentColor }]}>
                       {cat.name}
                     </Text>
                   </TouchableOpacity>
@@ -319,11 +344,10 @@ export default function ExploreScreen() {
                 const hasBody = b.description || b.maps_url || b.instagram_url || b.opening_time || b.closing_time;
 
                 return (
+                  <GlassCard key={b.id} style={styles.card}>
                   <TouchableOpacity
-                    key={b.id}
                     activeOpacity={0.72}
                     onPress={() => handleSelectBusiness(b)}
-                    style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   >
 
                     {/* ── Cabecera: avatar + nombre + categoría + rating ── */}
@@ -358,13 +382,13 @@ export default function ExploreScreen() {
                         {rating ? (
                           <View style={styles.ratingRow}>
                             {[1, 2, 3, 4, 5].map(s => (
-                              <Feather
+                              <Ionicons
                                 key={s}
-                                name="star"
+                                name={s <= Math.round(rating.avg) ? 'star' : 'star-outline'}
                                 size={11}
                                 color={s <= Math.round(rating.avg)
                                   ? '#F59E0B'
-                                  : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}
+                                  : (isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)')}
                               />
                             ))}
                             <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
@@ -415,9 +439,9 @@ export default function ExploreScreen() {
                         activeOpacity={0.7}
                         onPress={e => { e.stopPropagation?.(); Linking.openURL(b.instagram_url!); }}
                       >
-                        <Feather name="instagram" size={12} color="#E1306C" />
-                        <Text style={[styles.linkText, { color: '#E1306C' }]}>Instagram</Text>
-                        <Feather name="external-link" size={11} color="#E1306C" />
+                        <Feather name="instagram" size={12} color="#0095F6" />
+                        <Text style={[styles.linkText, { color: '#0095F6' }]}>Instagram</Text>
+                        <Feather name="external-link" size={11} color="#0095F6" />
                       </TouchableOpacity>
                     ) : null}
 
@@ -438,6 +462,7 @@ export default function ExploreScreen() {
                     </View>
 
                   </TouchableOpacity>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -479,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
+    borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 13,
     marginTop: 12,
@@ -507,6 +532,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
 
   subChip: {
@@ -556,8 +582,7 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     gap: 0,
   },

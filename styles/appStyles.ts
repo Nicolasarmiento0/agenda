@@ -4,13 +4,22 @@ import { useTheme } from '../context/ThemeContext';
 export const appColors = {
   white: '#FFFFFF',
   black: '#000000',
-  background: '#0A0A0A',      // negro profundo
-  surface: '#141414',         // superficie de cards/inputs
-  border: '#2A2A2A',          // bordes sutiles
-  primary: '#E31937',         // rojo Tesla
-  textPrimary: '#FFFFFF',
-  textSecondary: '#888888',
-  error: '#FF3B30',
+  background: '#0B0E14',
+  surface: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.10)',
+  primary: '#B4F736',
+  primaryText: '#111827',
+  textPrimary: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  error: '#FF4B4B',
+};
+
+export const radii = {
+  sm: 8,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  full: 999,
 };
 
 export const appStyles = StyleSheet.create({
@@ -19,6 +28,7 @@ export const appStyles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     letterSpacing: 0.5,
+    fontFamily: 'Inter_400Regular',
   },
   screen: {
     flex: 1,
@@ -56,6 +66,7 @@ export const appStyles = StyleSheet.create({
     textTransform: 'uppercase',
     padding: 10,
     paddingVertical: 20,
+    fontFamily: 'Inter_700Bold',
   },
   title2: {
     fontSize: 25,
@@ -65,41 +76,46 @@ export const appStyles = StyleSheet.create({
     textTransform: 'uppercase',
     padding: 10,
     paddingVertical: 20,
+    fontFamily: 'Inter_700Bold',
   },
   subtitle: {
     fontSize: 14,
     color: appColors.textSecondary,
     letterSpacing: 1,
+    fontFamily: 'Inter_400Regular',
   },
   subtitle2: {
     fontSize: 6,
     color: appColors.textSecondary,
     letterSpacing: 1,
+    fontFamily: 'Inter_400Regular',
   },
   subtitleCentered: {
     fontSize: 14,
     color: appColors.textSecondary,
     textAlign: 'center',
     letterSpacing: 1,
+    fontFamily: 'Inter_400Regular',
   },
   input: {
     alignSelf: 'stretch',
     borderWidth: 1,
     borderColor: appColors.border,
-    borderRadius: 4,
+    borderRadius: radii.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
     color: appColors.textPrimary,
     backgroundColor: appColors.surface,
     letterSpacing: 0.5,
+    fontFamily: 'Inter_400Regular',
   },
   primaryButton: {
     alignSelf: 'center',
     backgroundColor: appColors.primary,
     paddingVertical: 16,
     paddingHorizontal: 60,
-    borderRadius: 8,
+    borderRadius: radii.full,
     marginTop: 8,
   },
   primaryButton2: {
@@ -107,16 +123,17 @@ export const appStyles = StyleSheet.create({
     backgroundColor: appColors.primary,
     paddingVertical: 14,
     paddingHorizontal: 60,
-    borderRadius: 4,
+    borderRadius: radii.full,
     marginTop: 8,
   },
   primaryButtonText: {
-    color: appColors.white,
+    color: appColors.primaryText,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
     fontSize: 14,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontFamily: 'Inter_600SemiBold',
   },
   secondaryButton: {
     alignSelf: 'center',
@@ -125,7 +142,7 @@ export const appStyles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingVertical: 14,
     paddingHorizontal: 60,
-    borderRadius: 4,
+    borderRadius: radii.full,
   },
   secondaryButtonText: {
     color: appColors.textPrimary,
@@ -134,32 +151,34 @@ export const appStyles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontFamily: 'Inter_400Regular',
   },
   errorText: {
     color: appColors.error,
     fontSize: 12,
     letterSpacing: 0.5,
+    fontFamily: 'Inter_400Regular',
   },
 });
 
 export const useAppStyles = () => {
   const { colors } = useTheme();
   return StyleSheet.create({
-    forgotText: { color: colors.textSecondary, textAlign: 'center', fontSize: 14, letterSpacing: 0.5 },
+    forgotText: { color: colors.textSecondary, textAlign: 'center', fontSize: 14, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
     screen: { flex: 1, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: colors.background, gap: 22 },
     screenContent: { flex: 1, justifyContent: 'center', gap: 22 },
     back: { alignSelf: 'flex-start', paddingVertical: 50 },
     back2: { alignSelf: 'flex-start', paddingVertical: 10 },
     screenCentered: { flex: 1, padding: 28, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, gap: 12 },
-    title: { fontSize: 38, fontWeight: '700', color: colors.textPrimary, letterSpacing: 4, textTransform: 'uppercase', padding: 10, paddingVertical: 20 },
-    subtitle: { fontSize: 14, color: colors.textSecondary, letterSpacing: 1 },
-    subtitleCentered: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', letterSpacing: 1 },
-    input: { alignSelf: 'stretch', borderWidth: 1, borderColor: colors.border, borderRadius: 4, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.surface, letterSpacing: 0.5 },
-    primaryButton: { alignSelf: 'stretch', backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 4, marginTop: 8 },
-    primaryButton2: { alignSelf: 'center', backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 60, borderRadius: 4, marginTop: 8 },
-    primaryButtonText: { color: appColors.white, textAlign: 'center', fontWeight: '500', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' },
-    secondaryButton: { alignSelf: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: 'transparent', paddingVertical: 14, paddingHorizontal: 60, borderRadius: 4 },
-    secondaryButtonText: { color: colors.textPrimary, textAlign: 'center', fontWeight: '400', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' },
-    errorText: { color: colors.error, fontSize: 12, letterSpacing: 0.5 },
+    title: { fontSize: 38, fontWeight: '700', color: colors.textPrimary, letterSpacing: 4, textTransform: 'uppercase', padding: 10, paddingVertical: 20, fontFamily: 'Inter_700Bold' },
+    subtitle: { fontSize: 14, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_400Regular' },
+    subtitleCentered: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', letterSpacing: 1, fontFamily: 'Inter_400Regular' },
+    input: { alignSelf: 'stretch', borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.surface, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
+    primaryButton: { alignSelf: 'stretch', backgroundColor: colors.primary, paddingVertical: 16, borderRadius: radii.full, marginTop: 8 },
+    primaryButton2: { alignSelf: 'center', backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 60, borderRadius: radii.full, marginTop: 8 },
+    primaryButtonText: { color: colors.primaryText, textAlign: 'center', fontWeight: '600', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'Inter_600SemiBold' },
+    secondaryButton: { alignSelf: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: 'transparent', paddingVertical: 14, paddingHorizontal: 60, borderRadius: radii.full },
+    secondaryButtonText: { color: colors.textPrimary, textAlign: 'center', fontWeight: '400', fontSize: 14, letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'Inter_400Regular' },
+    errorText: { color: colors.error, fontSize: 12, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
   });
 };

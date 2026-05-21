@@ -16,6 +16,7 @@ import {
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
+import GlassCard from '../../../../components/GlassCard';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
 
@@ -141,7 +142,7 @@ export default function CompanyHistoryScreen() {
     : appointments.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const renderAppointment = ({ item }: { item: any }) => (
-    <View style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <GlassCard style={styles.itemCard}>
       <View style={styles.itemHeader}>
         <Text style={[styles.itemService, { color: colors.textPrimary }]}>{item.service}</Text>
         <Text style={[styles.itemPrice, { color: appColors.primary }]}>
@@ -162,11 +163,11 @@ export default function CompanyHistoryScreen() {
           <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.date}</Text>
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 
   const renderGymMember = ({ item }: { item: GymMember }) => (
-    <View style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <GlassCard style={styles.itemCard}>
       <View style={styles.itemHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           {item.profiles?.avatar_url ? (
@@ -191,7 +192,7 @@ export default function CompanyHistoryScreen() {
           ${item.price.toLocaleString('es-CL')}
         </Text>
       </View>
-    </View>
+    </GlassCard>
   );
 
   return (
@@ -206,7 +207,7 @@ export default function CompanyHistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <GlassCard style={styles.summaryCard}>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
           {isGym
             ? 'INGRESOS MENSUALES'
@@ -220,7 +221,7 @@ export default function CompanyHistoryScreen() {
             ? `${gymMembers.length} miembros activos`
             : `${appointments.length} servicios realizados`}
         </Text>
-      </View>
+      </GlassCard>
 
       {!isGym && (
         <View style={styles.filtersContainer}>
@@ -238,7 +239,7 @@ export default function CompanyHistoryScreen() {
                   timeRange === r && { backgroundColor: appColors.primary, borderColor: appColors.primary },
                 ]}
               >
-                <Text style={[styles.filterChipText, { color: timeRange === r ? '#fff' : colors.textSecondary }]}>
+                <Text style={[styles.filterChipText, { color: timeRange === r ? '#111827' : colors.textSecondary }]}>
                   {r === 'day' ? 'HOY' : r === 'week' ? 'SEMANA' : 'MES'}
                 </Text>
               </TouchableOpacity>
@@ -341,8 +342,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     marginHorizontal: 16,
     padding: 24,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -350,17 +350,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     marginBottom: 8,
   },
   summaryValue: {
     fontSize: 36,
     fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   summaryCount: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
   filtersContainer: {
     marginBottom: 12,
@@ -395,8 +398,7 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     padding: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -407,11 +409,13 @@ const styles = StyleSheet.create({
   itemService: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 0.3,
   },
   itemPrice: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   itemDetails: {
     flexDirection: 'row',
@@ -446,6 +450,7 @@ const styles = StyleSheet.create({
   planLabel: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     letterSpacing: 1.5,
     marginTop: 2,
   },

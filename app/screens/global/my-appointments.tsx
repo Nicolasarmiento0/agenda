@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../components/GlassCard';
 import Sidebar from '../../../components/Sidebar';
 import { useAlert } from '../../../context/AlertContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -161,7 +162,7 @@ export default function MyAppointmentsScreen() {
                 const canCancel = activeTab === 'upcoming' && hoursDiff > 2;
 
                 return (
-                  <View key={appt.id} style={[localStyles.apptCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <GlassCard key={appt.id} style={localStyles.apptCard}>
                     <View style={localStyles.apptHeader}>
                       <View>
                         <Text style={[localStyles.businessName, { color: colors.textPrimary }]}>{appt.businesses?.name || 'Negocio'}</Text>
@@ -197,7 +198,7 @@ export default function MyAppointmentsScreen() {
                         <Text style={localStyles.cancelBtnText}>Cancelar Cita</Text>
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -281,8 +282,7 @@ const localStyles = StyleSheet.create({
     fontWeight: '600',
   },
   apptCard: {
-    borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 16,
   },
@@ -296,6 +296,7 @@ const localStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
+    fontFamily: 'Inter_700Bold',
   },
   serviceName: {
     fontSize: 14,
@@ -303,11 +304,12 @@ const localStyles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   apptDetails: {
     flexDirection: 'row',

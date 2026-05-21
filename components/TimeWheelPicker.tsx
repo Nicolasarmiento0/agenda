@@ -38,6 +38,7 @@ function WheelColumn({
   const scrollY = useRef(new Animated.Value(selectedIndex * ITEM_HEIGHT)).current;
   const scrollRef = useRef<any>(null);
   const currentIndex = useRef(selectedIndex);
+  const lastHapticIndex = useRef(-1);
   const isMounted = useRef(false);
 
   useEffect(() => {
@@ -60,9 +61,12 @@ function WheelColumn({
       const index = Math.max(0, Math.min(Math.round(rawOffset / ITEM_HEIGHT), items.length - 1));
       const snappedOffset = index * ITEM_HEIGHT;
 
-      if (Math.abs(rawOffset - snappedOffset) > 1) {
+      // Only manually snap on Android. iOS handles snapToInterval natively and perfectly.
+      // Manually calling scrollTo on iOS during momentum can cancel the scroll prematurely.
+      if (Platform.OS !== 'ios' && Math.abs(rawOffset - snappedOffset) > 1) {
         scrollRef.current?.scrollTo({ y: snappedOffset, animated: true });
       }
+
       if (index !== currentIndex.current) {
         currentIndex.current = index;
         onSelect(index);
@@ -72,23 +76,36 @@ function WheelColumn({
     [items.length, onSelect],
   );
 
+  // Haptics-only listener — does NOT call onSelect to avoid parent re-renders
+  // interrupting the ongoing scroll animation.
   useEffect(() => {
     const id = scrollY.addListener(({ value }) => {
       const index = Math.max(0, Math.min(Math.round(value / ITEM_HEIGHT), items.length - 1));
-      if (index !== currentIndex.current) {
-        currentIndex.current = index;
-        onSelect(index);
-        Haptics.selectionAsync().catch(() => {});
+      if (index !== lastHapticIndex.current) {
+        lastHapticIndex.current = index;
+        Haptics.selectionAsync().catch(() => { });
       }
     });
     return () => { scrollY.removeListener(id); };
-  }, [items.length, onSelect, scrollY]);
+  }, [items.length, scrollY]);
 
-  const handleScrollEnd = useCallback(
+  const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       snapToIndex(e.nativeEvent.contentOffset.y);
     },
     [snapToIndex],
+  );
+
+  const handleScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Only snap if there is no momentum. If there is momentum, handleMomentumScrollEnd will catch it.
+      // snapToInterval natively handles the physical snapping on iOS.
+      const velocity = e.nativeEvent.velocity?.y ?? 0;
+      if (Math.abs(velocity) < 0.1) {
+        snapToIndex(e.nativeEvent.contentOffset.y);
+      }
+    },
+    [snapToIndex]
   );
 
   const textColor = isDarkMode ? '#FFFFFF' : '#0F172A';
@@ -104,8 +121,8 @@ function WheelColumn({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: true,
         })}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: PADDING, paddingBottom: PADDING }}
         bounces={false}

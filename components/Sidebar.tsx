@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -26,6 +26,20 @@ type Props = {
 };
 
 const GYM_KEYWORDS = ['gym', 'gimnasio', 'gimnasios', 'fitness'];
+
+const ROLE_COLORS: Record<string, string> = {
+  admin: '#E31937',
+  company: '#B4F736',
+  worker: '#B4F736',
+  client: '#B4F736',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'ADMINISTRADOR',
+  company: 'EMPRESA',
+  worker: 'TRABAJADOR',
+  client: 'CLIENTE',
+};
 
 export default function Sidebar({ visible, onClose }: Props) {
   const { profile, business, signOut } = useAuth();
@@ -122,6 +136,18 @@ export default function Sidebar({ visible, onClose }: Props) {
     router.push(route as any);
   };
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const name = profile?.nickname || 'USUARIO';
+    if (hour >= 8 && hour < 12) {
+      return `BUENOS DÍAS, ${name.toUpperCase()}`;
+    } else if (hour >= 12 && hour < 20) {
+      return `BUENAS TARDES, ${name.toUpperCase()}`;
+    } else {
+      return `BUENAS NOCHES, ${name.toUpperCase()}`;
+    }
+  }, [profile?.nickname]);
+
   return (
     <Modal visible={showModal} transparent animationType="none" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -151,18 +177,22 @@ export default function Sidebar({ visible, onClose }: Props) {
                 </Text>
               </View>
             )}
-            <Text style={[styles.nickname, { color: colors.textPrimary }]}>{profile?.nickname ?? 'Usuario'}</Text>
-            <View style={[styles.roleBadge, { borderColor: colors.border }]}>
-              <Text style={[styles.roleText, { color: colors.textSecondary }]}>
-                {profile?.role === 'admin'
-                  ? 'ADMINISTRADOR'
-                  : profile?.role === 'company'
-                    ? 'EMPRESA'
-                    : profile?.role === 'worker'
-                      ? 'TRABAJADOR'
-                      : 'CLIENTE'}
-              </Text>
-            </View>
+            <Text style={[styles.nickname, { color: colors.textPrimary, fontSize: 13, textAlign: 'center' }]}>{greeting}</Text>
+            {(() => {
+              const roleColor = ROLE_COLORS[profile?.role ?? 'client'] ?? '#9CA3AF';
+              const roleLabel = ROLE_LABELS[profile?.role ?? 'client'] ?? 'CLIENTE';
+              return (
+                <View style={[styles.roleBadge, {
+                  borderColor: roleColor + '55',
+                  backgroundColor: roleColor + '14',
+                }]}>
+                  <View style={[styles.roleDot, { backgroundColor: roleColor }]} />
+                  <Text style={[styles.roleText, { color: roleColor }]}>
+                    {roleLabel}
+                  </Text>
+                </View>
+              );
+            })()}
           </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -268,14 +298,7 @@ export default function Sidebar({ visible, onClose }: Props) {
 
           {/* Bandeja de entrada — todos los roles */}
           <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/inbox')}>
-            <View style={styles.iconWidth}>
-              <Feather name="bell" size={20} color={colors.textSecondary} />
-              {inboxCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{inboxCount > 9 ? '9+' : inboxCount}</Text>
-                </View>
-              )}
-            </View>
+            <Feather name="bell" size={20} color={colors.textSecondary} style={styles.iconWidth} />
             <Text style={[styles.menuText, { color: colors.textPrimary }]}>BANDEJA DE ENTRADA</Text>
             {inboxCount > 0 && (
               <View style={[styles.badgePill, { backgroundColor: appColors.primary }]}>
@@ -287,9 +310,9 @@ export default function Sidebar({ visible, onClose }: Props) {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Cerrar sesión */}
-          <TouchableOpacity style={[styles.menuItem, { marginTop: 'auto' }]} onPress={handleLogout}>
-            <Feather name="log-out" size={20} color="#FF4B4B" style={styles.iconWidth} />
-            <Text style={[styles.menuText, { color: '#FF4B4B' }]}>CERRAR SESIÓN</Text>
+          <TouchableOpacity style={[styles.menuItem, styles.logoutItem, { marginTop: 'auto' }]} onPress={handleLogout}>
+            <Feather name="log-out" size={18} color={appColors.primary} style={styles.iconWidth} />
+            <Text style={[styles.menuText, { color: appColors.primary }]}>CERRAR SESIÓN</Text>
           </TouchableOpacity>
         </BlurView>
 
@@ -346,17 +369,28 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     letterSpacing: 1,
   },
   roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderWidth: 1,
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  roleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   roleText: {
     fontSize: 10,
-    letterSpacing: 2,
+    letterSpacing: 1.8,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   divider: {
     height: 1,
@@ -378,6 +412,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 2,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
     flex: 1,
   },
   badge: {
@@ -392,20 +427,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   badgePill: {
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 999,
     minWidth: 22,
     alignItems: 'center',
   },
   badgePillText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  logoutItem: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
   },
 });

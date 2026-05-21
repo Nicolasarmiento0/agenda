@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { appColors, appStyles } from '../../../../styles/appStyles';
@@ -117,16 +118,16 @@ export default function BusinessPendingScreen() {
 
             {/* Card del negocio */}
             {business?.name && (
-              <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <GlassCard style={styles.businessCard}>
                 <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>NEGOCIO REGISTRADO</Text>
                 <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{business.name}</Text>
-              </View>
+              </GlassCard>
             )}
 
-            <View style={[styles.businessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard style={styles.businessCard}>
               <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>PROPIETARIO</Text>
               <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{profile?.nickname ?? '—'}</Text>
-            </View>
+            </GlassCard>
 
             {/* Info de estado pendiente */}
             {!isRejected && (
@@ -189,21 +190,20 @@ const styles = StyleSheet.create({
   },
   businessCard: {
     width: '100%',
-    borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
     gap: 4,
   },
-  cardLabel: { fontSize: 10, letterSpacing: 3 },
-  cardValue: { fontSize: 15, letterSpacing: 0.5, fontWeight: '500' },
+  cardLabel: { fontSize: 10, letterSpacing: 3, fontFamily: 'Inter_600SemiBold' },
+  cardValue: { fontSize: 15, letterSpacing: 0.5, fontWeight: '500', fontFamily: 'Inter_500Medium' },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 16,
     padding: 14,
     marginTop: 8,
     width: '100%',

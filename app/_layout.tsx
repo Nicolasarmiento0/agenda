@@ -1,7 +1,15 @@
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/inter';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Linking, Platform, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Text, View } from 'react-native';
 import TeslaAlert from '../components/TeslaAlert';
 import { AlertProvider, useAlert } from '../context/AlertContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -102,6 +110,19 @@ function DeepLinkHandler() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  if (fontsLoaded) {
+    (Text as any).defaultProps = (Text as any).defaultProps ?? {};
+    (Text as any).defaultProps.style = { fontFamily: 'Inter_400Regular' };
+  }
+
   return (
     <ThemeProvider>
       <AlertProvider>

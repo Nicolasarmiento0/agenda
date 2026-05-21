@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../components/GlassCard';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext'; // agrega import
@@ -75,18 +76,18 @@ export default function DashboardScreen() {
 
           <View style={[localStyles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <GlassCard style={localStyles.card}>
             <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ROL</Text>
             <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>
               {profile?.role === 'admin' ? 'Administrador' :
                 profile?.role === 'company' ? 'Empresa' : 'Cliente'}
             </Text>
-          </View>
+          </GlassCard>
 
-          <View style={[localStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <GlassCard style={localStyles.card}>
             <Text style={[localStyles.cardLabel, { color: colors.textSecondary }]}>ESTADO</Text>
             <Text style={[localStyles.cardValue, { color: colors.textPrimary }]}>Autenticado</Text>
-          </View>
+          </GlassCard>
 
 
         </Animated.View>
@@ -145,10 +146,7 @@ const localStyles = StyleSheet.create({
     marginVertical: 28,
   },
   card: {
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 4,
-    backgroundColor: appColors.surface,
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,

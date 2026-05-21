@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../components/GlassCard';
 import Sidebar from '../../../components/Sidebar';
 import { useAlert } from '../../../context/AlertContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -65,7 +65,7 @@ function InboxCard({
   const icon = TYPE_ICON[item.type] ?? { name: 'bell', color: appColors.primary };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <GlassCard style={styles.card}>
       <View style={[styles.iconBox, { backgroundColor: icon.color + '18' }]}>
         <Feather name={icon.name as any} size={20} color={icon.color} />
       </View>
@@ -83,7 +83,7 @@ function InboxCard({
           <Text style={styles.actionChipText}>{item.actionLabel}</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </GlassCard>
   );
 }
 
@@ -320,6 +320,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
   },
   iconBtn: {
     width: 36,
@@ -333,8 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     padding: 16,
   },
   iconBox: {
@@ -349,6 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
+    fontFamily: 'Inter_600SemiBold',
   },
   cardSub: {
     fontSize: 12,
@@ -359,14 +360,15 @@ const styles = StyleSheet.create({
   actionChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 10,
+    borderRadius: 999,
     flexShrink: 0,
   },
   actionChipText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
+    fontFamily: 'Inter_700Bold',
   },
 
   emptyState: {

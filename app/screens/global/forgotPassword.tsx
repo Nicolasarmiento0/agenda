@@ -168,7 +168,7 @@ export default function ForgotPasswordScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color={colors.white} />
+                <ActivityIndicator color='#111827' />
               ) : (
                 <Text style={appStyles.primaryButtonText}>Enviar enlace</Text>
               )}

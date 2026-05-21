@@ -333,7 +333,7 @@ export default function ClientBusinessProfileScreen() {
                 onPress={handleRequestMembership}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
+                {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
                 <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
@@ -386,7 +386,7 @@ export default function ClientBusinessProfileScreen() {
               disabled={isSubmitting}
               onPress={handleSubmitReview}
             >
-              {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
+              {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -563,10 +563,11 @@ const styles = StyleSheet.create({
   reviewInput: {
     height: 100,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     paddingTop: 16,
     fontSize: 14,
+    fontFamily: 'Inter_400Regular',
     textAlignVertical: 'top',
   },
 });

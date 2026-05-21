@@ -310,8 +310,8 @@ export default function AdminBusinessDetailScreen() {
                   activeOpacity={0.8}
                   onPress={() => router.push((`/screens/roles/admin/admin-business-employees?id=${id}`) as any)}
                 >
-                  <Feather name="users" size={18} color="#fff" />
-                  <Text style={styles.approveText}>EQUIPO</Text>
+                  <Feather name="users" size={18} color="#111827" />
+                  <Text style={[styles.approveText, { color: '#111827' }]}>EQUIPO</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -391,15 +391,15 @@ const styles = StyleSheet.create({
   profileSection: { alignItems: 'center', paddingVertical: 24, gap: 10 },
   logo: { width: 88, height: 88, borderRadius: 10, borderWidth: 2, borderColor: appColors.primary },
   logoPlaceholder: { width: 88, height: 88, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  businessName: { fontSize: 22, fontWeight: '700', letterSpacing: 1, textAlign: 'center' },
-  statusBadge: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 4 },
-  statusText: { fontSize: 11, letterSpacing: 2, fontWeight: '700' },
-  infoCard: { borderWidth: 1, borderRadius: 8, overflow: 'hidden', marginBottom: 16 },
+  businessName: { fontSize: 22, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1, textAlign: 'center' },
+  statusBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  statusText: { fontSize: 11, letterSpacing: 2, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  infoCard: { borderWidth: 1, borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   infoLabel: { fontSize: 10, letterSpacing: 2, flexShrink: 0 },
   infoValue: { fontSize: 14, letterSpacing: 0.3, flex: 1, textAlign: 'right' },
   actionBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: 12, paddingBottom: 24, paddingTop: 12 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 6 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 999 },
   rejectBtn: { borderWidth: 1.5, borderColor: '#EF4444', backgroundColor: '#EF444410' },
   approveBtn: { backgroundColor: '#10B981' },
   rejectText: { color: '#EF4444', fontWeight: '700', fontSize: 13, letterSpacing: 1.5 },
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   modalCard: { width: '100%', borderWidth: 1, borderRadius: 10, padding: 24, gap: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', letterSpacing: 1 },
   modalSubtitle: { fontSize: 13, letterSpacing: 0.3, lineHeight: 20 },
-  modalInput: { borderWidth: 1, borderRadius: 6, padding: 14, fontSize: 14, textAlignVertical: 'top', minHeight: 80 },
+  modalInput: { borderWidth: 1, borderRadius: 16, padding: 14, fontSize: 14, fontFamily: 'Inter_400Regular', textAlignVertical: 'top', minHeight: 80 },
   modalActions: { flexDirection: 'row', gap: 12 },
   modalBtn: { flex: 1, borderWidth: 1, borderRadius: 6, paddingVertical: 14, alignItems: 'center' },
   modalRejectBtn: { backgroundColor: '#EF4444', borderColor: '#EF4444' },

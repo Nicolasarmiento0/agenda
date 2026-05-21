@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -295,24 +296,25 @@ export default function CompanyServicesScreen() {
           {services.length > 0 ? (
             <View style={{ gap: 12 }}>
               {services.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.7}
-                  onPress={() => handleEditPress(item)}
-                  style={[localStyles.serviceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[localStyles.serviceName, { color: colors.textPrimary }]}>
-                      {item.name || 'Servicio sin nombre'}
-                    </Text>
-                    <Text style={[localStyles.servicePrice, { color: appColors.primary }]}>
-                      ${Number(item.price || 0).toLocaleString('es-CL')}
-                    </Text>
-                  </View>
-                  <View style={[localStyles.editBadge, { backgroundColor: colors.background }]}>
-                    <Feather name="edit-2" size={14} color={colors.textSecondary} />
-                  </View>
-                </TouchableOpacity>
+                <GlassCard key={item.id} style={localStyles.serviceCard}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleEditPress(item)}
+                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[localStyles.serviceName, { color: colors.textPrimary }]}>
+                        {item.name || 'Servicio sin nombre'}
+                      </Text>
+                      <Text style={[localStyles.servicePrice, { color: appColors.primary }]}>
+                        ${Number(item.price || 0).toLocaleString('es-CL')}
+                      </Text>
+                    </View>
+                    <View style={[localStyles.editBadge, { backgroundColor: colors.background }]}>
+                      <Feather name="edit-2" size={14} color={colors.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+                </GlassCard>
               ))}
             </View>
           ) : (
@@ -400,9 +402,9 @@ export default function CompanyServicesScreen() {
                 disabled={isSaving}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#111827" />
                 ) : (
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Guardar</Text>
+                  <Text style={{ color: '#111827', fontWeight: 'bold', fontFamily: 'Inter_700Bold' }}>Guardar</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -430,13 +432,13 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 14,
     justifyContent: 'center',
     marginBottom: 28,
   },
-  addButtonText: { fontSize: 12, letterSpacing: 2, fontWeight: '600' },
+  addButtonText: { fontSize: 12, letterSpacing: 2, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -454,15 +456,11 @@ const localStyles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 3 },
   emptySubtitle: { fontSize: 13, textAlign: 'center', letterSpacing: 0.5, lineHeight: 20 },
   serviceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
+    borderRadius: 20,
   },
-  serviceName: { fontSize: 15, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
-  servicePrice: { fontSize: 13, fontWeight: '600' },
+  serviceName: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5, marginBottom: 4 },
+  servicePrice: { fontSize: 13, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   editBadge: {
     width: 32,
     height: 32,
@@ -515,10 +513,11 @@ const localStyles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 14,
+    fontFamily: 'Inter_400Regular',
   },
   modalActions: {
     flexDirection: 'row',
@@ -529,7 +528,7 @@ const localStyles = StyleSheet.create({
   modalBtn: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
     minWidth: 100,
     alignItems: 'center',

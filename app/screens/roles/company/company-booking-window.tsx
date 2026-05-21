@@ -109,7 +109,7 @@ export default function CompanyBookingWindowScreen() {
                   onPress={() => setBookingDay(i)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.dayBtnText, { color: bookingDay === i ? '#fff' : colors.textPrimary }]}>
+                  <Text style={[styles.dayBtnText, { color: bookingDay === i ? '#111827' : colors.textPrimary }]}>
                     {d.substring(0, 3)}
                   </Text>
                 </TouchableOpacity>

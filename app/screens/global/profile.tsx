@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../components/GlassCard';
 import Sidebar from '../../../components/Sidebar';
 import { useAlert } from '../../../context/AlertContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -315,7 +316,7 @@ export default function ProfileScreen() {
           </View>
 
           {profile?.role === 'client' && (
-            <View style={[localStyles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard style={localStyles.activityCard}>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => myReviews.length > 3 && setShowAllReviews(v => !v)}
@@ -403,7 +404,7 @@ export default function ProfileScreen() {
                   )}
                 </>
               )}
-            </View>
+            </GlassCard>
           )}
 
           {/* Menú de opciones */}
@@ -484,7 +485,7 @@ const localStyles = StyleSheet.create({
   },
   infoContainer: { alignItems: 'center', width: '100%' },
   nicknameWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  nicknameText: { fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
+  nicknameText: { fontSize: 18, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Inter_700Bold' },
   editInputContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 4 },
   atSymbol: { fontSize: 18, fontWeight: '700' },
   nicknameInput: { fontSize: 18, fontWeight: '700', borderBottomWidth: 1, paddingVertical: 2, minWidth: 100 },
@@ -492,25 +493,25 @@ const localStyles = StyleSheet.create({
   saveAction: { padding: 4 },
   cancelAction: { padding: 4 },
   emailSubText: { fontSize: 13, fontWeight: '400', opacity: 0.8 },
-  activityCard: { padding: 24, borderRadius: 24, borderWidth: 1, marginBottom: 32 },
+  activityCard: { padding: 24, borderRadius: 24, marginBottom: 32 },
   activityHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-  activityTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  activityTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 2, fontFamily: 'Inter_700Bold' },
   statItem: { flex: 1 },
-  statLabel: { fontSize: 10, fontWeight: '700', marginBottom: 6 },
-  statValue: { fontSize: 20, fontWeight: '800' },
+  statLabel: { fontSize: 10, fontWeight: '700', marginBottom: 6, fontFamily: 'Inter_700Bold' },
+  statValue: { fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold' },
   menuContainer: { marginTop: 10, paddingBottom: 40, gap: 12 },
   menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 20, borderWidth: 1 },
   menuItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   menuIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  menuItemTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
-  menuItemSubtitle: { fontSize: 12, fontWeight: '500', opacity: 0.8 },
+  menuItemTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2, fontFamily: 'Inter_700Bold' },
+  menuItemSubtitle: { fontSize: 12, fontWeight: '500', opacity: 0.8, fontFamily: 'Inter_500Medium' },
 
   reviewsDivider: { height: StyleSheet.hairlineWidth, marginVertical: 20 },
   reviewsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  reviewsTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+  reviewsTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: 'Inter_700Bold' },
   reviewItem: { paddingTop: 14, marginTop: 14, borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
   reviewTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reviewBiz: { fontSize: 13, fontWeight: '700', flex: 1, marginRight: 8 },
+  reviewBiz: { fontSize: 13, fontWeight: '700', flex: 1, marginRight: 8, fontFamily: 'Inter_700Bold' },
   starsRow: { flexDirection: 'row', gap: 2 },
   reviewComment: { fontSize: 12, lineHeight: 17, fontStyle: 'italic' },
   reviewDate: { fontSize: 10, letterSpacing: 0.3, opacity: 0.6 },

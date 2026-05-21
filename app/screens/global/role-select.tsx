@@ -116,14 +116,14 @@ export default function RoleSelectScreen() {
             <TouchableOpacity
                 style={[
                     styles.button,
-                    { backgroundColor: selected ? '#E63946' : colors.surface },
+                    { backgroundColor: selected ? '#B4F736' : colors.surface },
                     !selected && { opacity: 0.5 },
                 ]}
                 onPress={handleConfirm}
                 disabled={!selected || loading}
                 activeOpacity={0.8}
             >
-                <Text style={[styles.buttonText, { color: selected ? '#fff' : colors.textSecondary }]}>
+                <Text style={[styles.buttonText, { color: selected ? '#111827' : colors.textSecondary }]}>
                     {loading ? 'GUARDANDO...' : 'CONTINUAR'}
                 </Text>
             </TouchableOpacity>
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         lineHeight: 38,
         marginBottom: 4,
+        fontFamily: 'Inter_700Bold',
     },
     subtitle: {
         fontSize: 14,
@@ -169,6 +170,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         letterSpacing: 2,
+        fontFamily: 'Inter_700Bold',
     },
     cardDesc: {
         fontSize: 13,
@@ -194,7 +196,7 @@ const styles = StyleSheet.create({
     },
     button: {
         paddingVertical: 16,
-        borderRadius: 14,
+        borderRadius: 999,
         alignItems: 'center',
         marginTop: 8,
     },
@@ -202,5 +204,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: 2,
+        fontFamily: 'Inter_700Bold',
     },
 });

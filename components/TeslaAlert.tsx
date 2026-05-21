@@ -265,16 +265,16 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(0,0,0,0.10)',
   },
-  // Action — white pill (dark mode) / dark pill (light mode)
+  // Action — lime accent (both modes)
   actionButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#B4F736',
   },
   actionButtonLight: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#B4F736',
   },
   // Destructive — always red
   destructiveButton: {
-    backgroundColor: '#E31937',
+    backgroundColor: '#FF4B4B',
   },
   buttonText: {
     fontSize: 15,
@@ -288,10 +288,10 @@ const styles = StyleSheet.create({
     color: 'rgba(0,0,0,0.60)',
   },
   actionText: {
-    color: '#0A0A0A',
+    color: '#111827',
   },
   actionTextLight: {
-    color: '#FFFFFF',
+    color: '#111827',
   },
   destructiveText: {
     color: '#FFFFFF',

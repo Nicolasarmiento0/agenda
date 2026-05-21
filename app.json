@@ -2,7 +2,7 @@
   "expo": {
     "web": {
       "bundler": "metro",
-      "output": "single-page",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "name": "myapp",
@@ -12,7 +12,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -23,7 +22,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "plugins": [

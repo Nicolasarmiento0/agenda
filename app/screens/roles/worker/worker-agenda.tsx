@@ -19,6 +19,7 @@ import {
   Pressable,
 } from 'react-native';
 import Sidebar from '../../../../components/Sidebar';
+import WorkerAvatar from '../../../../components/WorkerAvatar';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -564,22 +565,75 @@ function AppointmentFormModal({
       return;
     }
 
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(selectedSlot.trim())) {
+      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
+      return;
+    }
+    if (!timeRegex.test(endSlot.trim())) {
+      showAlert({ title: 'Hora inválida', message: 'La hora de fin no es válida.' });
+      return;
+    }
+
     const [hhStr, mmStr] = selectedSlot.split(':');
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
+    
     const [ehStr, emStr] = endSlot.split(':');
     const endHourCalc = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
-    if (endHourCalc <= startHour) {
+    const durationHours = endHourCalc - startHour;
+
+    if (durationHours <= 0) {
       showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
       return;
     }
+    if (durationHours > 5) {
+      showAlert({ title: 'Hora inválida', message: 'Las citas no pueden durar más de 5 horas.' });
+      return;
+    }
 
+    // ── Validación de fecha y hora pasada ──
     const now = new Date();
     const todayStr = toLocalISOString(now);
+    const currentHour = now.getHours() + now.getMinutes() / 60;
 
     if (dateText < todayStr) {
       showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
+      return;
+    }
+
+    // ── Margen estándar ──
+    if (dateText === todayStr) {
+      // Margen de 1 hora mínimo de anticipación para citas de hoy
+      if (startHour <= currentHour + 1) {
+        showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
+        return;
+      }
+    }
+
+    // ── Primer Bloque del Día (Hasta 22:00 día anterior) ──
+    const isFirstBlock = Math.abs(startHour - openingHour) <= 0.25;
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = toLocalISOString(tomorrow);
+
+    if (isFirstBlock) {
+      if (dateText === todayStr) {
+        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+        return;
+      }
+      if (dateText === tomorrowStr && currentHour >= 22) {
+        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+        return;
+      }
+    }
+
+    if (startHour < openingHour || endHourCalc > closingHour) {
+      showAlert({
+        title: 'Fuera de horario',
+        message: `La cita debe estar dentro del horario de atención (${String(openingHour).padStart(2, '0')}:00 a ${String(closingHour).padStart(2, '0')}:00).`
+      });
       return;
     }
 
@@ -699,7 +753,7 @@ function AppointmentFormModal({
                   activeOpacity={0.7}
                 >
                   <View style={[formStyles.checkbox, { borderColor: isBlocking ? appColors.primary : colors.textSecondary, backgroundColor: isBlocking ? appColors.primary : 'transparent' }]}>
-                    {isBlocking && <Feather name="lock" size={10} color="#fff" />}
+                    {isBlocking && <Feather name="lock" size={10} color="#111827" />}
                   </View>
                   <Text style={[formStyles.blockToggleText, { color: isBlocking ? appColors.primary : colors.textSecondary }]}>
                     Bloquear este horario
@@ -733,7 +787,7 @@ function AppointmentFormModal({
                           borderColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
                         }]}
                       >
-                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#fff' : colors.textSecondary }]}>
+                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#111827' : colors.textSecondary }]}>
                           {s.name}{s.price > 0 ? `  $${Number(s.price).toLocaleString('es-CL')}` : ''}
                         </Text>
                       </TouchableOpacity>
@@ -844,7 +898,7 @@ function AppointmentFormModal({
                   <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>HASTA</Text>
                   <TimeWheelPicker
                     openingHour={openingHour}
-                    closingHour={closingHour}
+                    closingHour={closingHour + 1}
                     selectedSlot={endSlot}
                     onSlotSelect={setEndSlot}
                     busyIntervals={[]}
@@ -862,7 +916,7 @@ function AppointmentFormModal({
                 activeOpacity={0.85}
               >
                 {loading
-                  ? <ActivityIndicator size="small" color="#fff" />
+                  ? <ActivityIndicator size="small" color="#111827" />
                   : <Text style={formStyles.saveBtnText}>{initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
                 }
               </TouchableOpacity>
@@ -1060,8 +1114,8 @@ export default function WorkerAgendaScreen() {
       }
       const dateStr = data.date || toLocalISOString(selectedDate);
 
-      const newStart = data.startHour || 9;
-      const newEnd = newStart + (data.durationHours || 0.5);
+      const newStart = data.startHour ?? 9;
+      const newEnd = newStart + (data.durationHours ?? 0.5);
 
       // ── Validar colisiones de horario ──
       let query = supabase
@@ -1152,22 +1206,23 @@ export default function WorkerAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
-      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
+      <View style={[styles.workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
         {WORKERS.map(w => {
           const todayAppts = appointments.filter(a => a.worker === w.name && a.date === toLocalISOString(selectedDate)).length;
           return (
             <TouchableOpacity
               key={w.id}
-              style={[styles.workerCol, { width: colWidth }]}
+              style={[styles.workerCol, { flex: 1 }]}
               onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
               activeOpacity={0.75}
             >
-              <View style={styles.workerAvatarWrapper}>
-                <View style={[styles.workerAvatar, { backgroundColor: w.color + '25', borderColor: w.color }]}>
-                  <Text style={[styles.workerInitials, { color: w.color }]}>{w.initials}</Text>
-                </View>
-                <View style={[styles.workerActiveDot, { backgroundColor: '#4CAF50' }]} />
-              </View>
+              <WorkerAvatar
+                avatarUrl={null}
+                name={w.name}
+                color={w.color}
+                size={90}
+                showDot={false}
+              />
               <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
               {todayAppts > 0 && (
                 <Text style={[styles.workerApptCount, { color: w.color }]}>{todayAppts} cita{todayAppts > 1 ? 's' : ''}</Text>
@@ -1186,11 +1241,20 @@ export default function WorkerAgendaScreen() {
               {String(h).padStart(2, '0')}:00
             </Text>
             <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
+            <View style={{
+              position: 'absolute',
+              top: HOUR_HEIGHT / 2,
+              left: LABEL_WIDTH,
+              right: 0,
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: colors.border,
+              opacity: 0.4,
+            }} />
           </View>
         ))}
 
         {/* Columnas de citas por trabajador */}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH }]}>
+        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {WORKERS.map((w, wi) => (
             <View
               key={w.id}
@@ -1253,7 +1317,7 @@ export default function WorkerAgendaScreen() {
               {shortDayName(d)}
             </Text>
             <View style={[styles.weekDayNum, isToday(d) && { backgroundColor: appColors.primary }]}>
-              <Text style={[styles.weekDayNumText, { color: isToday(d) ? '#fff' : colors.textPrimary }]}>
+              <Text style={[styles.weekDayNumText, { color: isToday(d) ? '#111827' : colors.textPrimary }]}>
                 {d.getDate()}
               </Text>
             </View>
@@ -1268,9 +1332,18 @@ export default function WorkerAgendaScreen() {
               {String(h).padStart(2, '0')}:00
             </Text>
             <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
+            <View style={{
+              position: 'absolute',
+              top: HOUR_HEIGHT / 2,
+              left: LABEL_WIDTH,
+              right: 0,
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: colors.border,
+              opacity: 0.4,
+            }} />
           </View>
         ))}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH }]}>
+        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {weekDays.map((d, di) => {
             const dateStr = d.toISOString().split('T')[0];
             return (
@@ -1338,7 +1411,7 @@ export default function WorkerAgendaScreen() {
               style={[styles.toggleBtn, viewMode === m && { backgroundColor: appColors.primary }]}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleLabel, { color: viewMode === m ? '#fff' : colors.textSecondary }]}>
+              <Text style={[styles.toggleLabel, { color: viewMode === m ? '#111827' : colors.textSecondary }]}>
                 {m === 'day' ? 'Día' : 'Semana'}
               </Text>
             </TouchableOpacity>
@@ -1392,7 +1465,7 @@ export default function WorkerAgendaScreen() {
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
+            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#111827' } : { color: colors.textSecondary }]}>Todos</Text>
           </TouchableOpacity>
           {workers.map(w => (
             <TouchableOpacity
@@ -1405,7 +1478,10 @@ export default function WorkerAgendaScreen() {
               onPress={() => setSelectedWorkerFilter(w.name)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <WorkerAvatar avatarUrl={null} name={w.name} color={selectedWorkerFilter === w.name ? '#111827' : w.color} size={18} showDot={false} />
+                <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#111827' } : { color: colors.textSecondary }]}>{w.name}</Text>
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -1417,10 +1493,10 @@ export default function WorkerAgendaScreen() {
           {stats.map((s, i) => (
             <View key={i} style={[styles.statCard, {
               backgroundColor: i === 0
-                ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+                ? (isDarkMode ? 'rgba(180,247,54,0.10)' : 'rgba(180,247,54,0.07)')
                 : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
               borderColor: i === 0
-                ? 'rgba(227,25,55,0.3)'
+                ? 'rgba(180,247,54,0.28)'
                 : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
             }]}>
               <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
@@ -1568,11 +1644,12 @@ const styles = StyleSheet.create({
   toggleBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   toggleLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
     letterSpacing: 0.2,
   },
 
@@ -1607,13 +1684,14 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#444',
   },
   filterChipText: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
 
   // Stats
@@ -2226,15 +2304,16 @@ const formStyles = StyleSheet.create({
   saveBtn: {
     alignSelf: 'stretch',
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 4,
   },
   saveBtnText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
   },
   successCard: {

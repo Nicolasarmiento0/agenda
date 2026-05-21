@@ -246,7 +246,7 @@ export default function BusinessSetupScreen() {
                             backgroundColor: subCategoryId === cat.id ? appColors.primary : colors.surface,
                           }]}
                         >
-                          <Text style={[styles.subChipText, { color: subCategoryId === cat.id ? '#fff' : colors.textPrimary }]}>{cat.name}</Text>
+                          <Text style={[styles.subChipText, { color: subCategoryId === cat.id ? '#111827' : colors.textPrimary }]}>{cat.name}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -305,7 +305,7 @@ export default function BusinessSetupScreen() {
                         backgroundColor: bookingWindowDay === i ? appColors.primary : colors.surface,
                       }]}
                     >
-                      <Text style={[styles.dayChipText, { color: bookingWindowDay === i ? '#fff' : colors.textPrimary }]}>{label}</Text>
+                      <Text style={[styles.dayChipText, { color: bookingWindowDay === i ? '#111827' : colors.textPrimary }]}>{label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -429,32 +429,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   subChip: {
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   dayChip: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
     minWidth: 40,
     alignItems: 'center',
   },
-  chipText: { fontSize: 11, letterSpacing: 0.5, fontWeight: '600' },
-  subChipText: { fontSize: 12, fontWeight: '500' },
-  dayChipText: { fontSize: 11, fontWeight: '600' },
+  chipText: { fontSize: 11, letterSpacing: 0.5, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+  subChipText: { fontSize: 12, fontWeight: '500', fontFamily: 'Inter_500Medium' },
+  dayChipText: { fontSize: 11, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   backBtn: {
     width: 48,
     height: 48,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

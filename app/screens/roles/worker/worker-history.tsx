@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -103,7 +104,7 @@ export default function WorkerHistoryScreen() {
   const totalEarnings = appointments.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const renderItem = ({ item }: { item: any }) => (
-    <View style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <GlassCard style={styles.itemCard}>
       <View style={styles.itemHeader}>
         <Text style={[styles.itemService, { color: colors.textPrimary }]}>{item.service}</Text>
         <Text style={[styles.itemPrice, { color: appColors.primary }]}>
@@ -124,7 +125,7 @@ export default function WorkerHistoryScreen() {
           <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.date}</Text>
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 
   return (
@@ -141,7 +142,7 @@ export default function WorkerHistoryScreen() {
       </View>
 
       {/* Summary Card */}
-      <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <GlassCard style={styles.summaryCard}>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
           INGRESOS TOTALES ({timeRange === 'day' ? 'HOY' : timeRange === 'week' ? 'ESTA SEMANA' : 'ESTE MES'})
         </Text>
@@ -151,7 +152,7 @@ export default function WorkerHistoryScreen() {
         <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
           {appointments.length} {isGym ? 'asistencias registradas' : 'servicios realizados'}
         </Text>
-      </View>
+      </GlassCard>
 
       {/* Filters */}
       <View style={styles.filtersContainer}>
@@ -160,19 +161,19 @@ export default function WorkerHistoryScreen() {
             onPress={() => setTimeRange('day')}
             style={[styles.filterChip, timeRange === 'day' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'day' ? '#fff' : colors.textSecondary }]}>HOY</Text>
+            <Text style={[styles.filterChipText, { color: timeRange === 'day' ? '#111827' : colors.textSecondary }]}>HOY</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTimeRange('week')}
             style={[styles.filterChip, timeRange === 'week' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'week' ? '#fff' : colors.textSecondary }]}>SEMANA</Text>
+            <Text style={[styles.filterChipText, { color: timeRange === 'week' ? '#111827' : colors.textSecondary }]}>SEMANA</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTimeRange('month')}
             style={[styles.filterChip, timeRange === 'month' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'month' ? '#fff' : colors.textSecondary }]}>MES</Text>
+            <Text style={[styles.filterChipText, { color: timeRange === 'month' ? '#111827' : colors.textSecondary }]}>MES</Text>
           </TouchableOpacity>
           
           <View style={styles.divider} />
@@ -217,14 +218,13 @@ const styles = StyleSheet.create({
   summaryCard: {
     marginHorizontal: 16,
     padding: 24,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 20,
     alignItems: 'center',
     marginBottom: 20,
   },
-  summaryLabel: { fontSize: 10, letterSpacing: 2, fontWeight: '600', marginBottom: 8 },
-  summaryValue: { fontSize: 32, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
-  summaryCount: { fontSize: 12, fontWeight: '500' },
+  summaryLabel: { fontSize: 10, letterSpacing: 2, fontWeight: '600', fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
+  summaryValue: { fontSize: 32, fontWeight: '800', fontFamily: 'Inter_800ExtraBold', letterSpacing: 1, marginBottom: 4 },
+  summaryCount: { fontSize: 12, fontWeight: '500', fontFamily: 'Inter_500Medium' },
   filtersContainer: {
     marginBottom: 16,
   },
@@ -236,17 +236,16 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: '#333',
   },
-  filterChipText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  filterChipText: { fontSize: 10, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
   divider: { width: 1, height: 20, backgroundColor: '#333', marginHorizontal: 8 },
   listContent: { paddingHorizontal: 16, paddingBottom: 40 },
   itemCard: {
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 20,
     marginBottom: 12,
   },
   itemHeader: {
@@ -255,8 +254,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  itemService: { fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
-  itemPrice: { fontSize: 15, fontWeight: '700' },
+  itemService: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  itemPrice: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   itemDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -24,7 +24,7 @@ export default function WorkerAvatar({
   const dotOffset = Math.round(dotSize * 0.1);
 
   return (
-    <View style={{ width: size, height: size }}>
+    <View style={{ width: size, height: size, position: 'relative' }}>
       {avatarUrl ? (
         <Image
           source={{ uri: avatarUrl }}
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   initialsText: {
     fontWeight: '700',
-    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   dot: {
     position: 'absolute',

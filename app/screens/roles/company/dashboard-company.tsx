@@ -15,6 +15,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import Sidebar from '../../../../components/Sidebar';
 import WorkerAvatar from '../../../../components/WorkerAvatar';
 import { useAuth } from '../../../../context/AuthContext';
@@ -351,7 +352,7 @@ export default function DashboardCompanyScreen() {
 
           {/* REVENUE CHART */}
           {!isGym && (
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard style={styles.card}>
               <View style={styles.chartHeaderRow}>
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos por Citas</Text>
 
@@ -368,7 +369,7 @@ export default function DashboardCompanyScreen() {
                     >
                       <Text style={[
                         styles.filterText,
-                        { color: timeFilter === filter ? '#fff' : colors.textSecondary }
+                        { color: timeFilter === filter ? '#111827' : colors.textSecondary }
                       ]}>
                         {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
                       </Text>
@@ -388,15 +389,16 @@ export default function DashboardCompanyScreen() {
                 <Text style={[styles.historialCtaText, { color: appColors.primary }]}>Ver historial completo</Text>
                 <Feather name="arrow-right" size={14} color={appColors.primary} />
               </TouchableOpacity>
-            </View>
+            </GlassCard>
           )}
 
           {/* GYM MEMBERSHIPS REVENUE */}
           {isGym && (
+            <GlassCard style={styles.card}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push('/screens/roles/company/company-history' as any)}
-              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={{ flex: 1 }}
             >
               <View style={styles.cardHeader}>
                 <Feather name="users" size={16} color={colors.textSecondary} />
@@ -431,31 +433,32 @@ export default function DashboardCompanyScreen() {
                 )}
               </View>
             </TouchableOpacity>
+            </GlassCard>
           )}
 
           <View style={styles.rowGrid}>
             {/* REVIEWS CARD */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => setShowReviewsModal(true)}
-              style={[styles.card, styles.flexCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <View style={styles.cardHeader}>
-                <Ionicons name="star" size={16} color="#f0c630ff" />
-                <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
-              </View>
-              <Text style={[styles.scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
-              <Text style={[styles.subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
-              <Text style={[styles.dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
-
-              {/* Indicador de que es clickeable */}
-              <View style={{ position: 'absolute', bottom: 12, right: 12 }}>
-                <Feather name="chevron-right" size={16} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
+            <GlassCard style={[styles.card, styles.flexCard]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setShowReviewsModal(true)}
+                style={{ flex: 1 }}
+              >
+                <View style={styles.cardHeader}>
+                  <Ionicons name="star" size={16} color="#f0c630ff" />
+                  <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
+                </View>
+                <Text style={[styles.scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
+                <Text style={[styles.subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
+                <Text style={[styles.dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
+                <View style={{ position: 'absolute', bottom: 12, right: 12 }}>
+                  <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            </GlassCard>
 
             {/* SCHEDULE CARD */}
-            <View style={[styles.card, styles.flexCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard style={[styles.card, styles.flexCard]}>
               <View style={styles.cardHeader}>
                 <Feather name="clock" size={16} color={colors.textSecondary} />
                 <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
@@ -470,11 +473,11 @@ export default function DashboardCompanyScreen() {
               <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
                 Cierre a las {business?.closing_time?.slice(0, 5) || '20:00'}
               </Text>
-            </View>
+            </GlassCard>
           </View>
 
           {/* WORKERS ACTIVITY */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <GlassCard style={styles.card}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Rendimiento del Equipo</Text>
             {workerData.length === 0 ? (
               <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No hay trabajadores registrados o citas recientes.</Text>
@@ -497,27 +500,29 @@ export default function DashboardCompanyScreen() {
                 </View>
               </View>
             ))}
-          </View>
+          </GlassCard>
 
           {/* PUBLIC PROFILE BTN */}
-          <TouchableOpacity
-            style={[styles.publicBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.8}
-            onPress={() => {
-              if (!business) return;
-              setSelectedBusiness(business as any);
-              router.push(`/screens/roles/client/client-business-profile?id=${business.id}` as any);
-            }}
-          >
-            <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
-              <Feather name="external-link" size={20} color={appColors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
-              <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <GlassCard style={styles.publicBtn}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (!business) return;
+                setSelectedBusiness(business as any);
+                router.push(`/screens/roles/client/client-business-profile?id=${business.id}` as any);
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
+            >
+              <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
+                <Feather name="external-link" size={20} color={appColors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
+                <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </GlassCard>
 
         </Animated.View>
       </ScrollView>
@@ -602,16 +607,17 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 14,
     letterSpacing: 0.5,
+    fontFamily: 'Inter_400Regular',
   },
   businessName: {
     fontSize: 28,
     fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
     letterSpacing: 1,
     marginTop: 4,
   },
   card: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     padding: 16,
   },
   rowGrid: {
@@ -631,10 +637,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
   },
 
@@ -653,11 +661,12 @@ const styles = StyleSheet.create({
   filterBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   filterText: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
   },
 
@@ -720,9 +729,11 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 32,
     fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
   },
   subText: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     marginTop: 2,
   },
   dateText: {
@@ -822,9 +833,11 @@ const styles = StyleSheet.create({
   workerName: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   workerRole: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     marginTop: 2,
   },
   workerStats: {
@@ -833,19 +846,17 @@ const styles = StyleSheet.create({
   workerServices: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   workerServicesLabel: {
     fontSize: 10,
+    fontFamily: 'Inter_400Regular',
   },
 
   /* PUBLIC BTN */
   publicBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 16,
+    borderRadius: 20,
     marginTop: 4,
   },
   publicBtnIcon: {
@@ -858,9 +869,11 @@ const styles = StyleSheet.create({
   publicBtnTitle: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   publicBtnSub: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     marginTop: 2,
   },
 

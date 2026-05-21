@@ -16,6 +16,7 @@ import {
   useColorScheme,
   View
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAlert } from '../../../../context/AlertContext';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -271,7 +272,7 @@ function EmployeeFormModal({
                   onPress={() => toggleDay(d.val)}
                   style={[styles.modalChip, selected && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
                 >
-                  <Text style={[styles.modalChipText, selected ? { color: '#fff' } : { color: colors.textSecondary }]}>{d.label}</Text>
+                  <Text style={[styles.modalChipText, selected ? { color: '#111827' } : { color: colors.textSecondary }]}>{d.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -282,7 +283,7 @@ function EmployeeFormModal({
               <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
-              <Text style={[styles.modalBtnText, { color: '#fff' }]}>Guardar</Text>
+              <Text style={[styles.modalBtnText, { color: '#111827' }]}>Guardar</Text>
             </TouchableOpacity>
           </View>
           </View>
@@ -497,10 +498,10 @@ export default function AdminBusinessEmployeesScreen() {
           {/* Stats */}
           <View style={styles.statsRow}>
             {stats.map((stat, i) => (
-              <View key={i} style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <GlassCard key={i} style={styles.statCard}>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stat.value}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
-              </View>
+              </GlassCard>
             ))}
           </View>
 
@@ -518,30 +519,31 @@ export default function AdminBusinessEmployeesScreen() {
               </View>
             ) : (
               employees.map(emp => (
-                <TouchableOpacity
-                  key={emp.id}
-                  style={[styles.employeeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  activeOpacity={0.8}
-                  onPress={() => openSheet(emp)}
-                >
-                  <View style={[styles.avatar, { backgroundColor: emp.color + '20', borderColor: emp.color }]}>
-                    <Text style={[styles.avatarText, { color: emp.color }]}>{emp.initials}</Text>
-                  </View>
-                  <View style={styles.employeeInfo}>
-                    <Text style={[styles.employeeName, { color: colors.textPrimary }]}>{emp.name}</Text>
-                    <Text style={[styles.employeeSub, { color: colors.textSecondary }]}>{emp.specialty}</Text>
-                  </View>
-                  <View style={styles.employeeRight}>
-                    <View style={[styles.statusBadge, { backgroundColor: emp.active ? '#EEF8F0' : '#FDEAEB' }]}>
-                      <Text style={[styles.statusText, { color: emp.active ? '#2E7D45' : '#D00024' }]}>
-                        {emp.active ? 'Activo' : 'Inactivo'}
+                <GlassCard key={emp.id} style={styles.employeeCard}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => openSheet(emp)}
+                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
+                  >
+                    <View style={[styles.avatar, { backgroundColor: emp.color + '20', borderColor: emp.color }]}>
+                      <Text style={[styles.avatarText, { color: emp.color }]}>{emp.initials}</Text>
+                    </View>
+                    <View style={styles.employeeInfo}>
+                      <Text style={[styles.employeeName, { color: colors.textPrimary }]}>{emp.name}</Text>
+                      <Text style={[styles.employeeSub, { color: colors.textSecondary }]}>{emp.specialty}</Text>
+                    </View>
+                    <View style={styles.employeeRight}>
+                      <View style={[styles.statusBadge, { backgroundColor: emp.active ? '#EEF8F0' : '#FDEAEB' }]}>
+                        <Text style={[styles.statusText, { color: emp.active ? '#2E7D45' : '#D00024' }]}>
+                          {emp.active ? 'Activo' : 'Inactivo'}
+                        </Text>
+                      </View>
+                      <Text style={[styles.citasText, { color: colors.textSecondary }]}>
+                        {emp.appointmentsToday} citas hoy
                       </Text>
                     </View>
-                    <Text style={[styles.citasText, { color: colors.textSecondary }]}>
-                      {emp.appointmentsToday} citas hoy
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </GlassCard>
               ))
             )}
           </View>
@@ -599,7 +601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 14,
     justifyContent: 'center',
@@ -609,6 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 2,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   statsRow: {
     flexDirection: 'row',
@@ -618,8 +621,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
+    borderRadius: 20,
     paddingVertical: 16,
     alignItems: 'center',
     gap: 4,
@@ -627,23 +629,21 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
   },
   statLabel: {
     fontSize: 9,
     letterSpacing: 2,
+    fontFamily: 'Inter_400Regular',
   },
   listContainer: {
     paddingHorizontal: 16,
     gap: 12,
   },
   employeeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 16,
+    borderRadius: 20,
   },
   avatar: {
     width: 48,

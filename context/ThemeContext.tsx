@@ -9,25 +9,27 @@ type ThemeContextType = {
 const darkColors = {
   white: '#FFFFFF',
   black: '#000000',
-  background: '#0A0A0A',
-  surface: '#141414',
-  border: '#2A2A2A',
-  primary: '#E31937',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#888888',
-  error: '#FF3B30',
+  background: '#1A1A1A',
+  surface: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.10)',
+  primary: '#B4F736',
+  primaryText: '#111827',
+  textPrimary: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  error: '#FF4B4B',
 };
 
 const lightColors = {
   white: '#FFFFFF',
   black: '#000000',
-  background: '#FFFFFF',
-  surface: '#F5F5F5',
-  border: '#E0E0E0',
-  primary: '#E31937',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#666666',
-  error: '#FF3B30',
+  background: '#F4F5F7',
+  surface: 'rgba(255,255,255,0.80)',
+  border: 'rgba(0,0,0,0.08)',
+  primary: '#B4F736',
+  primaryText: '#111827',
+  textPrimary: '#111827',
+  textSecondary: '#6B7280',
+  error: '#FF4B4B',
 };
 
 const ThemeContext = createContext<ThemeContextType>({

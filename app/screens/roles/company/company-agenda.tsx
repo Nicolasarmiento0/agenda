@@ -83,10 +83,6 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelado', bg: '#F0F0F0', text: '#555555', dot: '#888888' },
 };
 
-// ─── Datos mock ───────────────────────────────────────────────────────────────
-
-// Mocks eliminados, los datos vendrán de Supabase.
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getWeekDays(baseDate: Date) {
@@ -411,7 +407,6 @@ function AppointmentFormModal({
       if (!visible || !colors.businessId) return;
 
       try {
-        // Intentar obtener servicios de business_services
         const { data: bizServices, error: bizError } = await supabase
           .from('business_services')
           .select('name, price')
@@ -421,7 +416,6 @@ function AppointmentFormModal({
         if (!bizError && bizServices && bizServices.length > 0) {
           setServices(bizServices);
         } else {
-          // Fallback: Si no hay servicios configurados, usar los del catálogo para la categoría
           const { data: bizData } = await supabase
             .from('businesses')
             .select('category_id')
@@ -493,7 +487,6 @@ function AppointmentFormModal({
     }
   }, [visible, initialData, selectedDateStr]);
 
-  // Genera todos los slots de 15 min dentro del horario del negocio
   const allSlots = useMemo(() => {
     const slots: string[] = [];
     let current = openingHour * 60;
@@ -507,7 +500,6 @@ function AppointmentFormModal({
     return slots;
   }, [openingHour, closingHour]);
 
-  // Descarga los turnos ocupados del worker+fecha seleccionados
   useEffect(() => {
     if (!workerId || !dateText || !colors.businessId) {
       setBusyIntervals([]);
@@ -520,6 +512,7 @@ function AppointmentFormModal({
       .eq('business_id', colors.businessId)
       .eq('worker_id', workerId)
       .eq('date', dateText)
+      .in('status', ['confirmed', 'pending', 'rescheduled'])
       .then(({ data }) => {
         const intervals = (data ?? [])
           .filter((a: any) => a.id !== initialData?.id)
@@ -539,7 +532,7 @@ function AppointmentFormModal({
 
   const handleSave = async () => {
     if (loading) return;
-    // ── Validación de campos obligatorios ──────────────────────────────
+
     if (!isBlocking) {
       if (!clientName.trim()) {
         showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
@@ -571,8 +564,10 @@ function AppointmentFormModal({
     const hh = parseInt(hhStr, 10);
     const mm = parseInt(mmStr || '0', 10);
     const startHour = hh + mm / 60;
+
     const [ehStr, emStr] = endSlot.split(':');
     const endHourCalc = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
+
     if (endHourCalc <= startHour) {
       showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
       return;
@@ -702,7 +697,7 @@ function AppointmentFormModal({
                   activeOpacity={0.7}
                 >
                   <View style={[formStyles.checkbox, { borderColor: isBlocking ? appColors.primary : colors.textSecondary, backgroundColor: isBlocking ? appColors.primary : 'transparent' }]}>
-                    {isBlocking && <Feather name="lock" size={10} color="#fff" />}
+                    {isBlocking && <Feather name="lock" size={10} color="#111827" />}
                   </View>
                   <Text style={[formStyles.blockToggleText, { color: isBlocking ? appColors.primary : colors.textSecondary }]}>
                     Bloquear este horario
@@ -736,7 +731,7 @@ function AppointmentFormModal({
                           borderColor: service === s.name ? appColors.primary : (isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'),
                         }]}
                       >
-                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#fff' : colors.textSecondary }]}>
+                        <Text style={[formStyles.serviceChipText, { color: service === s.name ? '#111827' : colors.textSecondary }]}>
                           {s.name}{s.price > 0 ? `  $${Number(s.price).toLocaleString('es-CL')}` : ''}
                         </Text>
                       </TouchableOpacity>
@@ -847,7 +842,7 @@ function AppointmentFormModal({
                   <Text style={[formStyles.label, { color: colors.textSecondary, marginBottom: 4 }]}>HASTA</Text>
                   <TimeWheelPicker
                     openingHour={openingHour}
-                    closingHour={closingHour}
+                    closingHour={closingHour + 1}
                     selectedSlot={endSlot}
                     onSlotSelect={setEndSlot}
                     busyIntervals={[]}
@@ -865,7 +860,7 @@ function AppointmentFormModal({
                 activeOpacity={0.85}
               >
                 {loading
-                  ? <ActivityIndicator size="small" color="#fff" />
+                  ? <ActivityIndicator size="small" color="#111827" />
                   : <Text style={formStyles.saveBtnText}>{initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}</Text>
                 }
               </TouchableOpacity>
@@ -1067,15 +1062,17 @@ export default function CompanyAgendaScreen() {
       }
       const dateStr = data.date || toLocalISOString(selectedDate);
 
-      const newStart = data.startHour || 9;
-      const newEnd = newStart + (data.durationHours || 0.5);
+      const newStart = data.startHour ?? 9;
+      const newEnd = newStart + (data.durationHours ?? 0.5);
 
-      // ── Validar colisiones de horario ──
+      // ── Validar colisiones de horario (solo citas activas) ──
       let query = supabase
         .from('appointments')
         .select('id, start_hour, duration_hours')
+        .eq('business_id', business.id)
         .eq('worker_id', data.worker_id)
-        .eq('date', dateStr);
+        .eq('date', dateStr)
+        .in('status', ['confirmed', 'pending', 'rescheduled']);
 
       if (editingAppt) {
         query = query.neq('id', editingAppt.id);
@@ -1127,7 +1124,7 @@ export default function CompanyAgendaScreen() {
         }
       }
 
-      fetchAppointments();
+      await fetchAppointments();
       return true;
     } catch (err: any) {
       console.error('Error in handleSaveAppt:', err);
@@ -1159,13 +1156,13 @@ export default function CompanyAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
-      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING }]}>
+      <View style={[styles.workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
         {WORKERS.map(w => {
           const todayAppts = appointments.filter(a => a.worker === w.name && a.date === toLocalISOString(selectedDate)).length;
           return (
             <TouchableOpacity
               key={w.id}
-              style={[styles.workerCol, { width: colWidth }]}
+              style={[styles.workerCol, { flex: 1 }]}
               onPress={() => { setProfileWorker(w); setProfileVisible(true); }}
               activeOpacity={0.75}
             >
@@ -1197,6 +1194,15 @@ export default function CompanyAgendaScreen() {
               {String(h).padStart(2, '0')}:00
             </Text>
             <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
+            <View style={{
+              position: 'absolute',
+              top: HOUR_HEIGHT / 2,
+              left: LABEL_WIDTH,
+              right: 0,
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: colors.border,
+              opacity: 0.4,
+            }} />
           </View>
         ))}
 
@@ -1292,7 +1298,7 @@ export default function CompanyAgendaScreen() {
               {shortDayName(d)}
             </Text>
             <View style={[styles.weekDayNum, isToday(d) && { backgroundColor: appColors.primary }]}>
-              <Text style={[styles.weekDayNumText, { color: isToday(d) ? '#fff' : colors.textPrimary }]}>
+              <Text style={[styles.weekDayNumText, { color: isToday(d) ? '#111827' : colors.textPrimary }]}>
                 {d.getDate()}
               </Text>
             </View>
@@ -1385,7 +1391,7 @@ export default function CompanyAgendaScreen() {
               style={[styles.toggleBtn, viewMode === m && { backgroundColor: appColors.primary }]}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleLabel, { color: viewMode === m ? '#fff' : colors.textSecondary }]}>
+              <Text style={[styles.toggleLabel, { color: viewMode === m ? '#111827' : colors.textSecondary }]}>
                 {m === 'day' ? 'Día' : 'Semana'}
               </Text>
             </TouchableOpacity>
@@ -1439,7 +1445,7 @@ export default function CompanyAgendaScreen() {
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#fff' } : { color: colors.textSecondary }]}>Todos</Text>
+            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#111827' } : { color: colors.textSecondary }]}>Todos</Text>
           </TouchableOpacity>
           {workers.map(w => (
             <TouchableOpacity
@@ -1454,7 +1460,7 @@ export default function CompanyAgendaScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={18} showDot={false} />
-                <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#fff' } : { color: colors.textSecondary }]}>{w.name}</Text>
+                <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#111827' } : { color: colors.textSecondary }]}>{w.name}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -1467,10 +1473,10 @@ export default function CompanyAgendaScreen() {
           {stats.map((s, i) => (
             <View key={i} style={[styles.statCard, {
               backgroundColor: i === 0
-                ? (isDarkMode ? 'rgba(227,25,55,0.12)' : 'rgba(227,25,55,0.07)')
+                ? (isDarkMode ? 'rgba(180,247,54,0.10)' : 'rgba(180,247,54,0.07)')
                 : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
               borderColor: i === 0
-                ? 'rgba(227,25,55,0.3)'
+                ? 'rgba(180,247,54,0.28)'
                 : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
             }]}>
               <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
@@ -1503,7 +1509,7 @@ export default function CompanyAgendaScreen() {
             setFormVisible(true);
           }}
         >
-          <Feather name="plus" size={24} color="#fff" />
+          <Feather name="plus" size={24} color="#111827" />
         </TouchableOpacity>
       )}
 
@@ -1624,11 +1630,12 @@ const styles = StyleSheet.create({
   toggleBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   toggleLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
     letterSpacing: 0.2,
   },
 
@@ -1663,13 +1670,14 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#444',
   },
   filterChipText: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
 
   // Stats
@@ -2199,12 +2207,13 @@ const formStyles = StyleSheet.create({
   serviceChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },
   serviceChipText: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
   workerRow: {
     flexDirection: 'row',
@@ -2287,15 +2296,16 @@ const formStyles = StyleSheet.create({
   saveBtn: {
     alignSelf: 'stretch',
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 4,
   },
   saveBtnText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
   },
   successCard: {

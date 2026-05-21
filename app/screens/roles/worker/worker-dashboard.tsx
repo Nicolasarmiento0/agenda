@@ -14,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import Sidebar from '../../../../components/Sidebar';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -259,7 +260,7 @@ export default function WorkerDashboardScreen() {
           </View>
 
           {/* REVENUE CHART */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <GlassCard style={styles.card}>
             <View style={styles.chartHeaderRow}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos</Text>
 
@@ -276,7 +277,7 @@ export default function WorkerDashboardScreen() {
                   >
                     <Text style={[
                       styles.filterText,
-                      { color: timeFilter === filter ? '#fff' : colors.textSecondary }
+                      { color: timeFilter === filter ? '#111827' : colors.textSecondary }
                     ]}>
                       {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
                     </Text>
@@ -285,31 +286,31 @@ export default function WorkerDashboardScreen() {
               </View>
             </View>
             <BarChart data={revenueData} colors={colors} filter={timeFilter} />
-          </View>
+          </GlassCard>
 
           <View style={styles.rowGrid}>
             {/* REVIEWS CARD */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => setShowReviewsModal(true)}
-              style={[styles.card, styles.flexCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <View style={styles.cardHeader}>
-                <Ionicons name="star" size={16} color="#f0c630ff" />
-                <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
-              </View>
-              <Text style={[styles.scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
-              <Text style={[styles.subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
-              <Text style={[styles.dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
-
-              {/* Indicador de que es clickeable */}
-              <View style={{ position: 'absolute', bottom: 12, right: 12 }}>
-                <Feather name="chevron-right" size={16} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
+            <GlassCard style={[styles.card, styles.flexCard]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setShowReviewsModal(true)}
+                style={{ flex: 1 }}
+              >
+                <View style={styles.cardHeader}>
+                  <Ionicons name="star" size={16} color="#f0c630ff" />
+                  <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
+                </View>
+                <Text style={[styles.scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
+                <Text style={[styles.subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
+                <Text style={[styles.dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
+                <View style={{ position: 'absolute', bottom: 12, right: 12 }}>
+                  <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            </GlassCard>
 
             {/* SCHEDULE CARD */}
-            <View style={[styles.card, styles.flexCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard style={[styles.card, styles.flexCard]}>
               <View style={styles.cardHeader}>
                 <Feather name="clock" size={16} color={colors.textSecondary} />
                 <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
@@ -324,25 +325,25 @@ export default function WorkerDashboardScreen() {
               <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
                 {businessName}
               </Text>
-            </View>
+            </GlassCard>
           </View>
 
-
-
           {/* PUBLIC PROFILE BTN */}
-          <TouchableOpacity
-            style={[styles.publicBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
-              <Feather name="external-link" size={20} color={appColors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
-              <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <GlassCard style={styles.publicBtn}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
+            >
+              <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
+                <Feather name="external-link" size={20} color={appColors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
+                <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </GlassCard>
 
         </Animated.View>
       </ScrollView>
@@ -431,12 +432,12 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 28,
     fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
     letterSpacing: 1,
     marginTop: 4,
   },
   card: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     padding: 16,
   },
   rowGrid: {
@@ -456,10 +457,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
   },
 
@@ -478,11 +481,12 @@ const styles = StyleSheet.create({
   filterBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   filterText: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
   },
 
@@ -642,12 +646,8 @@ const styles = StyleSheet.create({
 
   /* PUBLIC BTN */
   publicBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 16,
+    borderRadius: 20,
     marginTop: 4,
   },
   publicBtnIcon: {
@@ -660,9 +660,11 @@ const styles = StyleSheet.create({
   publicBtnTitle: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   publicBtnSub: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     marginTop: 2,
   },
 });

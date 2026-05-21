@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
 import Sidebar from '../../../../components/Sidebar';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
@@ -91,31 +92,33 @@ export default function AdminBusinessesScreen() {
   };
 
   const renderBusiness = ({ item }: { item: Business }) => (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => router.push({ pathname: '/screens/roles/admin/admin-business-detail' as any, params: { id: item.id } })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleRow}>
-          <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View style={[styles.badge, { backgroundColor: `${STATUS_COLORS[item.status]}20`, borderColor: STATUS_COLORS[item.status] }]}>
-            <Text style={[styles.badgeText, { color: STATUS_COLORS[item.status] }]}>
-              {STATUS_LABELS[item.status]}
+    <GlassCard style={styles.card}>
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => router.push({ pathname: '/screens/roles/admin/admin-business-detail' as any, params: { id: item.id } })}
+        style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleRow}>
+            <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.name}
             </Text>
+            <View style={[styles.badge, { backgroundColor: `${STATUS_COLORS[item.status]}20`, borderColor: STATUS_COLORS[item.status] }]}>
+              <Text style={[styles.badgeText, { color: STATUS_COLORS[item.status] }]}>
+                {STATUS_LABELS[item.status]}
+              </Text>
+            </View>
           </View>
+          <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+            {item.category?.name ?? '—'} · {item.owner?.nickname ?? '—'}
+          </Text>
+          <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
+            Solicitud: {formatDate(item.created_at)}
+          </Text>
         </View>
-        <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
-          {item.category?.name ?? '—'} · {item.owner?.nickname ?? '—'}
-        </Text>
-        <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
-          Solicitud: {formatDate(item.created_at)}
-        </Text>
-      </View>
-      <Feather name="chevron-right" size={18} color={colors.textSecondary} />
-    </TouchableOpacity>
+        <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
+    </GlassCard>
   );
 
   return (
@@ -188,20 +191,19 @@ const styles = StyleSheet.create({
   hamburger: { fontSize: 26 },
   headerLabel: { fontSize: 11, letterSpacing: 3 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  filterChip: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 6 },
-  filterText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '600' },
+  filterChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  filterText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   card: {
-    borderWidth: 1, borderRadius: 6,
+    borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   cardHeader: { flex: 1, gap: 4 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  cardName: { fontSize: 15, fontWeight: '600', letterSpacing: 0.5, flex: 1 },
-  cardMeta: { fontSize: 12, letterSpacing: 0.5 },
-  cardDate: { fontSize: 11, letterSpacing: 0.3 },
-  badge: { borderWidth: 1, borderRadius: 3, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '700' },
+  cardName: { fontSize: 15, fontWeight: '600', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, flex: 1 },
+  cardMeta: { fontSize: 12, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
+  cardDate: { fontSize: 11, letterSpacing: 0.3, fontFamily: 'Inter_400Regular' },
+  badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   emptyText: { fontSize: 14, letterSpacing: 0.5 },
 });
