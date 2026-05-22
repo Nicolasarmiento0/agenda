@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,11 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Sidebar from '../../../../components/Sidebar';
+import WorkerAvatar from '../../../../components/WorkerAvatar';
 import AppointmentCard from '../../../../components/agenda/AppointmentCard';
 import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
 import AppointmentSheet from '../../../../components/agenda/AppointmentSheet';
 import WorkerProfileModal from '../../../../components/agenda/WorkerProfileModal';
-import '../../../../components/agenda/calendarLocale';
 import {
   formatDateLabel,
   getWeekDays,
@@ -22,8 +24,7 @@ import {
   shortDayName,
   toLocalISOString,
 } from '../../../../components/agenda/agendaHelpers';
-import Sidebar from '../../../../components/Sidebar';
-import WorkerAvatar from '../../../../components/WorkerAvatar';
+import '../../../../components/agenda/calendarLocale';
 import {
   Appointment,
   DEFAULT_END_HOUR,
@@ -38,6 +39,7 @@ import { useIsGym } from '../../../../hooks/useIsGym';
 import { useWorkers } from '../../../../hooks/useWorkers';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, glassColors } from '../../../../styles/appStyles';
+import { getUnavailableBlocks } from '../../../utils/helpers';
 
 type ViewMode = 'day' | 'week';
 
@@ -79,6 +81,7 @@ export default function CompanyAgendaScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
+  const [prefillData, setPrefillData] = useState<Appointment | undefined>();
   const isReschedulingRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState<string | null>(null);
@@ -106,9 +109,9 @@ export default function CompanyAgendaScreen() {
   const stats = useMemo(() => {
     const todayApps = filteredAppointments.filter(a => a.date === selectedDateStr);
     return [
-      { label: 'CITAS HOY',   value: String(todayApps.length) },
-      { label: 'PENDIENTES',  value: String(todayApps.filter(a => a.status === 'pending').length) },
-      { label: 'HECHAS',      value: String(todayApps.filter(a => a.status === 'completed').length) },
+      { label: 'CITAS HOY', value: String(todayApps.length) },
+      { label: 'PENDIENTES', value: String(todayApps.filter(a => a.status === 'pending').length) },
+      { label: 'HECHAS', value: String(todayApps.filter(a => a.status === 'completed').length) },
     ];
   }, [filteredAppointments, selectedDateStr]);
 
@@ -116,6 +119,27 @@ export default function CompanyAgendaScreen() {
     setSelectedAppt(appt);
     setSheetVisible(true);
   }, []);
+
+  const handleGridPress = (evt: any, workerId: string, workerName: string, workerColor: string, d: Date) => {
+    const y = evt.nativeEvent.locationY;
+    const clickedHourDecimal = startHour + (y / HOUR_HEIGHT);
+    const startH = Math.floor(clickedHourDecimal * 2) / 2;
+
+    setPrefillData({
+      id: '',
+      clientName: '',
+      service: '',
+      worker_id: workerId,
+      worker: workerName,
+      workerColor: workerColor,
+      startHour: startH,
+      durationHours: 0.5,
+      status: 'pending',
+      date: toLocalISOString(d),
+    });
+    setEditingAppt(undefined);
+    setFormVisible(true);
+  };
 
   const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
     const STATUS_MAP: Record<string, string> = {
@@ -172,6 +196,23 @@ export default function CompanyAgendaScreen() {
       if (hasCollision) {
         showAlert({ title: 'Horario no disponible', message: 'El trabajador ya tiene una cita en este horario que se superpone.' });
         return false;
+      }
+
+      const targetWorker = workers.find(w => w.id === data.worker_id);
+      if (targetWorker) {
+        const apptDate = new Date(dateStr + 'T00:00:00');
+        const unavBlocks = getUnavailableBlocks(apptDate, business, targetWorker, startHour, endHour);
+        const intersectsUnav = unavBlocks.some(b => {
+          const bEnd = b.start + b.duration;
+          return newStart < bEnd && newEnd > b.start;
+        });
+        if (intersectsUnav) {
+          showAlert({
+            title: 'Horario no disponible',
+            message: 'El horario seleccionado se cruza con un horario de cierre o bloqueo del trabajador.'
+          });
+          return false;
+        }
       }
 
       const apptData = {
@@ -254,15 +295,57 @@ export default function CompanyAgendaScreen() {
         ))}
 
         <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
-          {WORKERS.map((w, wi) => (
-            <View key={w.id} style={[styles.workerColumn, { width: colWidth, left: wi * colWidth, borderLeftColor: colors.border, borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0, height: (endHour - startHour) * HOUR_HEIGHT }]}>
-              {filteredAppointments
-                .filter(a => a.worker === w.name && a.date === selectedDateStr && a.status !== 'completed' && a.status !== 'no-show')
-                .map(appt => (
-                  <AppointmentCard key={appt.id} appt={appt} columnWidth={colWidth} onPress={() => openSheet(appt)} colors={colors} isDarkMode={isDarkMode} startHour={startHour} />
-                ))}
-            </View>
-          ))}
+          {workers.map((w, wi) => {
+            const unavailableBlocks = getUnavailableBlocks(selectedDate, business, w, startHour, endHour);
+            return (
+              <Pressable
+                key={w.id}
+                onPress={(e) => handleGridPress(e, w.id, w.name, w.color, selectedDate)}
+                style={[styles.workerColumn, { width: colWidth, left: wi * colWidth, borderLeftColor: colors.border, borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0, height: (endHour - startHour) * HOUR_HEIGHT }]}
+              >
+                {unavailableBlocks.map((block, i) => {
+                  const isClosed = block.title === 'No disponible';
+                  return (
+                    <View
+                      key={`unav-${i}`}
+                      style={{
+                        position: 'absolute',
+                        top: (block.start - startHour) * HOUR_HEIGHT,
+                        height: block.duration * HOUR_HEIGHT,
+                        width: colWidth - 8,
+                        left: 4,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        borderStyle: 'dashed',
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {block.duration >= 1 ? (
+                        <View style={{ alignItems: 'center', gap: 6, opacity: 0.6 }}>
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={18} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1 }}>
+                            {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Feather name={isClosed ? 'lock' : 'coffee'} size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      )}
+                    </View>
+                  );
+                })}
+                {filteredAppointments
+                  .filter(a => a.worker_id === w.id && a.date === selectedDateStr && a.status !== 'completed' && a.status !== 'no-show')
+                  .map(appt => (
+                    <AppointmentCard key={appt.id} appt={appt} columnWidth={colWidth} onPress={() => openSheet(appt)} colors={colors} isDarkMode={isDarkMode} startHour={startHour} />
+                  ))}
+              </Pressable>
+            );
+          })}
           {nowPosition !== null && (
             <View style={[styles.nowLine, { top: nowPosition, width: WORKERS.length * colWidth }]}>
               <View style={styles.nowDot} />
@@ -316,14 +399,56 @@ export default function CompanyAgendaScreen() {
           <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
             {weekDays.map((d, di) => {
               const dateStr = toLocalISOString(d);
+              const w = workers.find(w => w.name === selectedWorkerFilter) || workers[0];
+              const unavailableBlocks = w ? getUnavailableBlocks(d, business, w, startHour, endHour) : [];
+
               return (
-                <View key={di} style={[styles.workerColumn, { width: weekColWidth, left: di * weekColWidth, borderLeftColor: colors.border, borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0, height: (endHour - startHour) * HOUR_HEIGHT, backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent' }]}>
+                <Pressable
+                  key={di}
+                  onPress={(e) => handleGridPress(e, w ? w.id : '', w ? w.name : '', w ? w.color : '', d)}
+                  style={[styles.workerColumn, { width: weekColWidth, left: di * weekColWidth, borderLeftColor: colors.border, borderLeftWidth: di > 0 ? StyleSheet.hairlineWidth : 0, height: (endHour - startHour) * HOUR_HEIGHT, backgroundColor: isToday(d) ? appColors.primary + '06' : 'transparent' }]}
+                >
+                  {unavailableBlocks.map((block, i) => {
+                    const isClosed = block.title === 'No disponible';
+                    return (
+                      <View
+                        key={`unav-${i}`}
+                        style={{
+                          position: 'absolute',
+                          top: (block.start - startHour) * HOUR_HEIGHT,
+                          height: block.duration * HOUR_HEIGHT,
+                          width: weekColWidth - 4,
+                          left: 2,
+                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                          borderWidth: 1,
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                          borderStyle: 'dashed',
+                          borderRadius: 8,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          zIndex: 1,
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {block.duration >= 1 ? (
+                          <View style={{ alignItems: 'center', gap: 4, opacity: 0.6 }}>
+                            <Feather name={isClosed ? 'lock' : 'coffee'} size={12} color={colors.textSecondary} />
+                            <Text style={{ fontSize: 8, color: colors.textSecondary, fontWeight: '700', letterSpacing: 0.5 }}>
+                              {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={10} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                        )}
+                      </View>
+                    );
+                  })}
                   {filteredAppointments
                     .filter(a => a.date === dateStr && a.status !== 'completed' && a.status !== 'no-show')
                     .map(appt => (
                       <AppointmentCard key={appt.id} appt={appt} columnWidth={weekColWidth} onPress={() => openSheet(appt)} colors={colors} isDarkMode={isDarkMode} startHour={startHour} />
                     ))}
-                </View>
+                </Pressable>
               );
             })}
             {nowPosition !== null && (
@@ -368,7 +493,7 @@ export default function CompanyAgendaScreen() {
         <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
           {viewMode === 'day'
             ? formatDateLabel(selectedDate)
-            : `${weekDays[0].getDate()} – ${weekDays[6].getDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][selectedDate.getMonth()]}`
+            : `${weekDays[0].getDate()} – ${weekDays[6].getDate()} ${['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][selectedDate.getMonth()]}`
           }
         </Text>
         <TouchableOpacity onPress={() => navigateDay(viewMode === 'day' ? 1 : 7)} style={styles.navBtn} activeOpacity={0.7}>
@@ -387,7 +512,7 @@ export default function CompanyAgendaScreen() {
                 key={name ?? '__all__'}
                 style={[styles.filterChip, isSelected
                   ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  : { backgroundColor: isDarkMode ? glassColors.surfaceDarkFaint : glassColors.surfaceLightFaint, borderColor: isDarkMode ? glassColors.borderDarkStrong : glassColors.borderLightSubtle }
+                  : { backgroundColor: isDarkMode ? glassColors.surfaceDarkFaint : glassColors.surfaceLightFaint, borderColor: isDarkMode ? glassColors.borderDarkSubtle : glassColors.borderLightSubtle }
                 ]}
                 onPress={() => setSelectedWorkerFilter(name)}
                 activeOpacity={0.8}
@@ -438,7 +563,7 @@ export default function CompanyAgendaScreen() {
       <AppointmentFormModal
         visible={formVisible}
         role="company"
-        initialData={editingAppt}
+        initialData={editingAppt || prefillData}
         isRescheduling={isReschedulingRef.current}
         onClose={() => { isReschedulingRef.current = false; setFormVisible(false); }}
         onSave={handleSaveAppt}

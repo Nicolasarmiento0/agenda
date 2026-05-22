@@ -5,30 +5,30 @@ import { useTheme } from '../context/ThemeContext';
 // Fuente única de verdad para todos los rgba() de glassmorphism.
 // Usar estos en lugar de strings literales en StyleSheet.create().
 export const glassColors = {
-  overlayHeavy:       'rgba(0,0,0,0.65)',
-  overlayMedium:      'rgba(0,0,0,0.6)',
-  overlayLight:       'rgba(0,0,0,0.4)',
-  sheetDark:          'rgba(10,10,16,0.6)',
-  sheetDarkAlt:       'rgba(15,15,20,0.55)',
-  sheetModalDark:     'rgba(16,16,16,0.82)',
-  sheetLight:         'rgba(248,248,252,0.55)',
-  sheetLightAlt:      'rgba(255,255,255,0.45)',
-  sheetModalLight:    'rgba(250,250,250,0.90)',
-  borderDarkStrong:   'rgba(255,255,255,0.15)',
-  borderDarkMedium:   'rgba(255,255,255,0.12)',
-  borderDarkSubtle:   'rgba(255,255,255,0.10)',
-  borderDarkFaint:    'rgba(255,255,255,0.07)',
-  borderLightStrong:  'rgba(0,0,0,0.12)',
-  borderLightMedium:  'rgba(0,0,0,0.10)',
-  borderLightSubtle:  'rgba(0,0,0,0.08)',
-  surfaceDark:        'rgba(255,255,255,0.07)',
-  surfaceDarkFaint:   'rgba(255,255,255,0.05)',
-  surfaceLight:       'rgba(0,0,0,0.04)',
-  surfaceLightFaint:  'rgba(0,0,0,0.03)',
-  handleDark:         'rgba(255,255,255,0.25)',
-  handleLight:        'rgba(0,0,0,0.18)',
-  placeholderDark:    'rgba(255,255,255,0.3)',
-  placeholderLight:   'rgba(0,0,0,0.3)',
+  overlayHeavy: 'rgba(0,0,0,0.65)',
+  overlayMedium: 'rgba(0,0,0,0.6)',
+  overlayLight: 'rgba(0,0,0,0.4)',
+  sheetDark: 'rgba(10,10,16,0.6)',
+  sheetDarkAlt: 'rgba(15,15,20,0.55)',
+  sheetModalDark: 'rgba(16,16,16,0.82)',
+  sheetLight: 'rgba(248,248,252,0.55)',
+  sheetLightAlt: 'rgba(255,255,255,0.45)',
+  sheetModalLight: 'rgba(250,250,250,0.90)',
+  borderDarkStrong: 'rgba(255,255,255,0.15)',
+  borderDarkMedium: 'rgba(255,255,255,0.12)',
+  borderDarkSubtle: 'rgba(255,255,255,0.10)',
+  borderDarkFaint: 'rgba(255,255,255,0.07)',
+  borderLightStrong: 'rgba(0,0,0,0.12)',
+  borderLightMedium: 'rgba(0,0,0,0.10)',
+  borderLightSubtle: 'rgba(0,0,0,0.08)',
+  surfaceDark: 'rgba(255,255,255,0.07)',
+  surfaceDarkFaint: 'rgba(255,255,255,0.05)',
+  surfaceLight: 'rgba(0,0,0,0.04)',
+  surfaceLightFaint: 'rgba(0,0,0,0.03)',
+  handleDark: 'rgba(255,255,255,0.25)',
+  handleLight: 'rgba(0,0,0,0.18)',
+  placeholderDark: 'rgba(255,255,255,0.3)',
+  placeholderLight: 'rgba(0,0,0,0.3)',
 } as const;
 
 export const appColors = {
@@ -55,17 +55,17 @@ export const radii = {
 export function useGlassTokens() {
   const { isDarkMode } = useTheme();
   return {
-    tint:         (isDarkMode ? 'dark' : 'light') as 'dark' | 'light',
-    border:       isDarkMode ? glassColors.borderDarkSubtle  : glassColors.borderLightSubtle,
-    borderStrong: isDarkMode ? glassColors.borderDarkStrong  : glassColors.borderLightStrong,
-    borderSubtle: isDarkMode ? glassColors.borderDarkSubtle  : glassColors.borderLightSubtle,
-    fill:         isDarkMode ? glassColors.surfaceDarkFaint  : glassColors.sheetLightAlt,
-    track:        isDarkMode ? glassColors.borderDarkMedium  : glassColors.borderLightMedium,
-    sheetBg:      isDarkMode ? glassColors.sheetDark         : glassColors.sheetLight,
-    overlayBg:    glassColors.overlayMedium,
-    surface:      isDarkMode ? glassColors.surfaceDark       : glassColors.surfaceLight,
-    handle:       isDarkMode ? glassColors.handleDark        : glassColors.handleLight,
-    placeholder:  isDarkMode ? glassColors.placeholderDark   : glassColors.placeholderLight,
+    tint: (isDarkMode ? 'dark' : 'light') as 'dark' | 'light',
+    border: isDarkMode ? glassColors.borderDarkSubtle : glassColors.borderLightSubtle,
+    borderStrong: isDarkMode ? glassColors.borderDarkStrong : glassColors.borderLightStrong,
+    borderSubtle: isDarkMode ? glassColors.borderDarkSubtle : glassColors.borderLightSubtle,
+    fill: isDarkMode ? glassColors.surfaceDarkFaint : glassColors.sheetLightAlt,
+    track: isDarkMode ? glassColors.borderDarkMedium : glassColors.borderLightMedium,
+    sheetBg: isDarkMode ? glassColors.sheetDark : glassColors.sheetLight,
+    overlayBg: glassColors.overlayMedium,
+    surface: isDarkMode ? glassColors.surfaceDark : glassColors.surfaceLight,
+    handle: isDarkMode ? glassColors.handleDark : glassColors.handleLight,
+    placeholder: isDarkMode ? glassColors.placeholderDark : glassColors.placeholderLight,
   };
 }
 
@@ -158,12 +158,13 @@ export const appStyles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
   primaryButton: {
-    alignSelf: 'center',
     backgroundColor: appColors.primary,
     paddingVertical: 16,
     paddingHorizontal: 60,
     borderRadius: radii.full,
     marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButton2: {
     alignSelf: 'center',
@@ -276,7 +277,7 @@ export const appStyles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
   },
-  
+
   // --- Client Business Profile ---
   clientProfileBackBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 36, left: 16, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 }, android: { elevation: 3 }, web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' } }) },
   clientProfileContent: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 100 : 80, alignItems: 'center' },
@@ -294,7 +295,7 @@ export const appStyles = StyleSheet.create({
   clientProfileDetailTextContainer: { flex: 1, justifyContent: 'center' },
   clientProfileDetailLabel: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600', marginBottom: 2 },
   clientProfileDetailValue: { fontSize: 14, fontWeight: '500' },
-  clientProfileFooter: { position: 'absolute', bottom: 0, width: '100%', paddingHorizontal: 20, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20, borderTopWidth: StyleSheet.hairlineWidth },
+  clientProfileFooter: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20, borderTopWidth: StyleSheet.hairlineWidth },
   /* MODAL */
   clientProfileModalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   clientProfileBlurCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', borderTopWidth: 0.5, borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)' },
@@ -1053,10 +1054,10 @@ export const appStyles = StyleSheet.create({
 
   /* CHART FILTERS */
   wd_chartHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 20,
   },
   wd_filterContainer: {
     flexDirection: 'row',

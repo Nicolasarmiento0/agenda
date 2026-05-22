@@ -3,40 +3,37 @@ import { BlurView } from 'expo-blur';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  useWindowDimensions,
-  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
-  ActivityIndicator,
-  Pressable,
+  useWindowDimensions,
+  View
 } from 'react-native';
+import { LocaleConfig } from 'react-native-calendars';
+import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
 import Sidebar from '../../../../components/Sidebar';
 import WorkerAvatar from '../../../../components/WorkerAvatar';
-import TimeWheelPicker from '../../../../components/TimeWheelPicker';
+import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
-import { useAlert } from '../../../../context/AlertContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
-import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
+import { getUnavailableBlocks } from '../../../utils/helpers';
 
 
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
   LocaleConfig.locales['es'] = {
-    monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
-    monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
-    dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+    dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+    dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
     today: 'Hoy'
   };
   LocaleConfig.defaultLocale = 'es';
@@ -284,35 +281,35 @@ function AppointmentSheet({
   const ACTIONS = isBlocked
     ? [{ id: 'cancel', icon: 'unlock', label: 'Desbloquear', color: '#E24B4A' }]
     : appt.status === 'pending'
-    ? [
-        { id: 'confirm',     icon: 'check-circle', label: 'Confirmar',                         color: '#3D9E5A' },
-        { id: 'rescheduled', icon: 'clock',         label: 'Reprogramar',                       color: '#F39C12' },
-        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
-        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
-        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
+      ? [
+        { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
+        { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
+        { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
+        { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
+        { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
       ]
-    : appt.status === 'confirmed'
-    ? [
-        { id: 'complete',    icon: 'check-square',  label: isGym ? 'Asistió' : 'Completar',    color: '#5C90D2' },
-        { id: 'rescheduled', icon: 'clock',         label: 'Reprogramar',                       color: '#F39C12' },
-        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
-        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
-        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
-      ]
-    : appt.status === 'rescheduled'
-    ? [
-        { id: 'confirm',     icon: 'check-circle', label: 'Confirmar',                         color: '#3D9E5A' },
-        { id: 'complete',    icon: 'check-square',  label: isGym ? 'Asistió' : 'Completar',    color: '#5C90D2' },
-        { id: 'edit',        icon: 'edit-2',        label: 'Editar',                            color: appColors.primary },
-        { id: 'no-show',     icon: 'user-x',        label: isGym ? 'No asistió' : 'No Show',   color: '#D00024' },
-        { id: 'cancel',      icon: 'x-circle',      label: 'Cancelar',                          color: '#E24B4A' },
-      ]
-    : [];
+      : appt.status === 'confirmed'
+        ? [
+          { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
+          { id: 'rescheduled', icon: 'clock', label: 'Reprogramar', color: '#F39C12' },
+          { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
+          { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
+          { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
+        ]
+        : appt.status === 'rescheduled'
+          ? [
+            { id: 'confirm', icon: 'check-circle', label: 'Confirmar', color: '#3D9E5A' },
+            { id: 'complete', icon: 'check-square', label: isGym ? 'Asistió' : 'Completar', color: '#5C90D2' },
+            { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
+            { id: 'no-show', icon: 'user-x', label: isGym ? 'No asistió' : 'No Show', color: '#D00024' },
+            { id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' },
+          ]
+          : [];
 
   return (
-    <View 
+    <View
       style={[
-        StyleSheet.absoluteFill, 
+        StyleSheet.absoluteFill,
         { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
         !visible && { opacity: 0 }
       ]}
@@ -410,7 +407,7 @@ export default function WorkerAgendaScreen() {
         .select('name, parent_id')
         .eq('id', business.category_id)
         .single();
-      
+
       if (data) {
         const isGymCategory = data.name.toUpperCase().includes('GIMNASIO') || data.name.toUpperCase().includes('FITNESS');
         setIsGym(isGymCategory);
@@ -444,6 +441,7 @@ export default function WorkerAgendaScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
+  const [prefillData, setPrefillData] = useState<Appointment | undefined>();
   const isReschedulingRef = useRef(false);
 
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -598,6 +596,27 @@ export default function WorkerAgendaScreen() {
     }
   }, [fetchAppointments, showAlert]);
 
+  const handleGridPress = (evt: any, workerId: string, workerName: string, workerColor: string, d: Date) => {
+    const y = evt.nativeEvent.locationY;
+    const clickedHourDecimal = startHour + (y / HOUR_HEIGHT);
+    const startH = Math.floor(clickedHourDecimal * 2) / 2;
+
+    setPrefillData({
+      id: '',
+      clientName: '',
+      service: '',
+      worker_id: workerId,
+      worker: workerName,
+      workerColor: workerColor,
+      startHour: startH,
+      durationHours: 0.5,
+      status: 'pending',
+      date: toLocalISOString(d),
+    });
+    setEditingAppt(undefined);
+    setFormVisible(true);
+  };
+
   const handleSaveAppt = useCallback(async (data: Partial<Appointment>): Promise<boolean> => {
     try {
       if (!business?.id) {
@@ -633,11 +652,29 @@ export default function WorkerAgendaScreen() {
       });
 
       if (hasCollision) {
-        showAlert({ 
-          title: 'Horario no disponible', 
-          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.' 
+        showAlert({
+          title: 'Horario no disponible',
+          message: 'El trabajador ya tiene una cita en este horario que se superpone con la nueva.'
         });
         return false;
+      }
+
+      // Validar contra bloques de horario no disponibles (cierres y bloqueos del trabajador)
+      const targetWorker = workers.find(w => w.id === data.worker_id);
+      if (targetWorker) {
+        const apptDate = new Date(dateStr + 'T00:00:00');
+        const unavBlocks = getUnavailableBlocks(apptDate, business, targetWorker, startHour, endHour);
+        const intersectsUnav = unavBlocks.some(b => {
+          const bEnd = b.start + b.duration;
+          return newStart < bEnd && newEnd > b.start;
+        });
+        if (intersectsUnav) {
+          showAlert({
+            title: 'Horario no disponible',
+            message: 'El horario seleccionado se cruza con un horario de cierre o bloqueo.'
+          });
+          return false;
+        }
       }
 
       const newStatus = editingAppt
@@ -754,36 +791,75 @@ export default function WorkerAgendaScreen() {
 
         {/* Columnas de citas por trabajador */}
         <View style={[appStyles.wa_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
-          {WORKERS.map((w, wi) => (
-            <View
-              key={w.id}
-              style={[
-                appStyles.wa_workerColumn,
-                {
-                  width: colWidth,
-                  left: wi * colWidth,
-                  borderLeftColor: colors.border,
-                  borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0,
-                  height: (endHour - startHour) * HOUR_HEIGHT,
-                },
-              ]}
-            >
-              {filteredAppointments
-                .filter(a => a.worker === w.name && a.date === selectedDateStr
-                  && a.status !== 'completed' && a.status !== 'no-show')
-                .map(appt => (
-                  <AppointmentCard
-                    key={appt.id}
-                    appt={appt}
-                    columnWidth={colWidth}
-                    onPress={() => openSheet(appt)}
-                    colors={colors}
-                    isDarkMode={isDarkMode}
-                    startHour={startHour}
-                  />
-                ))}
-            </View>
-          ))}
+          {WORKERS.map((w, wi) => {
+            const unavailableBlocks = getUnavailableBlocks(selectedDate, business, w, startHour, endHour);
+            return (
+              <Pressable
+                key={w.id}
+                onPress={(e) => handleGridPress(e, w.id, w.name, w.color, selectedDate)}
+                style={[
+                  appStyles.wa_workerColumn,
+                  {
+                    width: colWidth,
+                    left: wi * colWidth,
+                    borderLeftColor: colors.border,
+                    borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0,
+                    height: (endHour - startHour) * HOUR_HEIGHT,
+                  },
+                ]}
+              >
+                {unavailableBlocks.map((block, i) => {
+                  const isClosed = block.title === 'No disponible';
+                  return (
+                    <View
+                      key={`unav-${i}`}
+                      style={{
+                        position: 'absolute',
+                        top: (block.start - startHour) * HOUR_HEIGHT,
+                        height: block.duration * HOUR_HEIGHT,
+                        width: colWidth - 8,
+                        left: 4,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        borderStyle: 'dashed',
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {block.duration >= 1 ? (
+                        <View style={{ alignItems: 'center', gap: 6, opacity: 0.6 }}>
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={18} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1 }}>
+                            {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Feather name={isClosed ? 'lock' : 'coffee'} size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      )}
+                    </View>
+                  );
+                })}
+                {filteredAppointments
+                  .filter(a => a.worker === w.name && a.date === selectedDateStr
+                    && a.status !== 'completed' && a.status !== 'no-show')
+                  .map(appt => (
+                    <AppointmentCard
+                      key={appt.id}
+                      appt={appt}
+                      columnWidth={colWidth}
+                      onPress={() => openSheet(appt)}
+                      colors={colors}
+                      isDarkMode={isDarkMode}
+                      startHour={startHour}
+                    />
+                  ))}
+              </Pressable>
+            );
+          })}
 
           {/* Línea "ahora" */}
           {nowPosition !== null && (
@@ -846,9 +922,13 @@ export default function WorkerAgendaScreen() {
         <View style={[appStyles.wa_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {weekDays.map((d, di) => {
             const dateStr = toLocalISOString(d);
+            const w = WORKERS.length > 0 ? WORKERS[0] : null;
+            const unavailableBlocks = w ? getUnavailableBlocks(d, business, w, startHour, endHour) : [];
+
             return (
-              <View
+              <Pressable
                 key={di}
+                onPress={(e) => handleGridPress(e, w ? w.id : '', w ? w.name : '', w ? w.color : '', d)}
                 style={[
                   appStyles.wa_workerColumn,
                   {
@@ -861,6 +941,41 @@ export default function WorkerAgendaScreen() {
                   },
                 ]}
               >
+                {unavailableBlocks.map((block, i) => {
+                  const isClosed = block.title === 'No disponible';
+                  return (
+                    <View
+                      key={`unav-${i}`}
+                      style={{
+                        position: 'absolute',
+                        top: (block.start - startHour) * HOUR_HEIGHT,
+                        height: block.duration * HOUR_HEIGHT,
+                        width: weekColWidth - 4,
+                        left: 2,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        borderStyle: 'dashed',
+                        borderRadius: 8,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {block.duration >= 1 ? (
+                        <View style={{ alignItems: 'center', gap: 4, opacity: 0.6 }}>
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={12} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 8, color: colors.textSecondary, fontWeight: '700', letterSpacing: 0.5 }}>
+                            {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Feather name={isClosed ? 'lock' : 'coffee'} size={10} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      )}
+                    </View>
+                  );
+                })}
                 {filteredAppointments
                   .filter(a => a.date === dateStr
                     && a.status !== 'completed' && a.status !== 'no-show')
@@ -875,7 +990,7 @@ export default function WorkerAgendaScreen() {
                       startHour={startHour}
                     />
                   ))}
-              </View>
+              </Pressable>
             );
           })}
           {nowPosition !== null && (
@@ -959,9 +1074,9 @@ export default function WorkerAgendaScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={appStyles.wa_workerFilters} contentContainerStyle={appStyles.wa_workerFiltersContent}>
           <TouchableOpacity
             style={[appStyles.wa_filterChip,
-              !selectedWorkerFilter
-                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+            !selectedWorkerFilter
+              ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+              : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
             ]}
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
@@ -972,9 +1087,9 @@ export default function WorkerAgendaScreen() {
             <TouchableOpacity
               key={w.id}
               style={[appStyles.wa_filterChip,
-                selectedWorkerFilter === w.name
-                  ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
+              selectedWorkerFilter === w.name
+                ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
+                : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
               ]}
               onPress={() => setSelectedWorkerFilter(w.name)}
               activeOpacity={0.8}
@@ -1038,7 +1153,8 @@ export default function WorkerAgendaScreen() {
       <AppointmentFormModal
         visible={formVisible}
         role="worker"
-        initialData={editingAppt}
+        initialData={editingAppt || prefillData}
+        isRescheduling={isReschedulingRef.current}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
         businessId={business?.id || ''}
@@ -1046,7 +1162,6 @@ export default function WorkerAgendaScreen() {
         selectedDateStr={selectedDateStr}
         openingHour={business?.opening_time ? parseInt(business.opening_time.split(':')[0], 10) : 7}
         closingHour={business?.closing_time ? parseInt(business.closing_time.split(':')[0], 10) : 22}
-        isRescheduling={isReschedulingRef.current}
         allowBlocking={true}
         showAlert={showAlert}
         colors={{ ...colors, textPrimary: colors.textPrimary, textSecondary: colors.textSecondary, border: colors.border }}
@@ -1068,7 +1183,7 @@ export default function WorkerAgendaScreen() {
       {/* ── Worker Profile Card ───────────────────────────────────── */}
       <Modal visible={profileVisible} transparent animationType="fade" onRequestClose={() => setProfileVisible(false)}>
         <Pressable style={appStyles.wa_profileOverlay} onPress={() => setProfileVisible(false)}>
-          <Pressable onPress={() => {}}>
+          <Pressable onPress={() => { }}>
             <BlurView intensity={70} tint="dark" style={appStyles.wa_profileCard}>
               <View style={[appStyles.wa_profileCardInner, { backgroundColor: 'rgba(14,14,14,0.78)' }]}>
                 <TouchableOpacity style={appStyles.wa_profileClose} onPress={() => setProfileVisible(false)}>

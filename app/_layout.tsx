@@ -133,7 +133,6 @@ export default function RootLayout() {
             <GlobalGuard>
               <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="screens/dashboard" />
                 <Stack.Screen name="screens/global/home" />
                 <Stack.Screen name="screens/global/loginscreen" />
                 <Stack.Screen name="screens/global/signup" />

@@ -20,6 +20,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
+import { getGreeting } from '../../../utils/helpers';
 
 const { width } = Dimensions.get('window');
 
@@ -38,27 +39,6 @@ type TimeFilter = 'daily' | 'weekly' | 'monthly';
 
 // ─── COMPONENTES ────────────────────────────────────────────────────────
 
-const BarChart = ({ data, colors, filter }: { data: { label: string, value: number }[], colors: any, filter: TimeFilter }) => {
-  const maxValue = Math.max(...data.map(d => d.value), 1);
-
-  return (
-    <View style={appStyles.wd_chartContainer}>
-      <View style={appStyles.wd_barsWrapper}>
-        {data.map((item, index) => {
-          const heightPercent = (item.value / maxValue) * 100;
-          return (
-            <View key={index} style={appStyles.wd_barCol}>
-              <View style={appStyles.wd_barTrack}>
-                <View style={[appStyles.wd_barFill, { height: `${heightPercent}%`, backgroundColor: appColors.primary }]} />
-              </View>
-              <Text style={[appStyles.wd_barLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-};
 
 export default function WorkerDashboardScreen() {
   const { profile, refreshProfile } = useAuth();
@@ -109,9 +89,10 @@ export default function WorkerDashboardScreen() {
     if (timeFilter === 'daily') {
       startDate.setHours(0, 0, 0, 0); // Today only
     } else if (timeFilter === 'weekly') {
-      startDate.setDate(today.getDate() - 6); // Last 7 days
+      const dow = today.getDay();
+      startDate.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
     } else if (timeFilter === 'monthly') {
-      startDate.setDate(today.getDate() - 29); // Last 30 days
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
     }
 
     const dateStr = startDate.toISOString().split('T')[0];
@@ -155,56 +136,52 @@ export default function WorkerDashboardScreen() {
       const newRevData: { label: string, value: number, key?: string | number }[] = [];
 
       if (timeFilter === 'daily') {
-        // Group by blocks of 2 hours: 08-10, 10-12, 12-14, 14-16, 16-18, 18-20, 20-22
         const blocks = [8, 10, 12, 14, 16, 18, 20];
         blocks.forEach(b => newRevData.push({ label: `${b}h`, value: 0, key: b }));
 
         appointments.forEach(a => {
-          if (a.price && a.date === today.toISOString().split('T')[0]) {
+          if (a.price && a.status === 'completed' && a.date === dateStr) {
             const hour = Math.floor(a.start_hour);
-            // Find the closest block <= hour
-            let targetBlock = 8;
+            let target = 8;
             for (let i = blocks.length - 1; i >= 0; i--) {
               if (hour >= blocks[i]) {
-                targetBlock = blocks[i];
+                target = blocks[i];
                 break;
               }
             }
-            const blockIndex = newRevData.findIndex(r => r.key === targetBlock);
-            if (blockIndex !== -1) newRevData[blockIndex].value += a.price;
+            const idx = newRevData.findIndex(r => r.key === target);
+            if (idx !== -1) newRevData[idx].value += a.price;
           }
         });
+
       } else if (timeFilter === 'weekly') {
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(today.getDate() - i);
-          newRevData.push({ label: dayNames[d.getDay()], value: 0, key: d.toISOString().split('T')[0] });
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
+        
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setDate(weekStart.getDate() + i);
+          const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          newRevData.push({ label: dayNames[d.getDay()], value: 0, key: localStr });
         }
+
         appointments.forEach(a => {
-          if (a.price) {
-            const existing = newRevData.find(r => r.key === a.date);
-            if (existing) existing.value += a.price;
+          if (a.price && a.status === 'completed') {
+            const r = newRevData.find(r => r.key === a.date);
+            if (r) r.value += a.price;
           }
         });
+
       } else if (timeFilter === 'monthly') {
-        // Group by 4 weeks (Semana 1, 2, 3, 4)
-        newRevData.push({ label: 'Sem 1', value: 0, key: 0 });
-        newRevData.push({ label: 'Sem 2', value: 0, key: 1 });
-        newRevData.push({ label: 'Sem 3', value: 0, key: 2 });
-        newRevData.push({ label: 'Sem 4', value: 0, key: 3 });
+        [1, 2, 3, 4, 5].forEach(i => newRevData.push({ label: `Sem ${i}`, value: 0, key: i }));
 
         appointments.forEach(a => {
-          if (a.price) {
-            const apptDate = new Date(a.date);
-            const diffTime = Math.abs(today.getTime() - apptDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            // Map 0-7 days to Sem 4, 8-14 to Sem 3, etc.
-            if (diffDays <= 7) newRevData[3].value += a.price;
-            else if (diffDays <= 14) newRevData[2].value += a.price;
-            else if (diffDays <= 21) newRevData[1].value += a.price;
-            else newRevData[0].value += a.price;
+          if (a.price && a.status === 'completed') {
+            const dayOfMonth = parseInt(a.date.split('-')[2], 10);
+            const weekOfMonth = Math.ceil(dayOfMonth / 7);
+            const idx = newRevData.findIndex(r => r.key === Math.min(weekOfMonth, 5));
+            if (idx !== -1) newRevData[idx].value += a.price;
           }
         });
       }
@@ -255,14 +232,26 @@ export default function WorkerDashboardScreen() {
 
           {/* WELCOME */}
           <View style={{ marginBottom: 8 }}>
-            <Text style={[appStyles.wd_welcomeText, { color: colors.textSecondary }]}>Bienvenido de vuelta,</Text>
+            <Text style={[appStyles.wd_welcomeText, { color: colors.textSecondary }]}>{getGreeting()}</Text>
             <Text style={[appStyles.wd_businessName, { color: colors.textPrimary }]}>{workerMe?.name || 'Trabajador'}</Text>
           </View>
 
           {/* REVENUE CHART */}
           <GlassCard style={appStyles.wd_card}>
             <View style={appStyles.wd_chartHeaderRow}>
-              <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary }]}>Ingresos</Text>
+              <View>
+                <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary, marginBottom: 4 }]}>Ingresos Totales</Text>
+                <Text 
+                  style={[appStyles.wd_scoreText, { color: colors.textPrimary }]}
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                >
+                  ${revenueData.reduce((sum, item) => sum + item.value, 0).toLocaleString('es-CL')}
+                </Text>
+                <Text style={[appStyles.wd_subText, { color: colors.textSecondary }]}>
+                  en este periodo
+                </Text>
+              </View>
 
               <View style={[appStyles.wd_filterContainer, { backgroundColor: colors.background }]}>
                 {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
@@ -285,7 +274,6 @@ export default function WorkerDashboardScreen() {
                 ))}
               </View>
             </View>
-            <BarChart data={revenueData} colors={colors} filter={timeFilter} />
           </GlassCard>
 
           <View style={appStyles.wd_rowGrid}>
@@ -315,10 +303,13 @@ export default function WorkerDashboardScreen() {
                 <Feather name="clock" size={16} color={colors.textSecondary} />
                 <Text style={[appStyles.wd_cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
               </View>
-              <View style={appStyles.wd_scheduleRow}>
+              <View style={[appStyles.wd_scheduleRow, { backgroundColor: colors.background, padding: 12, borderRadius: 12, gap: 8 }]}>
                 {SCHEDULE_DATA.map((d, i) => (
-                  <View key={i} style={[appStyles.wd_dayCircle, { backgroundColor: d.active ? appColors.primary + '20' : colors.border }]}>
-                    <Text style={[appStyles.wd_dayText, { color: d.active ? appColors.primary : colors.textSecondary }]}>{d.day}</Text>
+                  <View key={i} style={{ alignItems: 'center', flex: 1, gap: 4 }}>
+                    <Text style={{ fontSize: 10, color: d.active ? colors.textPrimary : colors.textSecondary, fontWeight: d.active ? '700' : '500' }}>
+                      {d.day}
+                    </Text>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: d.active ? appColors.primary : 'transparent' }} />
                   </View>
                 ))}
               </View>
@@ -328,22 +319,7 @@ export default function WorkerDashboardScreen() {
             </GlassCard>
           </View>
 
-          {/* PUBLIC PROFILE BTN */}
-          <GlassCard style={appStyles.wd_publicBtn}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
-            >
-              <View style={[appStyles.wd_publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
-                <Feather name="external-link" size={20} color={appColors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[appStyles.wd_publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
-                <Text style={[appStyles.wd_publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </GlassCard>
+
 
         </Animated.View>
       </ScrollView>

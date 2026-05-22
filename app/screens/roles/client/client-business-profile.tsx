@@ -9,14 +9,13 @@ import {
   Image,
   Linking,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -57,7 +56,7 @@ export default function ClientBusinessProfileScreen() {
       .from('reviews')
       .select('score')
       .eq('business_id', businessId);
-      
+
     if (reviews && reviews.length > 0) {
       const sum = reviews.reduce((acc, r) => acc + r.score, 0);
       setReviewsData({
@@ -76,7 +75,7 @@ export default function ClientBusinessProfileScreen() {
         .select('*')
         .eq('id', businessId)
         .single();
-        
+
       if (data) {
         setFetchedBusiness(data);
         setSelectedBusiness(data);
@@ -94,10 +93,10 @@ export default function ClientBusinessProfileScreen() {
         .select('name')
         .eq('id', currentBiz.category_id)
         .single();
-        
+
       const gymFlag = !!(cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS'));
       setIsGym(gymFlag);
-      
+
       if (gymFlag) {
         const { data: mem } = await supabase
           .from('gym_memberships')
@@ -105,7 +104,7 @@ export default function ClientBusinessProfileScreen() {
           .eq('business_id', currentBiz.id)
           .eq('client_id', profile.id)
           .single();
-          
+
         if (mem && mem.status === 'active') {
           setMembershipStatus('active');
         } else {
@@ -136,7 +135,7 @@ export default function ClientBusinessProfileScreen() {
 
   const handleSubmitReview = async () => {
     if (!profile?.id || !fetchedBusiness?.id) return;
-    
+
     setIsSubmitting(true);
     const { error } = await supabase.from('reviews').insert([{
       business_id: fetchedBusiness.id,
@@ -222,7 +221,7 @@ export default function ClientBusinessProfileScreen() {
           </View>
 
           <Text style={[appStyles.clientProfileName, { color: colors.textPrimary }]}>{name}</Text>
-          
+
           {/* Rating Section */}
           <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileRatingBadge}>
             <Ionicons name="star" size={14} color="#F0A030" />
@@ -282,7 +281,7 @@ export default function ClientBusinessProfileScreen() {
                 <Feather name="external-link" size={14} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
-            
+
             {!isPreviewMode && (
               <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileDetailRow}>
                 <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -303,17 +302,23 @@ export default function ClientBusinessProfileScreen() {
       </ScrollView>
 
       {!isPreviewMode && (
-        <View style={[appStyles.clientProfileFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <View style={[appStyles.clientProfileFooter, { backgroundColor: colors.background, borderTopColor: colors.border, }]}>
           {isGym && membershipStatus === 'active' ? (
             <TouchableOpacity
               activeOpacity={0.8}
               style={[appStyles.primaryButton, { width: '100%' }]}
-              onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
+              onPress={() =>
+                router.push(
+                  (`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any
+                )
+              }
             >
-              <Text style={appStyles.primaryButtonText}>VER CLASES Y RESERVAR</Text>
+              <Text style={appStyles.primaryButtonText}>
+                VER CLASES Y RESERVAR
+              </Text>
             </TouchableOpacity>
           ) : isGym && membershipStatus === 'pending' ? (
-            <View style={{ gap: 12 }}>
+            <View style={{ gap: 12, width: '100%' }}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={[appStyles.primaryButton, { width: '100%', opacity: 0.6 }]}
@@ -326,7 +331,7 @@ export default function ClientBusinessProfileScreen() {
               </TouchableOpacity>
             </View>
           ) : isGym ? (
-            <View style={{ gap: 12 }}>
+            <View style={{ gap: 12, width: '100%' }}>
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={[appStyles.primaryButton, { width: '100%' }]}
@@ -359,37 +364,37 @@ export default function ClientBusinessProfileScreen() {
           </TouchableWithoutFeedback>
           <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={appStyles.clientProfileBlurCard}>
             <View style={[appStyles.clientProfileGlassContent, !isDarkMode && appStyles.clientProfileGlassContentLight]}>
-            
-            <Text style={[appStyles.clientProfileModalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
-            
-            <View style={appStyles.clientProfileStarsContainer}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} activeOpacity={0.7} onPress={() => setNewScore(s)} style={appStyles.clientProfileStarBtn}>
-                  <Ionicons name={s <= newScore ? "star" : "star-outline"} size={36} color="#F0A030" />
-                </TouchableOpacity>
-              ))}
-            </View>
 
-            <TextInput
-              style={[appStyles.clientProfileReviewInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-              placeholder="Opcional: Escribe tu opinión o sugerencia..."
-              placeholderTextColor={colors.textSecondary}
-              value={newComment}
-              onChangeText={setNewComment}
-              multiline
-              maxLength={250}
-            />
-            
-            <TouchableOpacity 
-              style={[appStyles.primaryButton, { marginTop: 16 }]} 
-              activeOpacity={0.8} 
-              disabled={isSubmitting}
-              onPress={handleSubmitReview}
-            >
-              {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
-            </TouchableOpacity>
-          </View>
-        </BlurView>
+              <Text style={[appStyles.clientProfileModalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
+
+              <View style={appStyles.clientProfileStarsContainer}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <TouchableOpacity key={s} activeOpacity={0.7} onPress={() => setNewScore(s)} style={appStyles.clientProfileStarBtn}>
+                    <Ionicons name={s <= newScore ? "star" : "star-outline"} size={36} color="#F0A030" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={[appStyles.clientProfileReviewInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                placeholder="Opcional: Escribe tu opinión o sugerencia..."
+                placeholderTextColor={colors.textSecondary}
+                value={newComment}
+                onChangeText={setNewComment}
+                multiline
+                maxLength={250}
+              />
+
+              <TouchableOpacity
+                style={[appStyles.primaryButton, { marginTop: 16 }]}
+                activeOpacity={0.8}
+                disabled={isSubmitting}
+                onPress={handleSubmitReview}
+              >
+                {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>ENVIAR OPINIÓN</Text>}
+              </TouchableOpacity>
+            </View>
+          </BlurView>
         </View>
       </Modal>
 

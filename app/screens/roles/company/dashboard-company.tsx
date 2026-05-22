@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import GlassCard from '../../../../components/GlassCard';
-import RevenueBarChart from '../../../../components/company/RevenueBarChart';
 import ReviewsModal from '../../../../components/company/ReviewsModal';
 import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
@@ -22,18 +21,9 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
+import { getGreeting } from '../../../utils/helpers';
 
 const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
-
-const SCHEDULE_DATA = [
-  { day: 'L', active: true },
-  { day: 'M', active: true },
-  { day: 'X', active: true },
-  { day: 'J', active: true },
-  { day: 'V', active: true },
-  { day: 'S', active: true },
-  { day: 'D', active: false },
-];
 
 type TimeFilter = 'daily' | 'weekly' | 'monthly';
 
@@ -62,7 +52,26 @@ export default function DashboardCompanyScreen() {
   const [gymStats, setGymStats] = useState({ basic: 0, premium: 0, vip: 0, revenue: 0, prices: GYM_PLAN_PRICE });
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  const SCHEDULE_DATA = React.useMemo(() => {
+    const days = [
+      { id: '1', day: 'L' }, { id: '2', day: 'M' }, { id: '3', day: 'X' },
+      { id: '4', day: 'J' }, { id: '5', day: 'V' }, { id: '6', day: 'S' }, { id: '7', day: 'D' }
+    ];
+    
+    if ((business as any)?.schedule) {
+      return days.map(d => ({
+        day: d.day,
+        active: Array.isArray(((business as any).schedule)[d.id]) && ((business as any).schedule)[d.id].length > 0
+      }));
+    }
+    
+    // Fallback if no schedule
+    return days.map(d => ({ day: d.day, active: d.day !== 'D' }));
+  }, [(business as any)?.schedule]);
+
+  const [filter, setFilter] = useState<TimeFilter>('daily');
 
   const fetchDashboardData = useCallback(async () => {
     if (!business?.id) return;
@@ -110,12 +119,12 @@ export default function DashboardCompanyScreen() {
       const dow = today.getDay();
       startDate.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
     } else {
-      startDate.setDate(today.getDate() - 29);
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
     }
 
     const { data: appointments } = await supabase
       .from('appointments')
-      .select('date, start_hour, price, worker_id')
+      .select('date, start_hour, price, worker_id, status')
       .eq('business_id', business.id)
       .gte('date', toLocalDateStr(startDate));
 
@@ -155,7 +164,7 @@ export default function DashboardCompanyScreen() {
         const blocks = [8, 10, 12, 14, 16, 18, 20];
         blocks.forEach(b => newRevData.push({ label: `${b}h`, value: 0, key: b }));
         appointments.forEach(a => {
-          if (a.price && a.date === toLocalDateStr(today)) {
+          if (a.price && a.status === 'completed' && a.date === toLocalDateStr(today)) {
             const hour = Math.floor(a.start_hour);
             let target = 8;
             for (let i = blocks.length - 1; i >= 0; i--) { if (hour >= blocks[i]) { target = blocks[i]; break; } }
@@ -173,15 +182,19 @@ export default function DashboardCompanyScreen() {
           newRevData.push({ label: dayNames[d.getDay()], value: 0, key: toLocalDateStr(d) });
         }
         appointments.forEach(a => {
-          if (a.price) { const r = newRevData.find(r => r.key === a.date); if (r) r.value += a.price; }
+          if (a.price && a.status === 'completed') {
+            const r = newRevData.find(r => r.key === a.date); 
+            if (r) r.value += a.price; 
+          }
         });
       } else {
-        [0, 1, 2, 3].forEach(i => newRevData.push({ label: `Sem ${i + 1}`, value: 0, key: i }));
+        [1, 2, 3, 4, 5].forEach(i => newRevData.push({ label: `Sem ${i}`, value: 0, key: i }));
         appointments.forEach(a => {
-          if (a.price) {
-            const diff = Math.ceil(Math.abs(today.getTime() - new Date(a.date).getTime()) / (1000 * 60 * 60 * 24));
-            const idx = diff <= 7 ? 3 : diff <= 14 ? 2 : diff <= 21 ? 1 : 0;
-            newRevData[idx].value += a.price;
+          if (a.price && a.status === 'completed') {
+            const dayOfMonth = parseInt(a.date.split('-')[2], 10);
+            const weekOfMonth = Math.ceil(dayOfMonth / 7);
+            const idx = newRevData.findIndex(r => r.key === Math.min(weekOfMonth, 5));
+            if (idx !== -1) newRevData[idx].value += a.price;
           }
         });
       }
@@ -220,14 +233,26 @@ export default function DashboardCompanyScreen() {
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], gap: 16 }}>
 
           <View style={{ marginBottom: 8 }}>
-            <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Bienvenido de vuelta,</Text>
+            <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>{getGreeting()}</Text>
             <Text style={[styles.businessName, { color: colors.textPrimary }]}>{business?.name || profile?.nickname || 'Empresa'}</Text>
           </View>
 
           {!isGym && (
             <GlassCard style={styles.card}>
               <View style={styles.chartHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos por Citas</Text>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 4 }]}>Ingresos Totales</Text>
+                  <Text 
+                    style={[styles.scoreText, { color: colors.textPrimary }]}
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
+                  >
+                    ${revenueData.reduce((sum, item) => sum + item.value, 0).toLocaleString('es-CL')}
+                  </Text>
+                  <Text style={[styles.subText, { color: colors.textSecondary }]}>
+                    en este periodo
+                  </Text>
+                </View>
                 <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
                   {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
                     <TouchableOpacity
@@ -243,14 +268,13 @@ export default function DashboardCompanyScreen() {
                   ))}
                 </View>
               </View>
-              <RevenueBarChart data={revenueData} filter={timeFilter} colors={colors} />
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
                   const rangeParam = timeFilter === 'daily' ? 'day' : timeFilter === 'weekly' ? 'week' : 'month';
                   router.push(`/screens/roles/company/company-history?range=${rangeParam}` as any);
                 }}
-                style={[styles.historialCta, { borderTopColor: colors.border }]}
+                style={[styles.historialCta, { borderTopColor: colors.border, marginTop: 16 }]}
               >
                 <Text style={[styles.historialCtaText, { color: appColors.primary }]}>Ver historial completo</Text>
                 <Feather name="arrow-right" size={14} color={appColors.primary} />
@@ -266,7 +290,13 @@ export default function DashboardCompanyScreen() {
                   <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>MEMBRESÍAS MENSUALES</Text>
                   <Feather name="chevron-right" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
                 </View>
-                <Text style={[styles.scoreText, { color: colors.textPrimary }]}>${gymStats.revenue.toLocaleString('es-CL')}</Text>
+                <Text 
+                  style={[styles.scoreText, { color: colors.textPrimary }]}
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                >
+                  ${gymStats.revenue.toLocaleString('es-CL')}
+                </Text>
                 <Text style={[styles.subText, { color: colors.textSecondary }]}>ingresos estimados del mes</Text>
                 <View style={{ gap: 6, marginTop: 12 }}>
                   {gymStats.basic > 0 && (
@@ -311,22 +341,34 @@ export default function DashboardCompanyScreen() {
               </TouchableOpacity>
             </GlassCard>
 
-            <GlassCard style={[styles.card, styles.flexCard]}>
-              <View style={styles.cardHeader}>
-                <Feather name="clock" size={16} color={colors.textSecondary} />
-                <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
-              </View>
-              <View style={styles.scheduleRow}>
-                {SCHEDULE_DATA.map((d, i) => (
-                  <View key={i} style={[styles.dayCircle, { backgroundColor: d.active ? appColors.primary + '20' : colors.border }]}>
-                    <Text style={[styles.dayText, { color: d.active ? appColors.primary : colors.textSecondary }]}>{d.day}</Text>
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              style={[styles.card, styles.flexCard]}
+              onPress={() => router.push('/screens/roles/company/edit-schedule' as any)}
+            >
+              <GlassCard style={{ padding: 16, borderRadius: 24, flex: 1 }}>
+                <View style={[styles.cardHeader, { marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="clock" size={16} color={colors.textSecondary} />
+                    <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
                   </View>
-                ))}
-              </View>
-              <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
-                Cierre a las {business?.closing_time?.slice(0, 5) || '20:00'}
-              </Text>
-            </GlassCard>
+                  <Feather name="edit-2" size={14} color={colors.textSecondary} />
+                </View>
+                <View style={[styles.scheduleRow, { backgroundColor: colors.background, paddingHorizontal: 8, paddingVertical: 12, borderRadius: 12 }]}>
+                  {SCHEDULE_DATA.map((d, i) => (
+                    <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: d.active ? colors.textPrimary : colors.textSecondary, fontWeight: d.active ? '700' : '500' }}>
+                        {d.day}
+                      </Text>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: d.active ? appColors.primary : 'transparent' }} />
+                    </View>
+                  ))}
+                </View>
+                <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
+                  Cierre a las {business?.closing_time?.slice(0, 5) || '20:00'}
+                </Text>
+              </GlassCard>
+            </TouchableOpacity>
           </View>
 
           <GlassCard style={styles.card}>
@@ -394,10 +436,10 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   cardTitle: { fontSize: 10, letterSpacing: 2, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-  chartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  chartHeaderRow: { flexDirection: 'column', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
   filterContainer: { flexDirection: 'row', borderRadius: 20, padding: 4 },
-  filterBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  filterText: { fontSize: 10, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  filterBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  filterText: { fontSize: 9, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
   scoreText: { fontSize: 32, fontWeight: '800', fontFamily: 'Inter_800ExtraBold' },
   subText: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   dateText: { fontSize: 10, marginTop: 8, fontStyle: 'italic', fontFamily: 'Inter_400Regular' },

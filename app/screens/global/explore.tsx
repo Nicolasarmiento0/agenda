@@ -39,17 +39,13 @@ function getBizColor(id: string) {
 
 // Paleta curada para chips de categoría — evita el lime primario reservado para CTAs
 const CATEGORY_PALETTE = [
-  '#5C90D2', '#3D9E5A', '#F39C12', '#9B59B6',
-  '#1ABC9C', '#E67E22', '#E31937', '#2980B9',
-  '#8E44AD', '#27AE60', '#D35400', '#16A085',
+  '#4F46E5', '#EC4899', '#F97316', '#14B8A6',
+  '#EF4444', '#8B5CF6', '#EAB308', '#10B981',
+  '#06B6D4', '#84CC16', '#F43F5E', '#D946EF',
 ];
 
-function getCategoryColor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return CATEGORY_PALETTE[Math.abs(hash) % CATEGORY_PALETTE.length];
+function getCategoryColor(index: number) {
+  return CATEGORY_PALETTE[index % CATEGORY_PALETTE.length];
 }
 
 type Category = {
@@ -73,7 +69,41 @@ type Business = {
   closing_time?: string | null;
 };
 
+
 type RatingInfo = { avg: number; count: number };
+
+const getBusinessStatus = (openingTime?: string | null, closingTime?: string | null) => {
+  if (!openingTime || !closingTime) return null;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const parseTime = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+
+  const openMinutes = parseTime(openingTime);
+  const closeMinutes = parseTime(closingTime);
+
+  const effectiveClose = closeMinutes <= openMinutes ? closeMinutes + 24 * 60 : closeMinutes;
+  let effectiveCurrent = currentMinutes;
+
+  if (closeMinutes <= openMinutes && currentMinutes < openMinutes) {
+    effectiveCurrent += 24 * 60;
+  }
+
+  if (effectiveCurrent >= openMinutes && effectiveCurrent < effectiveClose) {
+    if (effectiveClose - effectiveCurrent <= 60) {
+      return { text: 'Cierra pronto', color: '#F59E0B' };
+    }
+    return { text: 'Abierto', color: '#10B981' };
+  } else {
+    if (openMinutes > effectiveCurrent && openMinutes - effectiveCurrent <= 60) {
+      return { text: 'Abre pronto', color: '#3B82F6' };
+    }
+    return { text: 'Cerrado', color: '#EF4444' };
+  }
+};
 
 export default function ExploreScreen() {
   const { colors, isDarkMode, toggleTheme } = useTheme();
@@ -235,9 +265,9 @@ export default function ExploreScreen() {
               </Text>
             </TouchableOpacity>
 
-            {parentCategories.map(cat => {
+            {parentCategories.map((cat, index) => {
               const active = selectedParentId === cat.id;
-              const catColor = getCategoryColor(cat.id);
+              const catColor = getCategoryColor(index);
               return (
                 <TouchableOpacity
                   key={cat.id}
@@ -273,7 +303,8 @@ export default function ExploreScreen() {
             >
               {subCategories.map(cat => {
                 const active = selectedSubId === cat.id;
-                const parentColor = selectedParentId ? getCategoryColor(selectedParentId) : appColors.primary;
+                const parentIdx = Math.max(0, parentCategories.findIndex(p => p.id === selectedParentId));
+                const parentColor = selectedParentId ? getCategoryColor(parentIdx) : appColors.primary;
                 return (
                   <TouchableOpacity
                     key={cat.id}
@@ -338,130 +369,139 @@ export default function ExploreScreen() {
           ) : (
             <View style={{ paddingHorizontal: H_PADDING, gap: 12 }}>
               {filtered.map(b => {
-                const bizColor = getBizColor(b.id);
-                const categoryName = categories.find(c => c.id === b.category_id)?.name;
+                const catIndex = categories.findIndex(c => c.id === b.category_id);
+                const bizColor = catIndex !== -1 ? getCategoryColor(catIndex) : getBizColor(b.id);
+                const categoryName = categories[catIndex]?.name;
                 const rating = ratingsMap[b.id];
+                const status = getBusinessStatus(b.opening_time, b.closing_time);
                 const hasBody = b.description || b.maps_url || b.instagram_url || b.opening_time || b.closing_time;
 
                 return (
                   <GlassCard key={b.id} style={styles.card}>
-                  <TouchableOpacity
-                    activeOpacity={0.72}
-                    onPress={() => handleSelectBusiness(b)}
-                  >
+                    <TouchableOpacity
+                      activeOpacity={0.72}
+                      onPress={() => handleSelectBusiness(b)}
+                    >
 
-                    {/* ── Cabecera: avatar + nombre + categoría + rating ── */}
-                    <View style={styles.cardHeader}>
-                      {/* Avatar */}
-                      {b.avatar_url ? (
-                        <Image
-                          source={{ uri: b.avatar_url }}
-                          style={[styles.avatarImg, { borderColor: bizColor + '50' }]}
-                        />
-                      ) : (
-                        <View style={[styles.avatarInitial, { backgroundColor: bizColor + '18', borderColor: bizColor + '35' }]}>
-                          <Text style={[styles.avatarInitialText, { color: bizColor }]}>
-                            {b.name.charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Info */}
-                      <View style={{ flex: 1, gap: 5 }}>
-                        <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={2}>
-                          {b.name}
-                        </Text>
-
-                        {categoryName ? (
-                          <View style={[styles.catPill, { backgroundColor: bizColor + '15', borderColor: bizColor + '30' }]}>
-                            <Text style={[styles.catPillText, { color: bizColor }]}>{categoryName}</Text>
-                          </View>
-                        ) : null}
-
-                        {/* Rating */}
-                        {rating ? (
-                          <View style={styles.ratingRow}>
-                            {[1, 2, 3, 4, 5].map(s => (
-                              <Ionicons
-                                key={s}
-                                name={s <= Math.round(rating.avg) ? 'star' : 'star-outline'}
-                                size={11}
-                                color={s <= Math.round(rating.avg)
-                                  ? '#F59E0B'
-                                  : (isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)')}
-                              />
-                            ))}
-                            <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
-                            <Text style={[styles.ratingCount, { color: colors.textSecondary }]}>
-                              ({rating.count})
+                      {/* ── Cabecera: avatar + nombre + categoría + rating ── */}
+                      <View style={styles.cardHeader}>
+                        {/* Avatar */}
+                        {b.avatar_url ? (
+                          <Image
+                            source={{ uri: b.avatar_url }}
+                            style={[styles.avatarImg, { borderColor: bizColor + '50' }]}
+                          />
+                        ) : (
+                          <View style={[styles.avatarInitial, { backgroundColor: bizColor + '18', borderColor: bizColor + '35' }]}>
+                            <Text style={[styles.avatarInitialText, { color: bizColor }]}>
+                              {b.name.charAt(0).toUpperCase()}
                             </Text>
                           </View>
-                        ) : (
-                          <Text style={[styles.noRating, { color: colors.textSecondary }]}>
-                            Aún sin valoración
-                          </Text>
                         )}
+
+                        {/* Info */}
+                        <View style={{ flex: 1, gap: 5 }}>
+                          <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={2}>
+                            {b.name}
+                          </Text>
+
+                          {categoryName ? (
+                            <View style={[styles.catPill, { backgroundColor: bizColor + '15', borderColor: bizColor + '30' }]}>
+                              <Text style={[styles.catPillText, { color: bizColor }]}>{categoryName}</Text>
+                            </View>
+                          ) : null}
+
+                          {status && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isDarkMode ? status.color + '20' : status.color + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' }} accessible={true} accessibilityLabel={`Estado: ${status.text}`}>
+                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: status.color }} />
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: status.color, letterSpacing: 0.5 }}>{status.text.toUpperCase()}</Text>
+                            </View>
+                          )}
+
+                          {/* Rating */}
+                          {rating ? (
+                            <View style={styles.ratingRow}>
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <Ionicons
+                                  key={s}
+                                  name={s <= Math.round(rating.avg) ? 'star' : 'star-outline'}
+                                  size={11}
+                                  color={s <= Math.round(rating.avg)
+                                    ? '#F59E0B'
+                                    : (isDarkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)')}
+                                />
+                              ))}
+                              <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
+                              <Text style={[styles.ratingCount, { color: colors.textSecondary }]}>
+                                ({rating.count})
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.noRating, { color: colors.textSecondary }]}>
+                              Aún sin valoración
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    </View>
 
-                    {/* ── Cuerpo: detalles ─────────────────────────────── */}
-                    {hasBody ? (
-                      <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
-                    ) : null}
+                      {/* ── Cuerpo: detalles ─────────────────────────────── */}
+                      {hasBody ? (
+                        <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+                      ) : null}
 
-                    {/* Acerca de */}
-                    {b.description ? (
-                      <View style={styles.bodyRow}>
-                        <Feather name="info" size={12} color={colors.textSecondary} style={{ marginTop: 1 }} />
-                        <Text style={[styles.bodyText, { color: colors.textSecondary }]} numberOfLines={3}>
-                          {b.description}
-                        </Text>
+                      {/* Acerca de */}
+                      {b.description ? (
+                        <View style={styles.bodyRow}>
+                          <Feather name="info" size={12} color={colors.textSecondary} style={{ marginTop: 1 }} />
+                          <Text style={[styles.bodyText, { color: colors.textSecondary }]} numberOfLines={3}>
+                            {b.description}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {/* Google Maps */}
+                      {b.maps_url ? (
+                        <TouchableOpacity
+                          style={styles.bodyRow}
+                          activeOpacity={0.7}
+                          onPress={e => { e.stopPropagation?.(); Linking.openURL(b.maps_url!); }}
+                        >
+                          <Feather name="map-pin" size={12} color={appColors.primary} />
+                          <Text style={[styles.linkText, { color: appColors.primary }]}>Ver en Google Maps</Text>
+                          <Feather name="external-link" size={11} color={appColors.primary} />
+                        </TouchableOpacity>
+                      ) : null}
+
+                      {/* Instagram */}
+                      {b.instagram_url ? (
+                        <TouchableOpacity
+                          style={styles.bodyRow}
+                          activeOpacity={0.7}
+                          onPress={e => { e.stopPropagation?.(); Linking.openURL(b.instagram_url!); }}
+                        >
+                          <Feather name="instagram" size={12} color="#0095F6" />
+                          <Text style={[styles.linkText, { color: '#0095F6' }]}>Instagram</Text>
+                          <Feather name="external-link" size={11} color="#0095F6" />
+                        </TouchableOpacity>
+                      ) : null}
+
+                      {/* Horario */}
+                      {(b.opening_time || b.closing_time) ? (
+                        <View style={styles.bodyRow}>
+                          <Feather name="clock" size={12} color={colors.textSecondary} />
+                          <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
+                            {b.opening_time?.substring(0, 5) ?? '--:--'}{' – '}{b.closing_time?.substring(0, 5) ?? '--:--'}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {/* ── CTA ──────────────────────────────────────────── */}
+                      <View style={styles.ctaRow}>
+                        <Text style={[styles.ctaText, { color: appColors.primary }]}>Ver perfil completo</Text>
+                        <Feather name="arrow-right" size={14} color={appColors.primary} />
                       </View>
-                    ) : null}
 
-                    {/* Google Maps */}
-                    {b.maps_url ? (
-                      <TouchableOpacity
-                        style={styles.bodyRow}
-                        activeOpacity={0.7}
-                        onPress={e => { e.stopPropagation?.(); Linking.openURL(b.maps_url!); }}
-                      >
-                        <Feather name="map-pin" size={12} color={appColors.primary} />
-                        <Text style={[styles.linkText, { color: appColors.primary }]}>Ver en Google Maps</Text>
-                        <Feather name="external-link" size={11} color={appColors.primary} />
-                      </TouchableOpacity>
-                    ) : null}
-
-                    {/* Instagram */}
-                    {b.instagram_url ? (
-                      <TouchableOpacity
-                        style={styles.bodyRow}
-                        activeOpacity={0.7}
-                        onPress={e => { e.stopPropagation?.(); Linking.openURL(b.instagram_url!); }}
-                      >
-                        <Feather name="instagram" size={12} color="#0095F6" />
-                        <Text style={[styles.linkText, { color: '#0095F6' }]}>Instagram</Text>
-                        <Feather name="external-link" size={11} color="#0095F6" />
-                      </TouchableOpacity>
-                    ) : null}
-
-                    {/* Horario */}
-                    {(b.opening_time || b.closing_time) ? (
-                      <View style={styles.bodyRow}>
-                        <Feather name="clock" size={12} color={colors.textSecondary} />
-                        <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
-                          {b.opening_time?.substring(0, 5) ?? '--:--'}{' – '}{b.closing_time?.substring(0, 5) ?? '--:--'}
-                        </Text>
-                      </View>
-                    ) : null}
-
-                    {/* ── CTA ──────────────────────────────────────────── */}
-                    <View style={styles.ctaRow}>
-                      <Text style={[styles.ctaText, { color: appColors.primary }]}>Ver perfil completo</Text>
-                      <Feather name="arrow-right" size={14} color={appColors.primary} />
-                    </View>
-
-                  </TouchableOpacity>
+                    </TouchableOpacity>
                   </GlassCard>
                 );
               })}

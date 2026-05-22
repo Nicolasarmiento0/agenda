@@ -4,12 +4,10 @@ import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
-  KeyboardAvoidingView,
   Modal,
-  PanResponder,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -19,9 +17,11 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
+import { LocaleConfig } from 'react-native-calendars';
+import AppointmentCard from '../../../../components/agenda/AppointmentCard';
+import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
+import AppointmentSheet from '../../../../components/agenda/AppointmentSheet';
 import Sidebar from '../../../../components/Sidebar';
-import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import WorkerAvatar from '../../../../components/WorkerAvatar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -29,9 +29,7 @@ import { useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
-import AppointmentCard from '../../../../components/agenda/AppointmentCard';
-import AppointmentSheet from '../../../../components/agenda/AppointmentSheet';
-import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
+import { getUnavailableBlocks } from '../../../utils/helpers';
 
 
 // Configuración de idioma para el calendario
@@ -74,6 +72,7 @@ type Worker = {
   initials: string;
   avatar_url: string | null;
   specialty: string;
+  blocks?: any[];
 };
 
 type Business = {
@@ -88,6 +87,7 @@ type Business = {
   booking_window_day?: number;
   booking_window_open_time?: string;
   booking_window_close_time?: string;
+  schedule?: any;
 };
 
 type GymMembership = {
@@ -355,6 +355,7 @@ export default function ClientAgendaScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | undefined>();
+  const [prefillData, setPrefillData] = useState<Appointment | undefined>();
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -377,6 +378,7 @@ export default function ClientAgendaScreen() {
         initials: w.name.substring(0, 2).toUpperCase(),
         avatar_url: w.profiles?.avatar_url ?? null,
         specialty: w.specialty || '',
+        blocks: w.blocks || [],
       })));
     }
   }, [business?.id]);
@@ -481,11 +483,31 @@ export default function ClientAgendaScreen() {
 
   const openSheet = useCallback((appt: Appointment) => {
     if (appt.service === 'BLOQUEO') return;
-    setSelectedAppt(appt);
-    setSheetVisible(true);
+    setFormVisible(true);
   }, []);
 
-  const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
+  const handleGridPress = (evt: any, workerId: string, workerName: string, workerColor: string, d: Date) => {
+    const y = evt.nativeEvent.locationY;
+    const clickedHourDecimal = startHour + (y / HOUR_HEIGHT);
+    const startH = Math.floor(clickedHourDecimal * 2) / 2;
+
+    setPrefillData({
+      id: '',
+      clientName: (profile as any)?.nickname || '',
+      service: '',
+      worker_id: workerId,
+      worker: workerName,
+      workerColor: workerColor,
+      startHour: startH,
+      durationHours: 1, // default 1 hour
+      status: 'pending',
+      date: toLocalISOString(d),
+    });
+    setEditingAppt(undefined);
+    setFormVisible(true);
+  };
+
+  const handleAction = useCallback(async (actionId: string, appt: Appointment) => {
     if (actionId === 'cancel') {
       if (appt.date) {
         const [y, m, d] = appt.date.split('-').map(Number);
@@ -549,6 +571,24 @@ export default function ClientAgendaScreen() {
           message: 'El profesional ya tiene una cita agendada en este horario. Por favor elige otro.'
         });
         return false;
+      }
+
+      // Validar contra bloques de horario no disponibles (cierres y bloqueos del trabajador)
+      const targetWorker = workers.find(w => w.id === data.worker_id);
+      if (targetWorker) {
+        const apptDate = new Date(dateStr + 'T00:00:00');
+        const unavBlocks = getUnavailableBlocks(apptDate, business, targetWorker, startHour, endHour);
+        const intersectsUnav = unavBlocks.some(b => {
+          const bEnd = b.start + b.duration;
+          return newStart < bEnd && newEnd > b.start;
+        });
+        if (intersectsUnav) {
+          showAlert({
+            title: 'Horario no disponible',
+            message: 'El horario seleccionado se cruza con un horario de cierre o bloqueo del trabajador.'
+          });
+          return false;
+        }
       }
 
       // ── Plan limit para clientes de gym (solo aplica a CLASE) ──
@@ -625,7 +665,11 @@ export default function ClientAgendaScreen() {
   const LABEL_WIDTH = 46;
   const PADDING = 16;
   const WORKERS = selectedWorkerFilter ? workers.filter(w => w.name === selectedWorkerFilter) : workers;
-  const colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / Math.max(WORKERS.length, 1));
+  let colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / Math.max(WORKERS.length, 1));
+  if (WORKERS.length > 3) {
+    colWidth = Math.floor((SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2) / 2.5); // scroll if > 3
+  }
+  const totalGridWidth = colWidth * WORKERS.length;
 
   const renderDayGrid = () => (
     <ScrollView
@@ -635,86 +679,111 @@ export default function ClientAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
-      <View style={[appStyles.ca_workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
-        {WORKERS.map(w => (
-          <View key={w.id} style={[appStyles.ca_workerCol, { flex: 1 }]}>
-            <WorkerAvatar
-              avatarUrl={w.avatar_url}
-              name={w.name}
-              color={w.color}
-              size={90}
-              showDot={true}
-            />
-            <Text style={[appStyles.ca_workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
-            {w.specialty ? (
-              <Text style={[appStyles.ca_workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
-            ) : null}
-          </View>
-        ))}
-      </View>
+      {/* Cabecera de columnas (trabajadores) - Solo visible en scroll interno si > 3 */}
+      {WORKERS.length <= 3 && (
+        <View style={[appStyles.ca_workerHeader, { paddingLeft: LABEL_WIDTH + PADDING, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+          {WORKERS.map(w => (
+            <View key={w.id} style={[appStyles.ca_workerCol, { width: colWidth }]}>
+              <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={40} showDot={true} />
+              <Text style={[appStyles.ca_workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+              {w.specialty ? (
+                <Text style={[appStyles.ca_workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Grid de tiempo */}
-      <View style={[appStyles.ca_grid, { paddingHorizontal: PADDING }]}>
-        {/* Líneas de hora */}
+      <View style={[appStyles.ca_grid, { paddingLeft: PADDING }]}>
+        {/* Horas Y Líneas base */}
         {hoursGrid.map(h => (
           <View key={h} style={[appStyles.ca_hourRow, { height: HOUR_HEIGHT }]}>
             <Text style={[appStyles.ca_hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
               {String(h).padStart(2, '0')}:00
             </Text>
-            <View style={[appStyles.ca_hourLine, { backgroundColor: colors.border }]} />
+            <View style={[appStyles.ca_hourLine, { backgroundColor: colors.border, right: PADDING }]} />
             <View style={{
-              position: 'absolute',
-              top: HOUR_HEIGHT / 2,
-              left: LABEL_WIDTH,
-              right: 0,
-              height: StyleSheet.hairlineWidth,
-              backgroundColor: colors.border,
-              opacity: 0.4,
+              position: 'absolute', top: HOUR_HEIGHT / 2, left: LABEL_WIDTH, right: PADDING, height: StyleSheet.hairlineWidth, backgroundColor: colors.border, opacity: 0.4
             }} />
           </View>
         ))}
 
-        {/* Columnas de citas por trabajador */}
-        <View style={[appStyles.ca_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
-          {WORKERS.map((w, wi) => (
-            <View
-              key={w.id}
-              style={[
-                appStyles.ca_workerColumn,
-                {
-                  width: colWidth,
-                  left: wi * colWidth,
-                  borderLeftColor: colors.border,
-                  borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0,
-                  height: (endHour - startHour) * HOUR_HEIGHT,
-                },
-              ]}
-            >
-              {filteredAppointments
-                .filter(a => a.worker === w.name && a.date === selectedDateStr
-                  && a.status !== 'completed' && a.status !== 'no-show')
-                .map(appt => (
-                  <AppointmentCard
-                    key={appt.id}
-                    appt={appt}
-                    columnWidth={colWidth}
-                    onPress={() => openSheet(appt)}
-                    colors={colors}
-                    isDarkMode={isDarkMode}
-                    startHour={startHour}
-                  />
-                ))}
+        {/* Scroll Horizontal para las columnas (solo si hay más de 3) */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[{ position: 'absolute', left: LABEL_WIDTH + PADDING, right: 0, top: 0, bottom: 0 }]} contentContainerStyle={{ width: Math.max(SCREEN_WIDTH - LABEL_WIDTH - PADDING * 2, totalGridWidth) }}>
+          {/* Header interno para cuando > 3 */}
+          {WORKERS.length > 3 && (
+            <View style={[appStyles.ca_workerHeader, { position: 'absolute', top: -85, left: 0, right: 0, zIndex: 10 }]}>
+              {WORKERS.map((w, wi) => (
+                <View key={w.id} style={[appStyles.ca_workerCol, { width: colWidth, left: wi * colWidth, position: 'absolute' }]}>
+                  <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={40} showDot={true} />
+                  <Text style={[appStyles.ca_workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+                  {w.specialty ? (
+                    <Text style={[appStyles.ca_workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+                  ) : null}
+                </View>
+              ))}
             </View>
-          ))}
+          )}
+          {WORKERS.map((w, wi) => {
+            const unavailableBlocks = getUnavailableBlocks(selectedDate, business, w, startHour, endHour);
+            return (
+              <Pressable
+                key={w.id}
+                onPress={(e) => handleGridPress(e, w.id, w.name, w.color, selectedDate)}
+                style={[appStyles.ca_workerColumn, { width: colWidth, left: wi * colWidth, borderLeftColor: colors.border, borderLeftWidth: wi > 0 ? StyleSheet.hairlineWidth : 0, height: (endHour - startHour) * HOUR_HEIGHT }]}
+              >
+                {unavailableBlocks.map((block, i) => {
+                  const isClosed = block.title === 'No disponible';
+                  return (
+                    <View
+                      key={`unav-${i}`}
+                      style={{
+                        position: 'absolute',
+                        top: (block.start - startHour) * HOUR_HEIGHT,
+                        height: block.duration * HOUR_HEIGHT,
+                        width: colWidth - 8,
+                        left: 4,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        borderStyle: 'dashed',
+                        borderRadius: 12,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {block.duration >= 1 ? (
+                        <View style={{ alignItems: 'center', gap: 6, opacity: 0.6 }}>
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={18} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1 }}>
+                            {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Feather name={isClosed ? 'lock' : 'coffee'} size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      )}
+                    </View>
+                  );
+                })}
 
-          {/* Línea "ahora" */}
+                {filteredAppointments
+                  .filter(a => a.worker === w.name && a.date === selectedDateStr && a.status !== 'completed' && a.status !== 'no-show')
+                  .map(appt => (
+                    <AppointmentCard key={appt.id} appt={appt} columnWidth={colWidth} onPress={() => openSheet(appt)} colors={colors} isDarkMode={isDarkMode} startHour={startHour} />
+                  ))}
+              </Pressable>
+            );
+          })}
           {nowPosition !== null && (
-            <View style={[appStyles.ca_nowLine, { top: nowPosition, width: WORKERS.length * colWidth }]}>
+            <View style={[appStyles.ca_nowLine, { top: nowPosition, width: totalGridWidth }]}>
               <View style={appStyles.ca_nowDot} />
               <View style={[appStyles.ca_nowBar, { backgroundColor: appColors.primary }]} />
             </View>
           )}
-        </View>
+        </ScrollView>
       </View>
     </ScrollView>
   );
@@ -771,9 +840,13 @@ export default function ClientAgendaScreen() {
         <View style={[appStyles.ca_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {weekDays.map((d, di) => {
             const dateStr = toLocalISOString(d);
+            const w = WORKERS.length > 0 ? WORKERS[0] : null;
+            const unavailableBlocks = w ? getUnavailableBlocks(d, business, w, startHour, endHour) : [];
+
             return (
-              <View
+              <Pressable
                 key={di}
+                onPress={(e) => handleGridPress(e, w ? w.id : '', w ? w.name : '', w ? w.color : '', d)}
                 style={[
                   appStyles.ca_workerColumn,
                   {
@@ -786,6 +859,42 @@ export default function ClientAgendaScreen() {
                   },
                 ]}
               >
+                {unavailableBlocks.map((block, i) => {
+                  const isClosed = block.title === 'No disponible';
+                  return (
+                    <View
+                      key={`unav-${i}`}
+                      style={{
+                        position: 'absolute',
+                        top: (block.start - startHour) * HOUR_HEIGHT,
+                        height: block.duration * HOUR_HEIGHT,
+                        width: weekColWidth - 4,
+                        left: 2,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                        borderStyle: 'dashed',
+                        borderRadius: 8,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {block.duration >= 1 ? (
+                        <View style={{ alignItems: 'center', gap: 4, opacity: 0.6 }}>
+                          <Feather name={isClosed ? 'lock' : 'coffee'} size={12} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 8, color: colors.textSecondary, fontWeight: '700', letterSpacing: 0.5 }}>
+                            {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Feather name={isClosed ? 'lock' : 'coffee'} size={10} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      )}
+                    </View>
+                  );
+                })}
+
                 {filteredAppointments
                   .filter(a => a.date === dateStr
                     && a.status !== 'completed' && a.status !== 'no-show')
@@ -800,7 +909,7 @@ export default function ClientAgendaScreen() {
                       startHour={startHour}
                     />
                   ))}
-              </View>
+              </Pressable>
             );
           })}
           {nowPosition !== null && (
@@ -1104,7 +1213,7 @@ export default function ClientAgendaScreen() {
       <AppointmentFormModal
         visible={formVisible}
         role="client"
-        initialData={editingAppt}
+        initialData={editingAppt || prefillData}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
         businessId={business?.id || ''}
@@ -1122,7 +1231,7 @@ export default function ClientAgendaScreen() {
         appt={selectedAppt}
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
-        onAction={handleSheetAction}
+        onAction={handleAction}
         colors={colors}
         isDarkMode={isDarkMode}
       />
