@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import CompanyEmployeeFormModal from '../../../../components/company/CompanyEmployeeFormModal';
 import CompanyEmployeeSheet, { Employee } from '../../../../components/company/CompanyEmployeeSheet';
@@ -19,7 +20,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseAnonKey, supabaseUrl } from '../../../../lib/supabase';
-import { appColors } from '../../../../styles/appStyles';
+import { appColors, appStyles } from '../../../../styles/appStyles';
 
 const PALETTE = ['#D00024', '#3B7BE0', '#3D9E5A', '#F0A030', '#8A2BE2', '#E24B4A'];
 
@@ -53,7 +54,7 @@ export default function CompanyEmployeesScreen() {
     if (!business?.id) return;
     const { data, error } = await supabase
       .from('workers')
-      .select('*')
+      .select('*, profiles(avatar_url)')
       .eq('business_id', business.id)
       .order('created_at', { ascending: true });
 
@@ -70,6 +71,7 @@ export default function CompanyEmployeesScreen() {
       availableDays: w.available_days || [],
       email: w.email || '',
       user_id: w.user_id,
+      avatar_url: w.profiles?.avatar_url || null,
     })));
   }, [business?.id]);
 
@@ -167,7 +169,7 @@ export default function CompanyEmployeesScreen() {
   }, [editingEmp, business?.id, fetchEmployees]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader title="EMPLEADOS" onLeft={() => setSidebarVisible(true)} />
 
       <ScrollView
@@ -177,7 +179,7 @@ export default function CompanyEmployeesScreen() {
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={{ marginBottom: 20 }}>
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.addButton, { borderColor: appColors.primary }]}
@@ -217,7 +219,11 @@ export default function CompanyEmployeesScreen() {
                   onPress={() => openSheet(emp)}
                 >
                   <View style={[styles.avatar, { backgroundColor: emp.color + '20', borderColor: emp.color }]}>
-                    <Text style={[styles.avatarText, { color: emp.color }]}>{emp.initials}</Text>
+                    {emp.avatar_url ? (
+                      <Image source={{ uri: emp.avatar_url }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+                    ) : (
+                      <Text style={[styles.avatarText, { color: emp.color }]}>{emp.initials}</Text>
+                    )}
                   </View>
                   <View style={styles.employeeInfo}>
                     <Text style={[styles.employeeName, { color: colors.textPrimary }]}>{emp.name}</Text>
@@ -263,7 +269,6 @@ export default function CompanyEmployeesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -279,7 +284,6 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 16,
     marginBottom: 24,
   },
   statCard: {
@@ -292,7 +296,7 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 22, fontWeight: '700', letterSpacing: 1, fontFamily: 'Inter_700Bold' },
   statLabel: { fontSize: 9, letterSpacing: 2, fontFamily: 'Inter_400Regular' },
-  listContainer: { paddingHorizontal: 16, gap: 12 },
+  listContainer: { gap: 12 },
   employeeCard: {
     flexDirection: 'row',
     alignItems: 'center',

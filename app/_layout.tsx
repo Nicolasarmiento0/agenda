@@ -10,6 +10,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, Linking, Platform, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TeslaAlert from '../components/TeslaAlert';
 import { AlertProvider, useAlert } from '../context/AlertContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -124,6 +125,7 @@ export default function RootLayout() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider>
       <AlertProvider>
         <BusinessProvider>
@@ -176,5 +178,6 @@ export default function RootLayout() {
         </BusinessProvider>
       </AlertProvider>
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

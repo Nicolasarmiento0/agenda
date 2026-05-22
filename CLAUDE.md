@@ -8,7 +8,6 @@ Antes de cualquier tarea de desarrollo, lee y aplica el rol definido en
 Ese archivo define:
 - Filosofía de arquitectura (Bootstrap, $0, Multi-Tenant)
 - Stack tecnológico (Expo + Supabase + Zustand + TanStack Query)
-- Sistema de diseño (Tesla + Liquid Glass, dark-first, rojo #E31937)
 - Reglas de código limpio y formato de respuesta
 
 ---

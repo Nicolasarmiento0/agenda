@@ -79,6 +79,74 @@ export default function CompanyMembersScreen() {
   const [chosenPlan, setChosenPlan] = useState<'basic' | 'premium' | 'vip'>('basic');
   const [saving, setSaving] = useState(false);
 
+  // Stats Modal
+  const [selectedMemberStats, setSelectedMemberStats] = useState<Member | null>(null);
+  const [memberStats, setMemberStats] = useState({ weeklyUsed: 0, completed: 0, noShow: 0, pending: 0, total: 0 });
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  const fetchMemberStats = async (mem: Member) => {
+    if (!business?.id) return;
+    setLoadingStats(true);
+    const today = new Date();
+    
+    // Weekly
+    const d = new Date(today);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    const tzOffset = today.getTimezoneOffset() * 60000;
+    const toLocalISOString = (dt: Date) => new Date(dt.getTime() - tzOffset).toISOString().split('T')[0];
+    
+    const weekStart = toLocalISOString(monday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const weekEnd = toLocalISOString(sunday);
+
+    const { count: weekCount } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .eq('client_id', mem.client_id)
+      .eq('service', 'CLASE')
+      .gte('date', weekStart)
+      .lte('date', weekEnd)
+      .in('status', ['confirmed', 'pending']);
+
+    // Monthly
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const monthStart = `${y}-${m}-01`;
+    const nextMonth = new Date(y, today.getMonth() + 1, 1);
+    const monthEnd = toLocalISOString(new Date(nextMonth.getTime() - 86400000));
+
+    const { data: monthAppts } = await supabase
+      .from('appointments')
+      .select('id, status')
+      .eq('business_id', business.id)
+      .eq('client_id', mem.client_id)
+      .eq('service', 'CLASE')
+      .gte('date', monthStart)
+      .lte('date', monthEnd);
+
+    let completed = 0, noShow = 0, pending = 0;
+    if (monthAppts) {
+      monthAppts.forEach(a => {
+        if (a.status === 'completed') completed++;
+        if (a.status === 'no-show') noShow++;
+        if (a.status === 'confirmed' || a.status === 'pending') pending++;
+      });
+    }
+
+    setMemberStats({
+      weeklyUsed: weekCount ?? 0,
+      completed,
+      noShow,
+      pending,
+      total: monthAppts?.length ?? 0
+    });
+    setLoadingStats(false);
+  };
+
   const fetchData = useCallback(async () => {
     if (!business?.id) { setLoading(false); setRefreshing(false); return; }
 
@@ -288,7 +356,15 @@ export default function CompanyMembersScreen() {
               </View>
             )}
             {members.map(mem => (
-              <View key={mem.id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity
+                key={mem.id}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedMemberStats(mem);
+                  fetchMemberStats(mem);
+                }}
+                style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
                 <View style={styles.cardHeader}>
                   <WorkerAvatar name={mem.profiles?.nickname ?? '?'} avatarUrl={mem.profiles?.avatar_url ?? null} color={appColors.primary} size={44} />
                   <View style={{ flex: 1 }}>
@@ -323,7 +399,7 @@ export default function CompanyMembersScreen() {
                     <Text style={[styles.actionBtnText, { color: appColors.primary }]}>Editar plan</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </>
         )}
@@ -416,6 +492,71 @@ export default function CompanyMembersScreen() {
                         </Text>}
                     </TouchableOpacity>
                   </View>
+                </View>
+              </BlurView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Modal: Detalles y Estadísticas del Miembro ────────────── */}
+      <Modal visible={selectedMemberStats !== null} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setSelectedMemberStats(null)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={{ borderRadius: 20, overflow: 'hidden' }}>
+                <View style={[styles.modalContent, {
+                  backgroundColor: isDarkMode ? glassColors.sheetDark : glassColors.sheetModalLight,
+                  borderColor: colors.border,
+                }]}>
+                  {selectedMemberStats && (
+                    <>
+                      <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Estadísticas</Text>
+                      <Text style={[styles.modalSub, { color: colors.textSecondary }]}>{selectedMemberStats.profiles?.nickname}</Text>
+
+                      {loadingStats ? (
+                        <ActivityIndicator size="large" color={appColors.primary} style={{ marginVertical: 30 }} />
+                      ) : (
+                        <View style={{ gap: 16 }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+                            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Clases esta semana</Text>
+                            <Text style={{ color: appColors.primary, fontWeight: '800' }}>{memberStats.weeklyUsed} / {PLAN_LABELS[selectedMemberStats.plan]?.match(/\d+/)?.[0] ?? 1}</Text>
+                          </View>
+                          
+                          <View>
+                            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>MES ACTUAL</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                              <View style={{ flex: 1, minWidth: '45%', padding: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+                                <Text style={{ color: '#10B981', fontSize: 20, fontWeight: '800' }}>{memberStats.completed}</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>Asistidas</Text>
+                              </View>
+                              <View style={{ flex: 1, minWidth: '45%', padding: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+                                <Text style={{ color: '#EF4444', fontSize: 20, fontWeight: '800' }}>{memberStats.noShow}</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>No-shows</Text>
+                              </View>
+                              <View style={{ flex: 1, minWidth: '45%', padding: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+                                <Text style={{ color: '#3B82F6', fontSize: 20, fontWeight: '800' }}>{memberStats.pending}</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>Agendadas</Text>
+                              </View>
+                              <View style={{ flex: 1, minWidth: '45%', padding: 12, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+                                <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{memberStats.total}</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>Totales</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      )}
+
+                      <View style={[styles.optionRow, { marginTop: 24 }]}>
+                        <TouchableOpacity
+                          style={[styles.modalBtn, { borderColor: colors.border, flex: 1 }]}
+                          onPress={() => setSelectedMemberStats(null)}
+                        >
+                          <Text style={[{ color: colors.textPrimary, textAlign: 'center', fontWeight: '600' }]}>Cerrar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </View>
               </BlurView>
             </TouchableWithoutFeedback>

@@ -1,0 +1,3 @@
+** Futuras soluciones
+
+VER Ingresos totales, de company y worker. Solo se deben sumar las citas marcadas como completadas. SUMAR MENSUALMENTE LAS CITAS MARCADAS EN EL MES, luego al cambiar de mes se reinicia el contador de ingresos, no olvidar este punto. Esta logica aplica para la vista semanal y diaria. Debes guardar el historial de lo que se genero en el tiempo pasado, mes pasado o años. Aqui actuas como un CRM y la app sube de nivel. si debes crear nuevas screens hazlo pero recuerda mantener escalable la app.

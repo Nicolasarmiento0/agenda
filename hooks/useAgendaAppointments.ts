@@ -22,11 +22,12 @@ export function useAgendaAppointments(
   const [loading, setLoading] = useState(false);
 
   const refetch = useCallback(async () => {
-    if (!businessId || !weekDays[0] || !weekDays[6]) return;
+    const lastDay = weekDays[weekDays.length - 1];
+    if (!businessId || !weekDays[0] || !lastDay) return;
     setLoading(true);
 
     const startStr = toLocalISOString(weekDays[0]);
-    const endStr   = toLocalISOString(weekDays[6]);
+    const endStr   = toLocalISOString(lastDay);
 
     let query = supabase
       .from('appointments')

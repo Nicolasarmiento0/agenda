@@ -1,16 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Appointment, WorkerRow } from '../../constants/appointments';
@@ -71,6 +73,7 @@ export default function AppointmentFormModal({
   colors,
 }: Props) {
   const { isDarkMode } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   const [clientName, setClientName] = useState('');
   const [service, setService] = useState('');
   const [workerId, setWorkerId] = useState('');
@@ -84,6 +87,7 @@ export default function AppointmentFormModal({
   const [isBlocking, setIsBlocking] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [notes, setNotes] = useState('');
+  const [pickerScrollEnabled, setPickerScrollEnabled] = useState(true);
   const formScrollRef = useRef<ScrollView>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [services, setServices] = useState<any[]>([]);
@@ -362,6 +366,8 @@ export default function AppointmentFormModal({
   const todayStr = toLocalISOString(new Date());
   const sheetBg = isDarkMode ? glassColors.sheetDark : glassColors.sheetLight;
   const sheetBorder = isDarkMode ? glassColors.borderDarkSubtle : glassColors.borderLightSubtle;
+  const SHEET_MAX_HEIGHT = Math.min(screenHeight * 0.78, 660);
+  const SCROLL_MAX_HEIGHT = SHEET_MAX_HEIGHT - 20;
 
   const modalTitle = (() => {
     if (isRescheduling) return 'Reprogramar cita';
@@ -378,6 +384,7 @@ export default function AppointmentFormModal({
     <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={[styles.overlay, { justifyContent: 'flex-end', padding: 0 }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
 
           {showSuccess && (
             <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', zIndex: 10 }]}>
@@ -398,7 +405,7 @@ export default function AppointmentFormModal({
             </View>
           )}
 
-          <View style={[styles.sheet, { overflow: 'hidden' }]}>
+          <View style={[styles.sheet, { overflow: 'hidden', maxHeight: SHEET_MAX_HEIGHT }]}>
             <BlurView
               intensity={isDarkMode ? 65 : 85}
               tint={isDarkMode ? 'dark' : 'light'}
@@ -416,8 +423,10 @@ export default function AppointmentFormModal({
 
             <ScrollView
               ref={formScrollRef}
+              style={{ maxHeight: SCROLL_MAX_HEIGHT }}
+              scrollEnabled={pickerScrollEnabled}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 40 }}
+              contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 48 : 32 }}
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled
             >
@@ -561,9 +570,9 @@ export default function AppointmentFormModal({
 
               <View
                 style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}
-                onTouchStart={() => formScrollRef.current?.setNativeProps({ scrollEnabled: false })}
-                onTouchEnd={() => setTimeout(() => formScrollRef.current?.setNativeProps({ scrollEnabled: true }), 600)}
-                onTouchCancel={() => formScrollRef.current?.setNativeProps({ scrollEnabled: true })}
+                onTouchStart={() => setPickerScrollEnabled(false)}
+                onTouchEnd={() => setTimeout(() => setPickerScrollEnabled(true), 600)}
+                onTouchCancel={() => setPickerScrollEnabled(true)}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 4 }]}>DESDE</Text>
@@ -641,8 +650,6 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    minHeight: 400,
-    paddingBottom: 30,
   },
   handle: {
     width: 36,

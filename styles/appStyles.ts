@@ -316,12 +316,13 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   ca_iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -351,22 +352,22 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    marginBottom: 10,
+    marginBottom: 4,
   },
   ca_navBtn: {
-    padding: 8,
+    padding: 12,
   },
   ca_dateLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0.3,
   },
 
   // Filters
   ca_workerFilters: {
-    maxHeight: 40,
-    minHeight: 40,
-    marginBottom: 10,
+    maxHeight: 32,
+    minHeight: 32,
+    marginBottom: 4,
   },
   ca_workerFiltersContent: {
     paddingHorizontal: 16,
@@ -375,13 +376,13 @@ export const appStyles = StyleSheet.create({
   },
   ca_filterChip: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#444',
   },
   ca_filterChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     fontFamily: 'Inter_500Medium',
   },
@@ -391,7 +392,7 @@ export const appStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 4,
   },
   ca_statCard: {
     flex: 1,
@@ -419,12 +420,12 @@ export const appStyles = StyleSheet.create({
   // Worker header
   ca_workerHeader: {
     flexDirection: 'row',
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingTop: 6,
+    paddingBottom: 6,
   },
   ca_workerCol: {
     alignItems: 'center',
-    gap: 5,
+    gap: 3,
   },
   ca_workerAvatarWrapper: {
     position: 'relative',
@@ -453,12 +454,12 @@ export const appStyles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   ca_workerName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
   ca_workerSpecialty: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '400',
     letterSpacing: 0.2,
   },
@@ -744,7 +745,7 @@ export const appStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   ca_businessHeaderLabel: {
@@ -851,7 +852,7 @@ export const appStyles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     marginBottom: 8,
-    paddingVertical: 10,
+    paddingVertical: 6,
     paddingHorizontal: 16,
     borderRadius: 12,
   },
@@ -891,7 +892,8 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 6,
+    minHeight: 44,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   ca_gymClassesLabel: {
@@ -1263,12 +1265,13 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   wa_iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1298,22 +1301,22 @@ export const appStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    marginBottom: 10,
+    marginBottom: 4,
   },
   wa_navBtn: {
-    padding: 8,
+    padding: 12,
   },
   wa_dateLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0.3,
   },
 
   // Filters
   wa_workerFilters: {
-    maxHeight: 40,
-    minHeight: 40,
-    marginBottom: 10,
+    maxHeight: 32,
+    minHeight: 32,
+    marginBottom: 4,
   },
   wa_workerFiltersContent: {
     paddingHorizontal: 16,
@@ -1322,13 +1325,13 @@ export const appStyles = StyleSheet.create({
   },
   wa_filterChip: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#444',
   },
   wa_filterChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     fontFamily: 'Inter_500Medium',
   },
@@ -1338,7 +1341,7 @@ export const appStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 4,
   },
   wa_statCard: {
     flex: 1,
@@ -1366,12 +1369,12 @@ export const appStyles = StyleSheet.create({
   // Worker header
   wa_workerHeader: {
     flexDirection: 'row',
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
   },
   wa_workerCol: {
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   wa_workerAvatarWrapper: {
     position: 'relative',
