@@ -20,10 +20,24 @@ import { useTheme } from '../../context/ThemeContext';
 import TimeWheelPicker from '../TimeWheelPicker';
 import { toLocalISOString } from './agendaHelpers';
 
+type Role = 'company' | 'worker' | 'client';
 type Colors = { textPrimary: string; textSecondary: string; border: string };
+
+const DEFAULT_SERVICES = [
+  { id: 'p1', name: 'Servicio 1', price: 0 },
+  { id: 'p2', name: 'Servicio 2', price: 0 },
+  { id: 'p3', name: 'Servicio 3', price: 0 },
+];
+
+const GYM_SERVICES = [
+  { id: 'g1', name: 'CLASE', price: 0 },
+  { id: 'g2', name: 'Taller Extraprogramático', price: 0 },
+  { id: 'g3', name: 'Evaluación', price: 0 },
+];
 
 type Props = {
   visible: boolean;
+  role: Role;
   initialData?: Appointment;
   isRescheduling?: boolean;
   onClose: () => void;
@@ -34,12 +48,14 @@ type Props = {
   openingHour: number;
   closingHour: number;
   allowBlocking?: boolean;
+  isGym?: boolean;
   showAlert: (opts: { title: string; message: string }) => void;
   colors: Colors;
 };
 
 export default function AppointmentFormModal({
   visible,
+  role,
   initialData,
   isRescheduling,
   onClose,
@@ -50,6 +66,7 @@ export default function AppointmentFormModal({
   openingHour,
   closingHour,
   allowBlocking = true,
+  isGym = false,
   showAlert,
   colors,
 }: Props) {
@@ -71,9 +88,16 @@ export default function AppointmentFormModal({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [services, setServices] = useState<any[]>([]);
 
+  const canBlock = role !== 'client' && allowBlocking;
+  const showClientName = role !== 'client';
+
   useEffect(() => {
+    if (!visible || !businessId) return;
+    if (isGym) {
+      setServices(GYM_SERVICES);
+      return;
+    }
     const fetchServices = async () => {
-      if (!visible || !businessId) return;
       try {
         const { data: bizServices, error: bizError } = await supabase
           .from('business_services')
@@ -83,34 +107,34 @@ export default function AppointmentFormModal({
 
         if (!bizError && bizServices && bizServices.length > 0) {
           setServices(bizServices);
-        } else {
-          const { data: bizData } = await supabase
-            .from('businesses')
-            .select('category_id')
-            .eq('id', businessId)
-            .single();
+          return;
+        }
 
-          if (bizData?.category_id) {
-            const { data: catServices } = await supabase
-              .from('catalog_services')
-              .select('name')
-              .eq('category_id', bizData.category_id);
+        const { data: bizData } = await supabase
+          .from('businesses')
+          .select('category_id')
+          .eq('id', businessId)
+          .single();
 
-            if (catServices && catServices.length > 0) {
-              setServices(catServices.map((s: { name: string }) => ({ id: s.name, name: s.name, price: 0 })));
-            } else {
-              setServices(DEFAULT_SERVICES);
-            }
-          } else {
-            setServices(DEFAULT_SERVICES);
+        if (bizData?.category_id) {
+          const { data: catServices } = await supabase
+            .from('catalog_services')
+            .select('name')
+            .eq('category_id', bizData.category_id);
+
+          if (catServices && catServices.length > 0) {
+            setServices(catServices.map((s: { name: string }) => ({ id: s.name, name: s.name, price: 0 })));
+            return;
           }
         }
+
+        setServices(DEFAULT_SERVICES);
       } catch {
         setServices(DEFAULT_SERVICES);
       }
     };
     fetchServices();
-  }, [visible, businessId]);
+  }, [visible, businessId, isGym]);
 
   useEffect(() => {
     if (visible) {
@@ -168,34 +192,128 @@ export default function AppointmentFormModal({
       });
   }, [workerId, dateText, businessId, initialData?.id]);
 
-  const isPastSlot = useCallback((slot: string, today: string, date: string) => {
-    if (date !== today) return false;
-    const [hh, mm] = slot.split(':').map(Number);
-    const slotHour = hh + mm / 60;
+  const validateRoleRules = useCallback((
+    startHour: number,
+    endHourCalc: number,
+    durationHours: number,
+    dateText: string,
+  ): boolean => {
     const now = new Date();
-    return slotHour < (now.getHours() + now.getMinutes() / 60);
-  }, []);
+    const todayStr = toLocalISOString(now);
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = toLocalISOString(tomorrow);
+    const isFirstBlock = Math.abs(startHour - openingHour) <= 0.25;
+
+    if (role === 'worker') {
+      if (dateText === todayStr && startHour <= currentHour + 1) {
+        showAlert({ title: 'Hora inválida', message: 'Debes agendar con al menos 1 hora de anticipación.' });
+        return false;
+      }
+      if (durationHours > 5) {
+        showAlert({ title: 'Hora inválida', message: 'Las citas no pueden durar más de 5 horas.' });
+        return false;
+      }
+      if (isFirstBlock) {
+        if (dateText === todayStr) {
+          showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+          return false;
+        }
+        if (dateText === tomorrowStr && currentHour >= 22) {
+          showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+          return false;
+        }
+      }
+    }
+
+    if (role === 'client') {
+      const [yStr, mStr, dStr] = dateText.split('-');
+      const [hhStr, mmStr] = (selectedSlot ?? '00:00').split(':');
+      const apptDateTime = new Date(
+        parseInt(yStr, 10),
+        parseInt(mStr, 10) - 1,
+        parseInt(dStr, 10),
+        parseInt(hhStr, 10),
+        parseInt(mmStr || '0', 10),
+        0,
+      );
+      const diffHours = (apptDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (diffHours < 2) {
+        showAlert({ title: 'Reserva no permitida', message: 'Debes reservar con al menos 2 horas de anticipación.' });
+        return false;
+      }
+      if (isFirstBlock) {
+        if (dateText === todayStr) {
+          showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+          return false;
+        }
+        if (dateText === tomorrowStr && currentHour >= 22) {
+          showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
+          return false;
+        }
+      }
+    }
+
+    if (startHour < openingHour || endHourCalc > closingHour) {
+      showAlert({
+        title: 'Fuera de horario',
+        message: `La cita debe estar dentro del horario de atención (${String(openingHour).padStart(2, '0')}:00 a ${String(closingHour).padStart(2, '0')}:00).`,
+      });
+      return false;
+    }
+
+    return true;
+  }, [role, openingHour, closingHour, selectedSlot, showAlert]);
 
   const handleSave = async () => {
     if (loading) return;
+
     if (!isBlocking) {
-      if (!clientName.trim()) { showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' }); return; }
-      if (!service.trim()) { showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' }); return; }
+      if (showClientName && !clientName.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el nombre del cliente.' });
+        return;
+      }
+      if (!service.trim()) {
+        showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio a realizar.' });
+        return;
+      }
     }
-    if (!workerId) { showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' }); return; }
-    if (!dateText.trim()) { showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' }); return; }
-    if (!selectedSlot) { showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de inicio.' }); return; }
-    if (!endSlot) { showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de fin.' }); return; }
+    if (!workerId) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
+      return;
+    }
+    if (!dateText.trim()) {
+      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
+      return;
+    }
+    if (!selectedSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de inicio.' });
+      return;
+    }
+    if (!endSlot) {
+      showAlert({ title: 'Hora requerida', message: 'Por favor selecciona la hora de fin.' });
+      return;
+    }
 
     const [hhStr, mmStr] = selectedSlot.split(':');
     const startHour = parseInt(hhStr, 10) + parseInt(mmStr || '0', 10) / 60;
     const [ehStr, emStr] = endSlot.split(':');
     const endHourCalc = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
+    const durationHours = endHourCalc - startHour;
 
-    if (endHourCalc <= startHour) { showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' }); return; }
+    if (durationHours <= 0) {
+      showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
+      return;
+    }
 
     const todayStr = toLocalISOString(new Date());
-    if (dateText < todayStr) { showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' }); return; }
+    if (dateText < todayStr) {
+      showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
+      return;
+    }
+
+    if (!validateRoleRules(startHour, endHourCalc, durationHours, dateText)) return;
 
     setLoading(true);
     const selectedServiceObj = services.find((s: { name: string }) => s.name === (service || 'Servicio'));
@@ -206,7 +324,7 @@ export default function AppointmentFormModal({
       service: isBlocking ? 'BLOQUEO' : service,
       worker_id: workerId,
       startHour,
-      durationHours: endHourCalc - startHour,
+      durationHours,
       date: dateText,
       price,
       notes: notes.trim() || undefined,
@@ -218,9 +336,6 @@ export default function AppointmentFormModal({
       setTimeout(() => { setShowSuccess(false); onClose(); }, 1400);
     }
   };
-
-  // isPastSlot used for validation — kept in scope
-  void isPastSlot;
 
   if (!visible) return null;
 
@@ -248,6 +363,17 @@ export default function AppointmentFormModal({
   const sheetBg = isDarkMode ? glassColors.sheetDark : glassColors.sheetLight;
   const sheetBorder = isDarkMode ? glassColors.borderDarkSubtle : glassColors.borderLightSubtle;
 
+  const modalTitle = (() => {
+    if (isRescheduling) return 'Reprogramar cita';
+    if (initialData) return 'Editar cita';
+    if (isBlocking) return 'Bloquear horario';
+    if (role === 'client') return 'Solicitar cita';
+    return 'Nueva cita';
+  })();
+
+  const notesLabel = role === 'client' ? 'MENSAJE PARA EL NEGOCIO (OPCIONAL)' : 'NOTAS INTERNAS (OPCIONAL)';
+  const notesPlaceholder = role === 'client' ? 'Agrega información adicional...' : 'Notas para el equipo...';
+
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -266,7 +392,7 @@ export default function AppointmentFormModal({
                 <Feather name="check-circle" size={52} color="#3D9E5A" />
                 <Text style={[styles.successTitle, { color: colors.textPrimary }]}>¡Listo!</Text>
                 <Text style={[styles.successSub, { color: colors.textSecondary }]}>
-                  {isBlocking ? 'Horario bloqueado' : 'Cita agendada'}
+                  {isBlocking ? 'Horario bloqueado' : role === 'client' ? 'Cita solicitada' : 'Cita agendada'}
                 </Text>
               </View>
             </View>
@@ -296,16 +422,14 @@ export default function AppointmentFormModal({
               nestedScrollEnabled
             >
               <View style={styles.formHeader}>
-                <Text style={[styles.formTitle, { color: colors.textPrimary }]}>
-                  {isRescheduling ? 'Reprogramar cita' : initialData ? 'Editar cita' : isBlocking ? 'Bloquear horario' : 'Nueva cita'}
-                </Text>
+                <Text style={[styles.formTitle, { color: colors.textPrimary }]}>{modalTitle}</Text>
                 <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeBtn}>
                   <Feather name="x" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              {/* Toggle bloqueo — solo si allowBlocking y es nueva cita */}
-              {allowBlocking && !initialData && (
+              {/* Toggle bloqueo — solo company/worker en cita nueva */}
+              {canBlock && !initialData && (
                 <TouchableOpacity
                   onPress={() => { setIsBlocking(!isBlocking); setClientName(''); }}
                   style={[styles.blockToggle, {
@@ -326,17 +450,22 @@ export default function AppointmentFormModal({
                 </TouchableOpacity>
               )}
 
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {isBlocking ? 'RAZÓN (OPCIONAL)' : 'CLIENTE'}
-              </Text>
-              <TextInput
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                style={[inputStyle, { color: colors.textPrimary, justifyContent: 'flex-start' } as any]}
-                value={clientName}
-                onChangeText={setClientName}
-                placeholderTextColor={isDarkMode ? glassColors.placeholderDark : glassColors.placeholderLight}
-                placeholder={isBlocking ? 'Ej: Colación, Descanso...' : 'Nombre del cliente'}
-              />
+              {/* Nombre del cliente — visible para company y worker */}
+              {showClientName && (
+                <>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    {isBlocking ? 'RAZÓN (OPCIONAL)' : 'CLIENTE'}
+                  </Text>
+                  <TextInput
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    style={[inputStyle, { color: colors.textPrimary, justifyContent: 'flex-start' } as any]}
+                    value={clientName}
+                    onChangeText={setClientName}
+                    placeholderTextColor={isDarkMode ? glassColors.placeholderDark : glassColors.placeholderLight}
+                    placeholder={isBlocking ? 'Ej: Colación, Descanso...' : 'Nombre del cliente'}
+                  />
+                </>
+              )}
 
               {!isBlocking && (
                 <>
@@ -464,16 +593,17 @@ export default function AppointmentFormModal({
 
               {!isBlocking && (
                 <>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>NOTAS INTERNAS (OPCIONAL)</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>{notesLabel}</Text>
                   <TextInput
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     style={[inputStyle, { color: colors.textPrimary, justifyContent: 'flex-start', minHeight: 72, textAlignVertical: 'top', alignItems: 'flex-start' } as any]}
                     value={notes}
                     onChangeText={setNotes}
                     placeholderTextColor={isDarkMode ? glassColors.placeholderDark : glassColors.placeholderLight}
-                    placeholder="Notas para el equipo..."
+                    placeholder={notesPlaceholder}
                     multiline
                     numberOfLines={3}
+                    maxLength={200}
                   />
                 </>
               )}
@@ -487,7 +617,7 @@ export default function AppointmentFormModal({
                 {loading
                   ? <ActivityIndicator size="small" color="#111827" />
                   : <Text style={styles.saveBtnText}>
-                      {isRescheduling ? 'CONFIRMAR CAMBIO' : initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : 'CONFIRMAR CITA'}
+                      {isRescheduling ? 'CONFIRMAR CAMBIO' : initialData ? 'GUARDAR CAMBIOS' : isBlocking ? 'BLOQUEAR' : role === 'client' ? 'SOLICITAR CITA' : 'CONFIRMAR CITA'}
                     </Text>
                 }
               </TouchableOpacity>
@@ -502,13 +632,6 @@ export default function AppointmentFormModal({
     </View>
   );
 }
-
-// Usamos useMemo en el componente para evitar re-renders, pero los servicios por defecto son constantes
-const DEFAULT_SERVICES = [
-  { id: 'p1', name: 'Servicio 1', price: 0 },
-  { id: 'p2', name: 'Servicio 2', price: 0 },
-  { id: 'p3', name: 'Servicio 3', price: 0 },
-];
 
 const styles = StyleSheet.create({
   overlay: {

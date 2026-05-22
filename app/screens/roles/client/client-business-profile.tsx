@@ -177,7 +177,7 @@ export default function ClientBusinessProfileScreen() {
 
   if (fetchLoading) {
     return (
-      <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[appStyles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.textPrimary} />
       </View>
     );
@@ -185,7 +185,7 @@ export default function ClientBusinessProfileScreen() {
 
   if (!fetchedBusiness) {
     return (
-      <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[appStyles.screen, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: colors.textSecondary }}>No hay información del negocio.</Text>
         <TouchableOpacity style={{ marginTop: 20 }} onPress={() => router.back()}>
           <Text style={{ color: appColors.primary }}>Volver</Text>
@@ -198,55 +198,55 @@ export default function ClientBusinessProfileScreen() {
   const isPreviewMode = profile?.role === 'company';
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => router.back()}
-        style={[styles.backBtn, { backgroundColor: colors.surface, zIndex: 10 }]}
+        style={[appStyles.clientProfileBackBtn, { backgroundColor: colors.surface, zIndex: 10 }]}
       >
         <Feather name="arrow-left" size={20} color={colors.textPrimary} />
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[appStyles.clientProfileContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
           {/* Avatar Section */}
-          <View style={[styles.avatarContainer, { borderColor: colors.background, backgroundColor: colors.surface }]}>
+          <View style={[appStyles.clientProfileAvatarContainer, { borderColor: colors.background, backgroundColor: colors.surface }]}>
             {avatar_url ? (
-              <Image source={{ uri: avatar_url }} style={styles.avatar} />
+              <Image source={{ uri: avatar_url }} style={appStyles.clientProfileAvatar} />
             ) : (
-              <Text style={[styles.avatarInitial, { color: appColors.primary }]}>
+              <Text style={[appStyles.clientProfileAvatarInitial, { color: appColors.primary }]}>
                 {name.charAt(0).toUpperCase()}
               </Text>
             )}
           </View>
 
-          <Text style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+          <Text style={[appStyles.clientProfileName, { color: colors.textPrimary }]}>{name}</Text>
           
           {/* Rating Section */}
-          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.ratingBadge}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileRatingBadge}>
             <Ionicons name="star" size={14} color="#F0A030" />
-            <Text style={[styles.ratingScore, { color: colors.textPrimary }]}>
+            <Text style={[appStyles.clientProfileRatingScore, { color: colors.textPrimary }]}>
               {reviewsData.total > 0 ? reviewsData.score : 'Nuevo'}
             </Text>
-            <Text style={[styles.ratingTotal, { color: colors.textSecondary }]}>
+            <Text style={[appStyles.clientProfileRatingTotal, { color: colors.textSecondary }]}>
               ({reviewsData.total > 0 ? `${reviewsData.total} opiniones` : 'Se el primero'})
             </Text>
           </TouchableOpacity>
 
           {description ? (
-            <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
+            <Text style={[appStyles.clientProfileDescription, { color: colors.textSecondary }]}>{description}</Text>
           ) : null}
 
-          <View style={styles.detailsContainer}>
+          <View style={appStyles.clientProfileDetailsContainer}>
             {!!opening_time && !!closing_time && (
-              <View style={styles.detailRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={appStyles.clientProfileDetailRow}>
+                <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Feather name="clock" size={16} color={appColors.primary} />
                 </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Horario de atención</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]}>
+                <View style={appStyles.clientProfileDetailTextContainer}>
+                  <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Horario de atención</Text>
+                  <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]}>
                     {opening_time.substring(0, 5)} - {closing_time.substring(0, 5)} hrs
                   </Text>
                 </View>
@@ -254,13 +254,13 @@ export default function ClientBusinessProfileScreen() {
             )}
 
             {!!maps_url && (
-              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(maps_url)} style={styles.detailRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(maps_url)} style={appStyles.clientProfileDetailRow}>
+                <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Feather name="map-pin" size={16} color={appColors.primary} />
                 </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Google Maps</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                <View style={appStyles.clientProfileDetailTextContainer}>
+                  <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Google Maps</Text>
+                  <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
                     Abrir ubicación
                   </Text>
                 </View>
@@ -269,13 +269,13 @@ export default function ClientBusinessProfileScreen() {
             )}
 
             {!!instagram_url && (
-              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(instagram_url)} style={styles.detailRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(instagram_url)} style={appStyles.clientProfileDetailRow}>
+                <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Feather name="instagram" size={16} color={appColors.primary} />
                 </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Instagram</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                <View style={appStyles.clientProfileDetailTextContainer}>
+                  <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Instagram</Text>
+                  <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
                     Ver perfil
                   </Text>
                 </View>
@@ -284,13 +284,13 @@ export default function ClientBusinessProfileScreen() {
             )}
             
             {!isPreviewMode && (
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={styles.detailRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileDetailRow}>
+                <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Ionicons name="chatbubble-outline" size={16} color={appColors.primary} />
                 </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Reputación</Text>
-                  <Text style={[styles.detailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                <View style={appStyles.clientProfileDetailTextContainer}>
+                  <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Reputación</Text>
+                  <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
                     Escribir una opinión
                   </Text>
                 </View>
@@ -303,7 +303,7 @@ export default function ClientBusinessProfileScreen() {
       </ScrollView>
 
       {!isPreviewMode && (
-        <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <View style={[appStyles.clientProfileFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
           {isGym && membershipStatus === 'active' ? (
             <TouchableOpacity
               activeOpacity={0.8}
@@ -353,25 +353,25 @@ export default function ClientBusinessProfileScreen() {
 
       {/* MODAL DE RESEÑAS */}
       <Modal visible={showReviewModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <View style={appStyles.clientProfileModalOverlay}>
           <TouchableWithoutFeedback onPress={() => setShowReviewModal(false)}>
             <View style={StyleSheet.absoluteFill} />
           </TouchableWithoutFeedback>
-          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurCard}>
-            <View style={[styles.glassContent, !isDarkMode && styles.glassContentLight]}>
+          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={appStyles.clientProfileBlurCard}>
+            <View style={[appStyles.clientProfileGlassContent, !isDarkMode && appStyles.clientProfileGlassContentLight]}>
             
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
+            <Text style={[appStyles.clientProfileModalTitle, { color: colors.textPrimary }]}>¿Cómo calificarías a {name}?</Text>
             
-            <View style={styles.starsContainer}>
+            <View style={appStyles.clientProfileStarsContainer}>
               {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} activeOpacity={0.7} onPress={() => setNewScore(s)} style={styles.starBtn}>
+                <TouchableOpacity key={s} activeOpacity={0.7} onPress={() => setNewScore(s)} style={appStyles.clientProfileStarBtn}>
                   <Ionicons name={s <= newScore ? "star" : "star-outline"} size={36} color="#F0A030" />
                 </TouchableOpacity>
               ))}
             </View>
 
             <TextInput
-              style={[styles.reviewInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              style={[appStyles.clientProfileReviewInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
               placeholder="Opcional: Escribe tu opinión o sugerencia..."
               placeholderTextColor={colors.textSecondary}
               value={newComment}
@@ -396,178 +396,3 @@ export default function ClientBusinessProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  backBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 36,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-      android: { elevation: 3 },
-      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' },
-    }),
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 100 : 80,
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-      android: { elevation: 4 },
-      web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.1)' },
-    }),
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
-  },
-  avatarInitial: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0A03015',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 20,
-    gap: 4,
-  },
-  ratingScore: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  ratingTotal: {
-    fontSize: 12,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  detailsContainer: {
-    gap: 20,
-    marginTop: 10,
-    width: '100%',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  detailTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  detailLabel: {
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-
-  /* MODAL */
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  blurCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-    borderTopWidth: 0.5,
-    borderLeftWidth: 0.5,
-    borderRightWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  glassContent: {
-    backgroundColor: 'rgba(16,16,16,0.82)',
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-  },
-  glassContentLight: {
-    backgroundColor: 'rgba(250,250,250,0.90)',
-  },
-  modalCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 20,
-  },
-  starBtn: {
-    padding: 4,
-  },
-  reviewInput: {
-    height: 100,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    padding: 16,
-    paddingTop: 16,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    textAlignVertical: 'top',
-  },
-});

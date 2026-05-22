@@ -104,25 +104,25 @@ export default function WorkerHistoryScreen() {
   const totalEarnings = appointments.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const renderItem = ({ item }: { item: any }) => (
-    <GlassCard style={styles.itemCard}>
-      <View style={styles.itemHeader}>
-        <Text style={[styles.itemService, { color: colors.textPrimary }]}>{item.service}</Text>
-        <Text style={[styles.itemPrice, { color: appColors.primary }]}>
+    <GlassCard style={appStyles.wh_itemCard}>
+      <View style={appStyles.wh_itemHeader}>
+        <Text style={[appStyles.wh_itemService, { color: colors.textPrimary }]}>{item.service}</Text>
+        <Text style={[appStyles.wh_itemPrice, { color: appColors.primary }]}>
           ${Number(item.price || 0).toLocaleString('es-CL')}
         </Text>
       </View>
-      <View style={styles.itemDetails}>
-        <View style={styles.detailRow}>
+      <View style={appStyles.wh_itemDetails}>
+        <View style={appStyles.wh_detailRow}>
           <Feather name="user" size={12} color={colors.textSecondary} />
-          <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.client_name}</Text>
+          <Text style={[appStyles.wh_detailText, { color: colors.textSecondary }]}>{item.client_name}</Text>
         </View>
-        <View style={styles.detailRow}>
+        <View style={appStyles.wh_detailRow}>
           <Feather name="scissors" size={12} color={colors.textSecondary} />
-          <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.workers?.name || 'General'}</Text>
+          <Text style={[appStyles.wh_detailText, { color: colors.textSecondary }]}>{item.workers?.name || 'General'}</Text>
         </View>
-        <View style={styles.detailRow}>
+        <View style={appStyles.wh_detailRow}>
           <Feather name="calendar" size={12} color={colors.textSecondary} />
-          <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.date}</Text>
+          <Text style={[appStyles.wh_detailText, { color: colors.textSecondary }]}>{item.date}</Text>
         </View>
       </View>
     </GlassCard>
@@ -131,53 +131,53 @@ export default function WorkerHistoryScreen() {
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={appStyles.wh_header}>
         <TouchableOpacity onPress={() => setSidebarVisible(true)}>
           <Feather name="menu" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>HISTORIAL</Text>
+        <Text style={[appStyles.wh_headerTitle, { color: colors.textSecondary }]}>HISTORIAL</Text>
         <TouchableOpacity onPress={toggleTheme}>
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* Summary Card */}
-      <GlassCard style={styles.summaryCard}>
-        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+      <GlassCard style={appStyles.wh_summaryCard}>
+        <Text style={[appStyles.wh_summaryLabel, { color: colors.textSecondary }]}>
           INGRESOS TOTALES ({timeRange === 'day' ? 'HOY' : timeRange === 'week' ? 'ESTA SEMANA' : 'ESTE MES'})
         </Text>
-        <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+        <Text style={[appStyles.wh_summaryValue, { color: colors.textPrimary }]}>
           ${totalEarnings.toLocaleString('es-CL')}
         </Text>
-        <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
+        <Text style={[appStyles.wh_summaryCount, { color: colors.textSecondary }]}>
           {appointments.length} {isGym ? 'asistencias registradas' : 'servicios realizados'}
         </Text>
       </GlassCard>
 
       {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+      <View style={appStyles.wh_filtersContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={appStyles.wh_filterScroll}>
           <TouchableOpacity 
             onPress={() => setTimeRange('day')}
-            style={[styles.filterChip, timeRange === 'day' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[appStyles.wh_filterChip, timeRange === 'day' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'day' ? '#111827' : colors.textSecondary }]}>HOY</Text>
+            <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'day' ? '#111827' : colors.textSecondary }]}>HOY</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTimeRange('week')}
-            style={[styles.filterChip, timeRange === 'week' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[appStyles.wh_filterChip, timeRange === 'week' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'week' ? '#111827' : colors.textSecondary }]}>SEMANA</Text>
+            <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'week' ? '#111827' : colors.textSecondary }]}>SEMANA</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setTimeRange('month')}
-            style={[styles.filterChip, timeRange === 'month' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+            style={[appStyles.wh_filterChip, timeRange === 'month' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
-            <Text style={[styles.filterChipText, { color: timeRange === 'month' ? '#111827' : colors.textSecondary }]}>MES</Text>
+            <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'month' ? '#111827' : colors.textSecondary }]}>MES</Text>
           </TouchableOpacity>
           
-          <View style={styles.divider} />
-          <Text style={[styles.filterChipText, { color: colors.textSecondary, marginLeft: 8 }]}>Mis Citas</Text>
+          <View style={appStyles.wh_divider} />
+          <Text style={[appStyles.wh_filterChipText, { color: colors.textSecondary, marginLeft: 8 }]}>Mis Citas</Text>
         </ScrollView>
       </View>
 
@@ -188,12 +188,12 @@ export default function WorkerHistoryScreen() {
           data={appointments}
           keyExtractor={item => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={appStyles.wh_listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            <View style={appStyles.wh_emptyContainer}>
               <Feather name="bar-chart" size={48} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No hay servicios completados en este periodo.</Text>
+              <Text style={[appStyles.wh_emptyText, { color: colors.textSecondary }]}>No hay servicios completados en este periodo.</Text>
             </View>
           }
         />
@@ -204,74 +204,4 @@ export default function WorkerHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  hamburger: { fontSize: 26 },
-  headerTitle: { fontSize: 12, letterSpacing: 3, fontWeight: '600' },
-  summaryCard: {
-    marginHorizontal: 16,
-    padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  summaryLabel: { fontSize: 10, letterSpacing: 2, fontWeight: '600', fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
-  summaryValue: { fontSize: 32, fontWeight: '800', fontFamily: 'Inter_800ExtraBold', letterSpacing: 1, marginBottom: 4 },
-  summaryCount: { fontSize: 12, fontWeight: '500', fontFamily: 'Inter_500Medium' },
-  filtersContainer: {
-    marginBottom: 16,
-  },
-  filterScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  filterChipText: { fontSize: 10, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-  divider: { width: 1, height: 20, backgroundColor: '#333', marginHorizontal: 8 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  itemCard: {
-    padding: 16,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  itemService: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-  itemPrice: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
-  itemDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  detailText: { fontSize: 11, fontWeight: '500' },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
-    gap: 16,
-  },
-  emptyText: { fontSize: 13, textAlign: 'center', maxWidth: '80%' },
-});
+

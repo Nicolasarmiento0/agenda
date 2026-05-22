@@ -42,16 +42,16 @@ const BarChart = ({ data, colors, filter }: { data: { label: string, value: numb
   const maxValue = Math.max(...data.map(d => d.value), 1);
 
   return (
-    <View style={styles.chartContainer}>
-      <View style={styles.barsWrapper}>
+    <View style={appStyles.wd_chartContainer}>
+      <View style={appStyles.wd_barsWrapper}>
         {data.map((item, index) => {
           const heightPercent = (item.value / maxValue) * 100;
           return (
-            <View key={index} style={styles.barCol}>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { height: `${heightPercent}%`, backgroundColor: appColors.primary }]} />
+            <View key={index} style={appStyles.wd_barCol}>
+              <View style={appStyles.wd_barTrack}>
+                <View style={[appStyles.wd_barFill, { height: `${heightPercent}%`, backgroundColor: appColors.primary }]} />
               </View>
-              <Text style={[styles.barLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+              <Text style={[appStyles.wd_barLabel, { color: colors.textSecondary }]}>{item.label}</Text>
             </View>
           );
         })}
@@ -236,47 +236,47 @@ export default function WorkerDashboardScreen() {
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn} activeOpacity={0.7}>
+      <View style={[appStyles.wd_header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
+        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={appStyles.wd_iconBtn} activeOpacity={0.7}>
           <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>DASHBOARD</Text>
-        <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.7}>
+        <Text style={[appStyles.wd_headerLabel, { color: colors.textSecondary }]}>DASHBOARD</Text>
+        <TouchableOpacity onPress={toggleTheme} style={appStyles.wd_iconBtn} activeOpacity={0.7}>
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={appStyles.wd_scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], gap: 16 }}>
 
           {/* WELCOME */}
           <View style={{ marginBottom: 8 }}>
-            <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Bienvenido de vuelta,</Text>
-            <Text style={[styles.businessName, { color: colors.textPrimary }]}>{workerMe?.name || 'Trabajador'}</Text>
+            <Text style={[appStyles.wd_welcomeText, { color: colors.textSecondary }]}>Bienvenido de vuelta,</Text>
+            <Text style={[appStyles.wd_businessName, { color: colors.textPrimary }]}>{workerMe?.name || 'Trabajador'}</Text>
           </View>
 
           {/* REVENUE CHART */}
-          <GlassCard style={styles.card}>
-            <View style={styles.chartHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Ingresos</Text>
+          <GlassCard style={appStyles.wd_card}>
+            <View style={appStyles.wd_chartHeaderRow}>
+              <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary }]}>Ingresos</Text>
 
-              <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
+              <View style={[appStyles.wd_filterContainer, { backgroundColor: colors.background }]}>
                 {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
                   <TouchableOpacity
                     key={filter}
                     activeOpacity={0.8}
                     onPress={() => setTimeFilter(filter)}
                     style={[
-                      styles.filterBtn,
+                      appStyles.wd_filterBtn,
                       timeFilter === filter && { backgroundColor: appColors.primary }
                     ]}
                   >
                     <Text style={[
-                      styles.filterText,
+                      appStyles.wd_filterText,
                       { color: timeFilter === filter ? '#111827' : colors.textSecondary }
                     ]}>
                       {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
@@ -288,21 +288,21 @@ export default function WorkerDashboardScreen() {
             <BarChart data={revenueData} colors={colors} filter={timeFilter} />
           </GlassCard>
 
-          <View style={styles.rowGrid}>
+          <View style={appStyles.wd_rowGrid}>
             {/* REVIEWS CARD */}
-            <GlassCard style={[styles.card, styles.flexCard]}>
+            <GlassCard style={[appStyles.wd_card, appStyles.wd_flexCard]}>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setShowReviewsModal(true)}
                 style={{ flex: 1 }}
               >
-                <View style={styles.cardHeader}>
+                <View style={appStyles.wd_cardHeader}>
                   <Ionicons name="star" size={16} color="#f0c630ff" />
-                  <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
+                  <Text style={[appStyles.wd_cardTitle, { color: colors.textSecondary }]}>REPUTACIÓN NEGOCIO</Text>
                 </View>
-                <Text style={[styles.scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
-                <Text style={[styles.subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
-                <Text style={[styles.dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
+                <Text style={[appStyles.wd_scoreText, { color: colors.textPrimary }]}>{reviewsData.score}</Text>
+                <Text style={[appStyles.wd_subText, { color: colors.textSecondary }]}>{reviewsData.total} opiniones</Text>
+                <Text style={[appStyles.wd_dateText, { color: colors.textSecondary }]}>Última: {reviewsData.lastReviewDate}</Text>
                 <View style={{ position: 'absolute', bottom: 12, right: 12 }}>
                   <Feather name="chevron-right" size={16} color={colors.textSecondary} />
                 </View>
@@ -310,36 +310,36 @@ export default function WorkerDashboardScreen() {
             </GlassCard>
 
             {/* SCHEDULE CARD */}
-            <GlassCard style={[styles.card, styles.flexCard]}>
-              <View style={styles.cardHeader}>
+            <GlassCard style={[appStyles.wd_card, appStyles.wd_flexCard]}>
+              <View style={appStyles.wd_cardHeader}>
                 <Feather name="clock" size={16} color={colors.textSecondary} />
-                <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
+                <Text style={[appStyles.wd_cardTitle, { color: colors.textSecondary }]}>HORARIOS</Text>
               </View>
-              <View style={styles.scheduleRow}>
+              <View style={appStyles.wd_scheduleRow}>
                 {SCHEDULE_DATA.map((d, i) => (
-                  <View key={i} style={[styles.dayCircle, { backgroundColor: d.active ? appColors.primary + '20' : colors.border }]}>
-                    <Text style={[styles.dayText, { color: d.active ? appColors.primary : colors.textSecondary }]}>{d.day}</Text>
+                  <View key={i} style={[appStyles.wd_dayCircle, { backgroundColor: d.active ? appColors.primary + '20' : colors.border }]}>
+                    <Text style={[appStyles.wd_dayText, { color: d.active ? appColors.primary : colors.textSecondary }]}>{d.day}</Text>
                   </View>
                 ))}
               </View>
-              <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
+              <Text style={[appStyles.wd_subText, { color: colors.textSecondary, marginTop: 12 }]}>
                 {businessName}
               </Text>
             </GlassCard>
           </View>
 
           {/* PUBLIC PROFILE BTN */}
-          <GlassCard style={styles.publicBtn}>
+          <GlassCard style={appStyles.wd_publicBtn}>
             <TouchableOpacity
               activeOpacity={0.8}
               style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
             >
-              <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
+              <View style={[appStyles.wd_publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
                 <Feather name="external-link" size={20} color={appColors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
-                <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
+                <Text style={[appStyles.wd_publicBtnTitle, { color: colors.textPrimary }]}>Vista Previa Pública</Text>
+                <Text style={[appStyles.wd_publicBtnSub, { color: colors.textSecondary }]}>Mira cómo te ven tus clientes</Text>
               </View>
               <Feather name="chevron-right" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -350,18 +350,18 @@ export default function WorkerDashboardScreen() {
 
       {/* REVIEWS LIST MODAL */}
       <Modal visible={showReviewsModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <View style={appStyles.wd_modalOverlay}>
           <TouchableWithoutFeedback onPress={() => setShowReviewsModal(false)}>
             <View style={StyleSheet.absoluteFill} />
           </TouchableWithoutFeedback>
           <BlurView
             intensity={40}
             tint={isDarkMode ? 'dark' : 'light'}
-            style={[styles.modalContent, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }]}
+            style={[appStyles.wd_modalContent, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }]}
           >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Opiniones de Clientes</Text>
-              <TouchableOpacity onPress={() => setShowReviewsModal(false)} style={styles.closeBtn}>
+            <View style={appStyles.wd_modalHeader}>
+              <Text style={[appStyles.wd_modalTitle, { color: colors.textPrimary }]}>Opiniones de Clientes</Text>
+              <TouchableOpacity onPress={() => setShowReviewsModal(false)} style={appStyles.wd_closeBtn}>
                 <Feather name="x" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
@@ -370,12 +370,12 @@ export default function WorkerDashboardScreen() {
               {reviewsList.length === 0 ? (
                 <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 20 }}>Aún no tienes opiniones.</Text>
               ) : reviewsList.map((r, i) => (
-                <View key={i} style={[styles.reviewItem, { borderBottomColor: colors.border }]}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={[styles.reviewAuthor, { color: colors.textPrimary }]}>
+                <View key={i} style={[appStyles.wd_reviewItem, { borderBottomColor: colors.border }]}>
+                  <View style={appStyles.wd_reviewHeader}>
+                    <Text style={[appStyles.wd_reviewAuthor, { color: colors.textPrimary }]}>
                       {r.profiles?.nickname || 'Cliente'}
                     </Text>
-                    <Text style={[styles.reviewDate, { color: colors.textSecondary }]}>
+                    <Text style={[appStyles.wd_reviewDate, { color: colors.textSecondary }]}>
                       {new Date(r.created_at).toLocaleDateString('es-ES')}
                     </Text>
                   </View>
@@ -385,9 +385,9 @@ export default function WorkerDashboardScreen() {
                     ))}
                   </View>
                   {r.comment ? (
-                    <Text style={[styles.reviewComment, { color: colors.textSecondary }]}>"{r.comment}"</Text>
+                    <Text style={[appStyles.wd_reviewComment, { color: colors.textSecondary }]}>"{r.comment}"</Text>
                   ) : (
-                    <Text style={[styles.reviewComment, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin comentario</Text>
+                    <Text style={[appStyles.wd_reviewComment, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin comentario</Text>
                   )}
                 </View>
               ))}
@@ -401,270 +401,3 @@ export default function WorkerDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLabel: {
-    fontSize: 12,
-    letterSpacing: 3,
-    fontWeight: '600',
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  welcomeText: {
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
-  businessName: {
-    fontSize: 28,
-    fontWeight: '800',
-    fontFamily: 'Inter_800ExtraBold',
-    letterSpacing: 1,
-    marginTop: 4,
-  },
-  card: {
-    borderRadius: 20,
-    padding: 16,
-  },
-  rowGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  flexCard: {
-    flex: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 10,
-    letterSpacing: 2,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.5,
-  },
-
-  /* CHART FILTERS */
-  chartHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    borderRadius: 20,
-    padding: 4,
-  },
-  filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  filterText: {
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1,
-  },
-
-  /* CHART STYLES */
-  chartContainer: {
-    height: 140,
-  },
-  barsWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  barCol: {
-    alignItems: 'center',
-    width: 30,
-    height: '100%',
-  },
-  barTrack: {
-    flex: 1,
-    width: 8,
-    backgroundColor: '#33333320',
-    borderRadius: 4,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    borderRadius: 4,
-  },
-  barLabel: {
-    fontSize: 10,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-
-  /* REVIEWS */
-  scoreText: {
-    fontSize: 32,
-    fontWeight: '800',
-  },
-  subText: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  dateText: {
-    fontSize: 10,
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-
-  /* MODAL REVIEWS */
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '80%',
-    padding: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  reviewItem: {
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  reviewAuthor: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  reviewDate: {
-    fontSize: 11,
-  },
-  reviewComment: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  /* SCHEDULE */
-  scheduleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  dayCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-
-  /* WORKERS */
-  workerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  workerInfo: {
-    flex: 1,
-  },
-  workerName: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  workerRole: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  workerStats: {
-    alignItems: 'flex-end',
-  },
-  workerServices: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  workerServicesLabel: {
-    fontSize: 10,
-  },
-
-  /* PUBLIC BTN */
-  publicBtn: {
-    padding: 16,
-    borderRadius: 20,
-    marginTop: 4,
-  },
-  publicBtnIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  publicBtnTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  publicBtnSub: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    marginTop: 2,
-  },
-});

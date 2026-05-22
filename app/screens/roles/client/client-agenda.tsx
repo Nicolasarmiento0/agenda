@@ -28,7 +28,11 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useBusiness } from '../../../../context/BusinessContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
-import { appColors } from '../../../../styles/appStyles';
+import { appColors, appStyles } from '../../../../styles/appStyles';
+import AppointmentCard from '../../../../components/agenda/AppointmentCard';
+import AppointmentSheet from '../../../../components/agenda/AppointmentSheet';
+import AppointmentFormModal from '../../../../components/agenda/AppointmentFormModal';
+
 
 // Configuración de idioma para el calendario
 if (LocaleConfig) {
@@ -189,629 +193,6 @@ function getPastelColors(id: string, isDarkMode: boolean) {
   return isDarkMode ? p.dark : p.light;
 }
 
-// ─── Componente: AppointmentCard ─────────────────────────────────────────────
-
-function AppointmentCard({
-  appt,
-  columnWidth,
-  onPress,
-  colors,
-  startHour,
-  isDarkMode,
-}: {
-  appt: Appointment;
-  columnWidth: number;
-  onPress: () => void;
-  colors: any;
-  startHour: number;
-  isDarkMode: boolean;
-}) {
-  const top = (appt.startHour - startHour) * HOUR_HEIGHT;
-  const height = Math.max(appt.durationHours * HOUR_HEIGHT - 4, 28);
-  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
-  const isShort = height < 48;
-
-  const isBlocked = appt.service === 'BLOQUEO';
-
-  const pastel = getPastelColors(appt.id, isDarkMode);
-
-  const glassColor = isBlocked
-    ? (isDarkMode ? 'rgba(60,60,60,0.55)' : 'rgba(215,215,215,0.70)')
-    : pastel.bg;
-
-  const glassBorder = isBlocked
-    ? (isDarkMode ? 'rgba(120,120,120,0.30)' : 'rgba(155,155,155,0.40)')
-    : pastel.border;
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={isBlocked ? 1 : 0.85}
-      style={[
-        styles.apptCard,
-        {
-          top,
-          height,
-          width: columnWidth - 6,
-          borderLeftColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : appt.workerColor,
-          backgroundColor: glassColor,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: glassBorder,
-        },
-      ]}
-    >
-      <View style={[styles.apptDot, { backgroundColor: isBlocked ? (isDarkMode ? '#555555' : '#999999') : status.dot }]} />
-      <View style={{ flex: 1, overflow: 'hidden' }}>
-        <Text style={[styles.apptTitle, { color: isBlocked ? (isDarkMode ? '#AAAAAA' : '#999999') : colors.textPrimary }]} numberOfLines={1}>
-          {isBlocked ? (appt.clientName || 'No disponible') : appt.service}
-        </Text>
-        {!isShort && !isBlocked && (
-          <Text style={[styles.apptSub, { color: colors.textSecondary }]} numberOfLines={1}>
-            {appt.clientName}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Componente: BottomSheet ──────────────────────────────────────────────────
-
-function AppointmentSheet({
-  appt,
-  visible,
-  onClose,
-  onAction,
-  colors,
-  isDarkMode,
-}: {
-  appt: Appointment | null;
-  visible: boolean;
-  onClose: () => void;
-  onAction: (action: string, appt: Appointment) => void;
-  colors: any;
-  isDarkMode: boolean;
-}) {
-  const slideY = useRef(new Animated.Value(400)).current;
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(slideY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
-        Animated.timing(overlayOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideY, { toValue: 400, duration: 250, useNativeDriver: true }),
-        Animated.timing(overlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 8,
-      onPanResponderMove: (_, g) => {
-        if (g.dy > 0) slideY.setValue(g.dy);
-      },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80) { onClose(); }
-        else { Animated.spring(slideY, { toValue: 0, useNativeDriver: true }).start(); }
-      },
-    })
-  ).current;
-
-  if (!appt) return null;
-
-  const status = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
-  const endHour = appt.startHour + appt.durationHours;
-
-  const isMine = appt.isMine;
-
-  let canCancel = false;
-  if (appt.date) {
-    const apptDate = new Date(`${appt.date}T${String(Math.floor(appt.startHour)).padStart(2, '0')}:${String(Math.round((appt.startHour % 1) * 60)).padStart(2, '0')}:00`);
-    const hoursDiff = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
-    canCancel = hoursDiff > 2;
-  }
-
-  const ACTIONS = isMine ? [
-    { id: 'edit', icon: 'edit-2', label: 'Editar', color: appColors.primary },
-    ...(canCancel ? [{ id: 'cancel', icon: 'x-circle', label: 'Cancelar', color: '#E24B4A' }] : []),
-  ] : [];
-
-  return (
-    <View
-      style={[
-        StyleSheet.absoluteFill,
-        { zIndex: 1000, pointerEvents: visible ? 'auto' : 'none' },
-        !visible && { opacity: 0 }
-      ]}
-    >
-      <Animated.View style={[styles.sheetOverlay, { opacity: overlayOpacity }]}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
-      </Animated.View>
-      <Animated.View
-        style={[styles.sheet, { transform: [{ translateY: slideY }], overflow: 'hidden' }]}
-        {...panResponder.panHandlers}
-      >
-        <BlurView
-          intensity={isDarkMode ? 60 : 80}
-          tint={isDarkMode ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
-        />
-        <View style={[StyleSheet.absoluteFill, {
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          backgroundColor: isDarkMode ? 'rgba(15,15,20,0.55)' : 'rgba(255,255,255,0.45)',
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-        }]} />
-        {/* Handle */}
-        <View style={[styles.sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }]} />
-
-        {/* Info principal */}
-        <View style={styles.sheetTop}>
-          <WorkerAvatar
-            avatarUrl={appt.workerAvatarUrl}
-            name={appt.worker}
-            color={appt.workerColor}
-            size={42}
-            borderWidth={2}
-          />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.sheetService, { color: colors.textPrimary }]}>{appt.service}</Text>
-            <Text style={[styles.sheetClient, { color: colors.textSecondary }]}>{appt.clientName}</Text>
-          </View>
-          <View style={[styles.sheetBadge, { backgroundColor: status.bg }]}>
-            <Text style={[styles.sheetBadgeText, { color: status.text }]}>{status.label}</Text>
-          </View>
-        </View>
-
-        {/* Detalles */}
-        <View style={[styles.sheetDetails, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
-          <View style={styles.sheetDetailRow}>
-            <Feather name="clock" size={14} color={colors.textSecondary} />
-            <Text style={[styles.sheetDetailText, { color: colors.textSecondary }]}>
-              {formatHour(appt.startHour)} – {formatHour(endHour)}
-              {'  ·  '}{appt.durationHours * 60} min
-            </Text>
-          </View>
-          <View style={styles.sheetDetailRow}>
-            <Feather name="user" size={14} color={colors.textSecondary} />
-            <Text style={[styles.sheetDetailText, { color: colors.textSecondary }]}>
-              {appt.worker}
-            </Text>
-          </View>
-          {!!appt.notes && (
-            <View style={styles.sheetDetailRow}>
-              <Feather name="file-text" size={14} color={colors.textSecondary} />
-              <Text style={[styles.sheetDetailText, { color: colors.textSecondary, flex: 1 }]} numberOfLines={3}>
-                {appt.notes}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Acciones rápidas */}
-        <View style={styles.sheetActions}>
-          {ACTIONS.map((a) => (
-            <TouchableOpacity key={a.label} style={styles.sheetAction} activeOpacity={0.7} onPress={() => { onClose(); onAction(a.id, appt); }}>
-              <View style={[styles.sheetActionIcon, { backgroundColor: a.color + '18' }]}>
-                <Feather name={a.icon as any} size={18} color={a.color} />
-              </View>
-              <Text style={[styles.sheetActionLabel, { color: colors.textSecondary }]}>{a.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Animated.View>
-    </View>
-  );
-}
-
-// ─── Componente: Formulario Cita ──────────────────────────────────────────────
-
-const GYM_SERVICES = [
-  { name: 'CLASE', price: 0 },
-  { name: 'Taller Extraprogramático', price: 0 },
-  { name: 'Evaluación', price: 0 },
-];
-
-function AppointmentFormModal({
-  visible,
-  initialData,
-  onClose,
-  onSave,
-  colors,
-  selectedDateStr,
-  showAlert,
-  openingTime,
-  closingTime,
-  isGym,
-}: {
-  visible: boolean;
-  initialData?: Appointment;
-  onClose: () => void;
-  onSave: (appt: Partial<Appointment>) => Promise<boolean>;
-  colors: any;
-  selectedDateStr: string;
-  showAlert: (opts: { title: string; message: string }) => void;
-  openingTime?: string;
-  closingTime?: string;
-  isGym: boolean;
-}) {
-  const { isDarkMode } = useTheme();
-  const [clientName, setClientName] = useState('');
-  const [service, setService] = useState('');
-  const [workerId, setWorkerId] = useState('');
-  const [dateText, setDateText] = useState('');
-  const [startTimeText, setStartTimeText] = useState('09:00');
-  const [endTimeText, setEndTimeText] = useState('10:00');
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [pickerActive, setPickerActive] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-
-  const parsedOpeningHour = openingTime ? parseInt(openingTime.split(':')[0], 10) : 7;
-  const parsedClosingHour = closingTime ? parseInt(closingTime.split(':')[0], 10) : 22;
-
-  const [services, setServices] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (isGym) {
-      setServices(GYM_SERVICES);
-      return;
-    }
-    const fetchServices = async () => {
-      if (!visible || !colors.selectedBusinessId) return;
-
-      try {
-        const { data: bizServices, error: bizError } = await supabase
-          .from('business_services')
-          .select('name, price')
-          .eq('business_id', colors.selectedBusinessId)
-          .eq('is_active', true);
-
-        if (!bizError && bizServices && bizServices.length > 0) {
-          setServices(bizServices);
-        } else {
-          const { data: bizData } = await supabase
-            .from('businesses')
-            .select('category_id')
-            .eq('id', colors.selectedBusinessId)
-            .single();
-
-          if (bizData?.category_id) {
-            const { data: catServices } = await supabase
-              .from('catalog_services')
-              .select('name')
-              .eq('category_id', bizData.category_id);
-
-            if (catServices && catServices.length > 0) {
-              setServices(catServices.map(s => ({ id: s.name, name: s.name, price: 0 })));
-            } else {
-              setServices([
-                { id: 'p1', name: 'Servicio 1', price: 0 },
-                { id: 'p2', name: 'Servicio 2', price: 0 },
-                { id: 'p3', name: 'Servicio 3', price: 0 }
-              ]);
-            }
-          } else {
-            setServices([
-              { id: 'p1', name: 'Servicio 1', price: 0 },
-              { id: 'p2', name: 'Servicio 2', price: 0 },
-              { id: 'p3', name: 'Servicio 3', price: 0 }
-            ]);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching services:', err);
-        setServices([
-          { id: 'p1', name: 'Servicio 1', price: 0 },
-          { id: 'p2', name: 'Servicio 2', price: 0 },
-          { id: 'p3', name: 'Servicio 3', price: 0 }
-        ]);
-      }
-    };
-
-    fetchServices();
-  }, [visible, colors.selectedBusinessId, isGym]);
-
-  useEffect(() => {
-    if (visible) {
-      if (initialData) {
-        setClientName(initialData.clientName);
-        setService(initialData.service);
-        setWorkerId(initialData.worker_id);
-        setNotes(initialData.notes || '');
-        const hh = Math.floor(initialData.startHour);
-        const mm = Math.round((initialData.startHour - hh) * 60);
-        setStartTimeText(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
-        const endH = initialData.startHour + initialData.durationHours;
-        const endHh = Math.floor(endH);
-        const endMm = Math.round(((endH - endHh) * 60) / 15) * 15;
-        setEndTimeText(`${String(endHh).padStart(2, '0')}:${String(Math.min(endMm, 45)).padStart(2, '0')}`);
-        setDateText(initialData.date || selectedDateStr);
-      } else {
-        setClientName('');
-        setService('');
-        setWorkerId('');
-        setNotes('');
-        setStartTimeText(`${String(parsedOpeningHour).padStart(2, '0')}:00`);
-        setEndTimeText(`${String(parsedOpeningHour + 1).padStart(2, '0')}:00`);
-        setDateText(selectedDateStr);
-      }
-      setLoading(false);
-      setShowCalendar(false);
-    }
-  }, [visible, initialData, selectedDateStr]);
-
-  const handleSave = async () => {
-    if (loading) return;
-
-    // ── Validación de campos obligatorios ──
-    if (!service.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa el servicio que deseas reservar.' });
-      return;
-    }
-    if (!workerId) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor selecciona un trabajador.' });
-      return;
-    }
-    if (!dateText.trim()) {
-      showAlert({ title: 'Campo requerido', message: 'Por favor ingresa la fecha de la cita.' });
-      return;
-    }
-
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(startTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'Ingresa la hora en formato HH:MM (ej: 09:30).' });
-      return;
-    }
-    if (!timeRegex.test(endTimeText.trim())) {
-      showAlert({ title: 'Hora inválida', message: 'La hora de fin no es válida.' });
-      return;
-    }
-
-    const [hhStr, mmStr] = startTimeText.split(':');
-    const hh = parseInt(hhStr, 10);
-    const mm = parseInt(mmStr || '0', 10);
-    const startHour = hh + mm / 60;
-
-    const [ehStr, emStr] = endTimeText.split(':');
-    const endHour = parseInt(ehStr, 10) + parseInt(emStr || '0', 10) / 60;
-    const durationHours = endHour - startHour;
-
-    if (durationHours <= 0) {
-      showAlert({ title: 'Hora inválida', message: 'La hora de fin debe ser posterior a la de inicio.' });
-      return;
-    }
-
-    // ── Validación de fecha y hora pasada ──
-    const now = new Date();
-    const todayStr = toLocalISOString(now);
-    const currentHour = now.getHours() + now.getMinutes() / 60;
-
-    if (dateText < todayStr) {
-      showAlert({ title: 'Fecha inválida', message: 'No puedes agendar citas para fechas que ya pasaron.' });
-      return;
-    }
-
-    // ── Validación universal: 2h mínimo de anticipación ──
-    const [yStr, mStr, dStr] = dateText.split('-');
-    const apptDateTime = new Date(
-      parseInt(yStr, 10),
-      parseInt(mStr, 10) - 1,
-      parseInt(dStr, 10),
-      hh,
-      mm,
-      0
-    );
-    const diffHours = (apptDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (diffHours < 2) {
-      showAlert({ title: 'Reserva no permitida', message: 'Debes reservar con al menos 2 horas de anticipación.' });
-      return;
-    }
-
-    // ── Primer Bloque del Día (Hasta 22:00 día anterior) ──
-    const openingTimeHour = openingTime ? parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60 : DEFAULT_START_HOUR;
-    const isFirstBlock = Math.abs(startHour - openingTimeHour) <= 0.25;
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = toLocalISOString(tomorrow);
-
-    if (isFirstBlock) {
-      if (dateText === todayStr) {
-        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
-        return;
-      }
-      if (dateText === tomorrowStr && currentHour >= 22) {
-        showAlert({ title: 'Hora no disponible', message: 'El primer bloque del día solo puede agendarse hasta las 22:00 del día anterior.' });
-        return;
-      }
-    }
-
-    // ── Validación de horario de apertura ──
-    if (openingTime && closingTime) {
-      const openH = parseInt(openingTime.split(':')[0]) + parseInt(openingTime.split(':')[1]) / 60;
-      const closeH = parseInt(closingTime.split(':')[0]) + parseInt(closingTime.split(':')[1]) / 60;
-
-      if (startHour < openH || endHour > closeH) {
-        showAlert({
-          title: 'Fuera de horario',
-          message: `El negocio atiende de ${openingTime.substring(0, 5)} a ${closingTime.substring(0, 5)}. Ajusta tu cita.`
-        });
-        return;
-      }
-    }
-
-    setLoading(true);
-    const selectedServiceObj = services.find(s => s.name === (service || 'Servicio'));
-    const price = selectedServiceObj ? Number(selectedServiceObj.price || 0) : 0;
-
-    const success = await onSave({
-      clientName,
-      service,
-      worker_id: workerId,
-      startHour,
-      durationHours,
-      date: dateText,
-      price,
-      notes: notes.trim() || undefined,
-    });
-    setLoading(false);
-
-    if (success) {
-      onClose();
-    }
-  };
-
-  if (!visible) return null;
-
-  return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {initialData ? 'Editar Cita' : 'Nueva Cita'}
-            </Text>
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Selecciona un Servicio</Text>
-            <View style={[styles.modalRow, { marginBottom: 16 }]}>
-              {services.map((s, index) => (
-                <TouchableOpacity
-                  key={s.id || `${s.name}-${index}`}
-                  onPress={() => setService(s.name)}
-                  style={[
-                    styles.modalChip,
-                    service === s.name && { backgroundColor: appColors.primary, borderColor: appColors.primary }
-                  ]}
-                >
-                  <Text style={[styles.modalChipText, service === s.name ? { color: '#111827' } : { color: colors.textSecondary }]}>
-                    {s.name} {s.price > 0 ? `($${Number(s.price).toLocaleString('es-CL')})` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Trabajador</Text>
-            <View style={styles.modalRow}>
-              {colors.workersList?.map((w: any) => (
-                <TouchableOpacity
-                  key={w.id}
-                  onPress={() => setWorkerId(w.id)}
-                  style={[styles.modalChip, workerId === w.id && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
-                >
-                  <Text style={[styles.modalChipText, workerId === w.id ? { color: '#111827' } : { color: colors.textSecondary }]}>{w.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Fecha de la Cita</Text>
-            <TouchableOpacity
-              onPress={() => setShowCalendar(!showCalendar)}
-              style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-            >
-              <Text style={{ color: colors.textPrimary }}>{dateText || 'Seleccionar fecha'}</Text>
-              <Feather name="calendar" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            {showCalendar && (
-              <View style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
-                <Calendar
-                  minDate={toLocalISOString(new Date())}
-                  onDayPress={(day: any) => {
-                    setDateText(day.dateString);
-                    setShowCalendar(false);
-                  }}
-                  markedDates={dateText ? {
-                    [dateText]: { selected: true, selectedColor: appColors.primary }
-                  } : {}}
-                  theme={{
-                    backgroundColor: colors.surface,
-                    calendarBackground: colors.surface,
-                    textSectionTitleColor: colors.textSecondary,
-                    selectedDayBackgroundColor: appColors.primary,
-                    selectedDayTextColor: '#ffffff',
-                    todayTextColor: appColors.primary,
-                    dayTextColor: colors.textPrimary,
-                    textDisabledColor: colors.border,
-                    monthTextColor: colors.textPrimary,
-                    arrowColor: appColors.primary,
-                  }}
-                />
-              </View>
-            )}
-
-            <View
-              style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}
-              onTouchStart={() => setPickerActive(true)}
-              onTouchEnd={() => setTimeout(() => setPickerActive(false), 500)}
-              onTouchCancel={() => setPickerActive(false)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>DESDE</Text>
-                <TimeWheelPicker
-                  openingHour={parsedOpeningHour}
-                  closingHour={parsedClosingHour}
-                  selectedSlot={startTimeText}
-                  onSlotSelect={setStartTimeText}
-                  busyIntervals={[]}
-                  durationMinutes={60}
-                  isDarkMode={isDarkMode}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>HASTA</Text>
-                <TimeWheelPicker
-                  openingHour={parsedOpeningHour}
-                  closingHour={parsedClosingHour + 1}
-                  selectedSlot={endTimeText}
-                  onSlotSelect={setEndTimeText}
-                  busyIntervals={[]}
-                  durationMinutes={0}
-                  isDarkMode={isDarkMode}
-                />
-              </View>
-            </View>
-
-            <Text style={[styles.modalLabel, { color: colors.textSecondary, marginTop: 8 }]}>Mensaje para el negocio (opcional)</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, height: 72, textAlignVertical: 'top', paddingTop: 10 }]}
-              placeholder="Agrega información adicional..."
-              placeholderTextColor={colors.textSecondary}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              maxLength={200}
-            />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={onClose} style={[styles.modalBtn, { borderColor: colors.border }]}>
-                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSave}
-                disabled={loading}
-                style={[styles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, opacity: loading ? 0.7 : 1 }]}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#111827" />
-                ) : (
-                  <Text style={[styles.modalBtnText, { color: '#111827' }]}>Guardar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
-  );
-}
-
-// ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function ClientAgendaScreen() {
   const { profile } = useAuth();
@@ -1254,9 +635,9 @@ export default function ClientAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de columnas (trabajadores) */}
-      <View style={[styles.workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
+      <View style={[appStyles.ca_workerHeader, { paddingHorizontal: LABEL_WIDTH + PADDING }]}>
         {WORKERS.map(w => (
-          <View key={w.id} style={[styles.workerCol, { flex: 1 }]}>
+          <View key={w.id} style={[appStyles.ca_workerCol, { flex: 1 }]}>
             <WorkerAvatar
               avatarUrl={w.avatar_url}
               name={w.name}
@@ -1264,23 +645,23 @@ export default function ClientAgendaScreen() {
               size={90}
               showDot={true}
             />
-            <Text style={[styles.workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+            <Text style={[appStyles.ca_workerName, { color: colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
             {w.specialty ? (
-              <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+              <Text style={[appStyles.ca_workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
             ) : null}
           </View>
         ))}
       </View>
 
       {/* Grid de tiempo */}
-      <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
+      <View style={[appStyles.ca_grid, { paddingHorizontal: PADDING }]}>
         {/* Líneas de hora */}
         {hoursGrid.map(h => (
-          <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
-            <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
+          <View key={h} style={[appStyles.ca_hourRow, { height: HOUR_HEIGHT }]}>
+            <Text style={[appStyles.ca_hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
               {String(h).padStart(2, '0')}:00
             </Text>
-            <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
+            <View style={[appStyles.ca_hourLine, { backgroundColor: colors.border }]} />
             <View style={{
               position: 'absolute',
               top: HOUR_HEIGHT / 2,
@@ -1294,12 +675,12 @@ export default function ClientAgendaScreen() {
         ))}
 
         {/* Columnas de citas por trabajador */}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
+        <View style={[appStyles.ca_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {WORKERS.map((w, wi) => (
             <View
               key={w.id}
               style={[
-                styles.workerColumn,
+                appStyles.ca_workerColumn,
                 {
                   width: colWidth,
                   left: wi * colWidth,
@@ -1328,9 +709,9 @@ export default function ClientAgendaScreen() {
 
           {/* Línea "ahora" */}
           {nowPosition !== null && (
-            <View style={[styles.nowLine, { top: nowPosition, width: WORKERS.length * colWidth }]}>
-              <View style={styles.nowDot} />
-              <View style={[styles.nowBar, { backgroundColor: appColors.primary }]} />
+            <View style={[appStyles.ca_nowLine, { top: nowPosition, width: WORKERS.length * colWidth }]}>
+              <View style={appStyles.ca_nowDot} />
+              <View style={[appStyles.ca_nowBar, { backgroundColor: appColors.primary }]} />
             </View>
           )}
         </View>
@@ -1350,18 +731,18 @@ export default function ClientAgendaScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
     >
       {/* Cabecera de días — fija, no scrollea verticalmente */}
-      <View style={[styles.workerHeader, { paddingLeft: LABEL_WIDTH + PADDING, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+      <View style={[appStyles.ca_workerHeader, { paddingLeft: LABEL_WIDTH + PADDING, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
         {weekDays.map((d, i) => (
           <TouchableOpacity
             key={i}
             onPress={() => { setSelectedDate(d); setViewMode('day'); }}
-            style={[styles.workerCol, { width: weekColWidth, alignItems: 'center' }]}
+            style={[appStyles.ca_workerCol, { width: weekColWidth, alignItems: 'center' }]}
           >
-            <Text style={[styles.workerName, { color: isToday(d) ? appColors.primary : colors.textSecondary, fontWeight: isToday(d) ? '700' : '400' }]}>
+            <Text style={[appStyles.ca_workerName, { color: isToday(d) ? appColors.primary : colors.textSecondary, fontWeight: isToday(d) ? '700' : '400' }]}>
               {shortDayName(d)}
             </Text>
-            <View style={[styles.weekDayNum, isToday(d) && { backgroundColor: appColors.primary }]}>
-              <Text style={[styles.weekDayNumText, { color: isToday(d) ? '#111827' : colors.textPrimary }]}>
+            <View style={[appStyles.ca_weekDayNum, isToday(d) && { backgroundColor: appColors.primary }]}>
+              <Text style={[appStyles.ca_weekDayNumText, { color: isToday(d) ? '#111827' : colors.textPrimary }]}>
                 {d.getDate()}
               </Text>
             </View>
@@ -1369,13 +750,13 @@ export default function ClientAgendaScreen() {
         ))}
       </View>
 
-      <View style={[styles.grid, { paddingHorizontal: PADDING }]}>
+      <View style={[appStyles.ca_grid, { paddingHorizontal: PADDING }]}>
         {hoursGrid.map(h => (
-          <View key={h} style={[styles.hourRow, { height: HOUR_HEIGHT }]}>
-            <Text style={[styles.hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
+          <View key={h} style={[appStyles.ca_hourRow, { height: HOUR_HEIGHT }]}>
+            <Text style={[appStyles.ca_hourLabel, { color: colors.textSecondary, width: LABEL_WIDTH }]}>
               {String(h).padStart(2, '0')}:00
             </Text>
-            <View style={[styles.hourLine, { backgroundColor: colors.border }]} />
+            <View style={[appStyles.ca_hourLine, { backgroundColor: colors.border }]} />
             <View style={{
               position: 'absolute',
               top: HOUR_HEIGHT / 2,
@@ -1387,14 +768,14 @@ export default function ClientAgendaScreen() {
             }} />
           </View>
         ))}
-        <View style={[styles.columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
+        <View style={[appStyles.ca_columnsOverlay, { left: LABEL_WIDTH + PADDING }]}>
           {weekDays.map((d, di) => {
             const dateStr = toLocalISOString(d);
             return (
               <View
                 key={di}
                 style={[
-                  styles.workerColumn,
+                  appStyles.ca_workerColumn,
                   {
                     width: weekColWidth,
                     left: di * weekColWidth,
@@ -1423,9 +804,9 @@ export default function ClientAgendaScreen() {
             );
           })}
           {nowPosition !== null && (
-            <View style={[styles.nowLine, { top: nowPosition, width: 7 * weekColWidth }]}>
-              <View style={styles.nowDot} />
-              <View style={[styles.nowBar, { backgroundColor: appColors.primary }]} />
+            <View style={[appStyles.ca_nowLine, { top: nowPosition, width: 7 * weekColWidth }]}>
+              <View style={appStyles.ca_nowDot} />
+              <View style={[appStyles.ca_nowBar, { backgroundColor: appColors.primary }]} />
             </View>
           )}
         </View>
@@ -1436,16 +817,16 @@ export default function ClientAgendaScreen() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn} activeOpacity={0.7}>
+      <View style={[appStyles.ca_header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
+        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={appStyles.ca_iconBtn} activeOpacity={0.7}>
           <Feather name="menu" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
         {/* Toggle Día / Semana — glass */}
-        <View style={[styles.toggle, {
+        <View style={[appStyles.ca_toggle, {
           backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
           borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
         }]}>
@@ -1453,30 +834,30 @@ export default function ClientAgendaScreen() {
             <TouchableOpacity
               key={m}
               onPress={() => setViewMode(m)}
-              style={[styles.toggleBtn, viewMode === m && { backgroundColor: appColors.primary }]}
+              style={[appStyles.ca_toggleBtn, viewMode === m && { backgroundColor: appColors.primary }]}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleLabel, { color: viewMode === m ? '#111827' : colors.textSecondary }]}>
+              <Text style={[appStyles.ca_toggleLabel, { color: viewMode === m ? '#111827' : colors.textSecondary }]}>
                 {m === 'day' ? 'Día' : 'Semana'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={toggleTheme} style={appStyles.ca_iconBtn} activeOpacity={0.7}>
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* ── Título del negocio (Liquid Glass) ────────────────────── */}
       {business && (
-        <View style={[styles.businessHeader, {
+        <View style={[appStyles.ca_businessHeader, {
           borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
           backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
         }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
-            <Text style={[styles.businessHeaderTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+            <Text style={[appStyles.ca_businessHeaderLabel, { color: colors.textSecondary }]}>NEGOCIO</Text>
+            <Text style={[appStyles.ca_businessHeaderTitle, { color: colors.textPrimary }]} numberOfLines={1}>
               {business.name.toUpperCase()}
             </Text>
           </View>
@@ -1490,22 +871,22 @@ export default function ClientAgendaScreen() {
         const pct = limit > 0 ? (used / limit) * 100 : 0;
         const isFull = used >= limit;
         return (
-          <View style={[styles.gymClassesBanner, {
+          <View style={[appStyles.ca_gymClassesBanner, {
             backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
             borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
           }]}>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.gymClassesLabel, { color: colors.textPrimary }]}>
+              <Text style={[appStyles.ca_gymClassesLabel, { color: colors.textPrimary }]}>
                 Plan {gymMembership.plan.toUpperCase()} · {used}/{limit} clases
               </Text>
-              <View style={[styles.gymClassesTrack, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
-                <View style={[styles.gymClassesFill, {
+              <View style={[appStyles.ca_gymClassesTrack, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+                <View style={[appStyles.ca_gymClassesFill, {
                   width: `${pct}%`,
                   backgroundColor: isFull ? '#E24B4A' : appColors.primary,
                 }]} />
               </View>
             </View>
-            <Text style={[styles.gymClassesWeekLabel, { color: isFull ? '#E24B4A' : colors.textSecondary }]}>
+            <Text style={[appStyles.ca_gymClassesWeekLabel, { color: isFull ? '#E24B4A' : colors.textSecondary }]}>
               {isFull ? 'Límite alcanzado' : 'esta semana'}
             </Text>
           </View>
@@ -1515,14 +896,14 @@ export default function ClientAgendaScreen() {
       {/* ── Selector de fecha (modo día) ────────────────────────── */}
       {viewMode === 'day' && (
 
-        <View style={styles.dateNav}>
-          <TouchableOpacity onPress={() => navigateDay(-1)} style={styles.navBtn} activeOpacity={0.7}>
+        <View style={appStyles.ca_dateNav}>
+          <TouchableOpacity onPress={() => navigateDay(-1)} style={appStyles.ca_navBtn} activeOpacity={0.7}>
             <Feather name="chevron-left" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
+          <Text style={[appStyles.ca_dateLabel, { color: colors.textPrimary }]}>
             {formatDateLabel(selectedDate)}
           </Text>
-          <TouchableOpacity onPress={() => navigateDay(1)} style={styles.navBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigateDay(1)} style={appStyles.ca_navBtn} activeOpacity={0.7}>
             <Feather name="chevron-right" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -1530,14 +911,14 @@ export default function ClientAgendaScreen() {
 
       {/* ── Selector de semana (modo semana) ────────────────────── */}
       {viewMode === 'week' && (
-        <View style={styles.dateNav}>
-          <TouchableOpacity onPress={() => navigateDay(-7)} style={styles.navBtn} activeOpacity={0.7}>
+        <View style={appStyles.ca_dateNav}>
+          <TouchableOpacity onPress={() => navigateDay(-7)} style={appStyles.ca_navBtn} activeOpacity={0.7}>
             <Feather name="chevron-left" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.dateLabel, { color: colors.textPrimary }]}>
+          <Text style={[appStyles.ca_dateLabel, { color: colors.textPrimary }]}>
             {weekDays[0].getDate()} – {weekDays[6].getDate()} {['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][selectedDate.getMonth()]}
           </Text>
-          <TouchableOpacity onPress={() => navigateDay(7)} style={styles.navBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigateDay(7)} style={appStyles.ca_navBtn} activeOpacity={0.7}>
             <Feather name="chevron-right" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -1545,9 +926,9 @@ export default function ClientAgendaScreen() {
 
       {/* ── Filtro por trabajador ─────────────────────────────────── */}
       {viewMode === 'day' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workerFilters} contentContainerStyle={styles.workerFiltersContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={appStyles.ca_workerFilters} contentContainerStyle={appStyles.ca_workerFiltersContent}>
           <TouchableOpacity
-            style={[styles.filterChip,
+            style={[appStyles.ca_filterChip,
             !selectedWorkerFilter
               ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
               : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
@@ -1555,12 +936,12 @@ export default function ClientAgendaScreen() {
             onPress={() => setSelectedWorkerFilter(null)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.filterChipText, !selectedWorkerFilter ? { color: '#111827' } : { color: colors.textSecondary }]}>Todos</Text>
+            <Text style={[appStyles.ca_filterChipText, !selectedWorkerFilter ? { color: '#111827' } : { color: colors.textSecondary }]}>Todos</Text>
           </TouchableOpacity>
           {workers.map(w => (
             <TouchableOpacity
               key={w.id}
-              style={[styles.filterChip,
+              style={[appStyles.ca_filterChip,
               selectedWorkerFilter === w.name
                 ? { backgroundColor: appColors.primary, borderColor: appColors.primary }
                 : { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }
@@ -1570,7 +951,7 @@ export default function ClientAgendaScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={25} showDot={false} />
-                <Text style={[styles.filterChipText, selectedWorkerFilter === w.name ? { color: '#111827' } : { color: colors.textSecondary }]}>{w.name}</Text>
+                <Text style={[appStyles.ca_filterChipText, selectedWorkerFilter === w.name ? { color: '#111827' } : { color: colors.textSecondary }]}>{w.name}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -1592,9 +973,9 @@ export default function ClientAgendaScreen() {
                 style={{ alignItems: 'center', gap: 5, opacity: isSelected ? 1 : 0.45 }}
               >
                 <WorkerAvatar avatarUrl={w.avatar_url} name={w.name} color={w.color} size={90} showDot={isSelected} />
-                <Text style={[styles.workerName, { color: isSelected ? w.color : colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
+                <Text style={[appStyles.ca_workerName, { color: isSelected ? w.color : colors.textPrimary }]} numberOfLines={1}>{w.name}</Text>
                 {w.specialty ? (
-                  <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
+                  <Text style={[appStyles.ca_workerSpecialty, { color: colors.textSecondary }]} numberOfLines={1}>{w.specialty}</Text>
                 ) : null}
               </TouchableOpacity>
             );
@@ -1604,9 +985,9 @@ export default function ClientAgendaScreen() {
 
       {/* ── Stats row (Liquid Glass) — solo en vista día ────────── */}
       {viewMode === 'day' && (
-        <View style={styles.statsRow}>
+        <View style={appStyles.ca_statsRow}>
           {stats.map((s, i) => (
-            <View key={i} style={[styles.statCard, {
+            <View key={i} style={[appStyles.ca_statCard, {
               backgroundColor: i === 0
                 ? (isDarkMode ? 'rgba(180,247,54,0.10)' : 'rgba(180,247,54,0.07)')
                 : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
@@ -1614,10 +995,10 @@ export default function ClientAgendaScreen() {
                 ? 'rgba(180,247,54,0.28)'
                 : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
             }]}>
-              <Text style={[styles.statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
+              <Text style={[appStyles.ca_statValue, { color: i === 0 ? appColors.primary : colors.textPrimary }]}>
                 {s.value}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
+              <Text style={[appStyles.ca_statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
             </View>
           ))}
         </View>
@@ -1628,19 +1009,19 @@ export default function ClientAgendaScreen() {
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => setShowWeeklyModal(true)}
-          style={[styles.weeklyBanner, { backgroundColor: appColors.primary }]}
+          style={[appStyles.ca_weeklyBanner, { backgroundColor: appColors.primary }]}
         >
           <Feather name="calendar" size={16} color="#fff" />
-          <Text style={styles.weeklyBannerText}>¡Hoy puedes elegir tus clases de la semana!</Text>
+          <Text style={appStyles.ca_weeklyBannerText}>¡Hoy puedes elegir tus clases de la semana!</Text>
           <Feather name="chevron-right" size={16} color="#fff" />
         </TouchableOpacity>
       )}
 
-      <View style={[styles.gridContainer, { borderTopColor: colors.border }]}>
+      <View style={[appStyles.ca_gridContainer, { borderTopColor: colors.border }]}>
         {viewMode === 'day' ? renderDayGrid() : renderWeekGrid()}
 
         {isSuspended && (
-          <View style={[styles.suspensionBadge, { backgroundColor: '#EF4444', padding: 12, borderRadius: 8, margin: 16, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' }]}>
+          <View style={[appStyles.ca_suspensionBadge, { backgroundColor: '#EF4444', padding: 12, borderRadius: 8, margin: 16, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' }]}>
             <Feather name="alert-circle" size={16} color="#fff" />
             <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>NEGOCIO TEMPORALMENTE SUSPENDIDO</Text>
           </View>
@@ -1653,7 +1034,7 @@ export default function ClientAgendaScreen() {
         if (!isGym) {
           return (
             <TouchableOpacity
-              style={[styles.fab, { backgroundColor: appColors.primary }]}
+              style={[appStyles.ca_fab, { backgroundColor: appColors.primary }]}
               activeOpacity={0.85}
               onPress={() => {
                 if (!business?.id) {
@@ -1672,7 +1053,7 @@ export default function ClientAgendaScreen() {
         // Gym: cargando estado de membresía
         if (gymMembershipLoading) {
           return (
-            <View style={[styles.fab, { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[appStyles.ca_fab, { backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
               <ActivityIndicator size="small" color={appColors.primary} />
             </View>
           );
@@ -1682,7 +1063,7 @@ export default function ClientAgendaScreen() {
         if (gymMembership?.status === 'active') {
           return (
             <TouchableOpacity
-              style={[styles.fab, { backgroundColor: appColors.primary }]}
+              style={[appStyles.ca_fab, { backgroundColor: appColors.primary }]}
               activeOpacity={0.85}
               onPress={() => {
                 setEditingAppt(undefined);
@@ -1697,9 +1078,9 @@ export default function ClientAgendaScreen() {
         // Gym: solicitud pendiente
         if (membershipRequest?.status === 'pending') {
           return (
-            <View style={[styles.membershipBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[appStyles.ca_membershipBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Feather name="clock" size={16} color="#F0A030" />
-              <Text style={[styles.membershipBadgeText, { color: colors.textSecondary }]}>Solicitud pendiente de aprobación</Text>
+              <Text style={[appStyles.ca_membershipBadgeText, { color: colors.textSecondary }]}>Solicitud pendiente de aprobación</Text>
             </View>
           );
         }
@@ -1707,12 +1088,12 @@ export default function ClientAgendaScreen() {
         // Gym: solicitud rechazada o sin solicitud → botón para solicitar
         return (
           <TouchableOpacity
-            style={[styles.membershipBtn, { backgroundColor: appColors.primary }]}
+            style={[appStyles.ca_membershipBtn, { backgroundColor: appColors.primary }]}
             activeOpacity={0.85}
             onPress={() => setShowMembershipModal(true)}
           >
             <Feather name="user-plus" size={18} color="#111827" />
-            <Text style={styles.membershipBtnText}>
+            <Text style={appStyles.ca_membershipBtnText}>
               {membershipRequest?.status === 'rejected' ? 'Volver a solicitar membresía' : 'Solicitar membresía'}
             </Text>
           </TouchableOpacity>
@@ -1722,15 +1103,18 @@ export default function ClientAgendaScreen() {
       {/* ── Modal Formulario ─────────────────────────────────────── */}
       <AppointmentFormModal
         visible={formVisible}
+        role="client"
         initialData={editingAppt}
         onClose={() => setFormVisible(false)}
         onSave={handleSaveAppt}
-        colors={{ ...colors, workersList: workers, selectedBusinessId: business?.id }}
+        businessId={business?.id || ''}
+        workers={workers}
         selectedDateStr={selectedDateStr}
-        showAlert={showAlert}
-        openingTime={business?.opening_time}
-        closingTime={business?.closing_time}
+        openingHour={business?.opening_time ? parseInt(business.opening_time.split(':')[0], 10) : 7}
+        closingHour={business?.closing_time ? parseInt(business.closing_time.split(':')[0], 10) : 22}
         isGym={isGym}
+        showAlert={showAlert}
+        colors={{ ...colors, textPrimary: colors.textPrimary, textSecondary: colors.textSecondary, border: colors.border }}
       />
 
       {/* ── Bottom sheet ─────────────────────────────────────────── */}
@@ -1746,16 +1130,16 @@ export default function ClientAgendaScreen() {
       {/* ── Modal: Solicitud de membresía ────────────────────────── */}
       <Modal visible={showMembershipModal} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={() => setShowMembershipModal(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={appStyles.ca_modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={[styles.membershipModalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Text style={[styles.membershipModalTitle, { color: colors.textPrimary }]}>Unirme a {business?.name}</Text>
-                <Text style={[styles.membershipModalSub, { color: colors.textSecondary }]}>
+              <View style={[appStyles.ca_membershipModalCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[appStyles.ca_membershipModalTitle, { color: colors.textPrimary }]}>Unirme a {business?.name}</Text>
+                <Text style={[appStyles.ca_membershipModalSub, { color: colors.textSecondary }]}>
                   El gimnasio revisará tu solicitud y te asignará un tipo de membresía y plan. Tu cita quedará pendiente de confirmación.
                 </Text>
                 <Text style={[{ fontSize: 12, color: colors.textSecondary, marginBottom: 6, letterSpacing: 0.5 }]}>MENSAJE OPCIONAL</Text>
                 <TextInput
-                  style={[styles.membershipInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  style={[appStyles.ca_membershipInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
                   placeholder="Cuéntale algo al gimnasio (objetivos, experiencia...)"
                   placeholderTextColor={colors.textSecondary}
                   value={membershipMessage}
@@ -1765,13 +1149,13 @@ export default function ClientAgendaScreen() {
                 />
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
                   <TouchableOpacity
-                    style={[styles.membershipModalBtn, { borderColor: colors.border }]}
+                    style={[appStyles.ca_membershipModalBtn, { borderColor: colors.border }]}
                     onPress={() => setShowMembershipModal(false)}
                   >
                     <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, flex: 1 }]}
+                    style={[appStyles.ca_membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, flex: 1 }]}
                     onPress={handleSendMembershipRequest}
                     disabled={sendingRequest}
                   >
@@ -1788,12 +1172,12 @@ export default function ClientAgendaScreen() {
 
       {/* ── Modal: Selección semanal de clases (clientes estáticos) ─ */}
       <Modal visible={showWeeklyModal} transparent animationType="slide">
-        <View style={[styles.modalOverlay, { justifyContent: 'flex-end', padding: 0 }]}>
+        <View style={[appStyles.ca_modalOverlay, { justifyContent: 'flex-end', padding: 0 }]}>
           <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-            <View style={[styles.weeklyModalContent, { backgroundColor: isDarkMode ? 'rgba(15,15,20,0.7)' : 'rgba(255,255,255,0.6)', borderColor: colors.border }]}>
-              <View style={[styles.sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', alignSelf: 'center' }]} />
-              <Text style={[styles.membershipModalTitle, { color: colors.textPrimary, marginBottom: 6 }]}>Clases de la semana</Text>
-              <Text style={[styles.membershipModalSub, { color: colors.textSecondary, marginBottom: 16 }]}>
+            <View style={[appStyles.ca_weeklyModalContent, { backgroundColor: isDarkMode ? 'rgba(15,15,20,0.7)' : 'rgba(255,255,255,0.6)', borderColor: colors.border }]}>
+              <View style={[appStyles.ca_sheetHandle, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)', alignSelf: 'center' }]} />
+              <Text style={[appStyles.ca_membershipModalTitle, { color: colors.textPrimary, marginBottom: 6 }]}>Clases de la semana</Text>
+              <Text style={[appStyles.ca_membershipModalSub, { color: colors.textSecondary, marginBottom: 16 }]}>
                 Plan {gymMembership?.plan?.toUpperCase()} · Puedes elegir hasta {PLAN_LIMITS[gymMembership?.plan ?? 'basic']} clase{PLAN_LIMITS[gymMembership?.plan ?? 'basic'] > 1 ? 's' : ''} esta semana.
               </Text>
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
@@ -1802,13 +1186,13 @@ export default function ClientAgendaScreen() {
                   const dayAppts = appointments.filter(a => a.date === dateStr && a.isMine);
                   const isTodayOrPast = d <= new Date(new Date().setHours(0, 0, 0, 0));
                   return (
-                    <View key={i} style={[styles.weeklyDayRow, { borderColor: colors.border, opacity: isTodayOrPast ? 0.4 : 1 }]}>
+                    <View key={i} style={[appStyles.ca_weeklyDayRow, { borderColor: colors.border, opacity: isTodayOrPast ? 0.4 : 1 }]}>
                       <Text style={[{ fontSize: 13, fontWeight: '600', color: colors.textPrimary, width: 80 }]}>
                         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]} {d.getDate()}
                       </Text>
                       {dayAppts.length > 0
                         ? dayAppts.map(a => (
-                          <View key={a.id} style={[styles.weeklyApptChip, { backgroundColor: appColors.primary + '22', borderColor: appColors.primary + '44' }]}>
+                          <View key={a.id} style={[appStyles.ca_weeklyApptChip, { backgroundColor: appColors.primary + '22', borderColor: appColors.primary + '44' }]}>
                             <Text style={{ fontSize: 11, color: appColors.primary }}>{formatHour(a.startHour)} · {a.service}</Text>
                           </View>
                         ))
@@ -1820,7 +1204,7 @@ export default function ClientAgendaScreen() {
                 })}
               </ScrollView>
               <TouchableOpacity
-                style={[styles.membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, marginTop: 16, alignSelf: 'stretch', alignItems: 'center' }]}
+                style={[appStyles.ca_membershipModalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary, marginTop: 16, alignSelf: 'stretch', alignItems: 'center' }]}
                 onPress={() => {
                   setShowWeeklyModal(false);
                   setEditingAppt(undefined);
@@ -1844,611 +1228,3 @@ export default function ClientAgendaScreen() {
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggle: {
-    flexDirection: 'row',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    padding: 3,
-    gap: 2,
-  },
-  toggleBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  toggleLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-    letterSpacing: 0.2,
-  },
-
-  // Date nav
-  dateNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    marginBottom: 10,
-  },
-  navBtn: {
-    padding: 8,
-  },
-  dateLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-
-  // Filters
-  workerFilters: {
-    maxHeight: 40,
-    minHeight: 40,
-    marginBottom: 10,
-  },
-  workerFiltersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#444',
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  statCard: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: 9,
-    letterSpacing: 1.5,
-  },
-
-  // Grid container
-  gridContainer: {
-    flex: 1,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-
-  // Worker header
-  workerHeader: {
-    flexDirection: 'row',
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  workerCol: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  workerAvatarWrapper: {
-    position: 'relative',
-  },
-  workerAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  workerActiveDot: {
-    position: 'absolute',
-    bottom: 1,
-    right: 1,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: '#0A0A0A',
-  },
-  workerInitials: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  workerName: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  workerSpecialty: {
-    fontSize: 9,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-  },
-  weekDayNum: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  weekDayNumText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-
-  // Grid de tiempo
-  grid: {
-    position: 'relative',
-  },
-  hourRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  hourLabel: {
-    fontSize: 10,
-    paddingTop: 0,
-    paddingRight: 8,
-    textAlign: 'right',
-    letterSpacing: 0.2,
-    marginTop: -6,
-  },
-  hourLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    marginTop: 0,
-  },
-
-  // Columnas de citas
-  columnsOverlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 0,
-  },
-  workerColumn: {
-    position: 'absolute',
-    top: 0,
-  },
-
-  // Tarjeta de cita
-  apptCard: {
-    position: 'absolute',
-    left: 3,
-    borderLeftWidth: 3,
-    borderRadius: 10,
-    paddingTop: 5,
-    paddingBottom: 5,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 5,
-    overflow: 'hidden',
-  },
-  apptDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 4,
-    flexShrink: 0,
-  },
-  apptTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-  apptSub: {
-    fontSize: 10,
-    marginTop: 1,
-  },
-
-  // Línea "ahora"
-  nowLine: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  nowDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: appColors.primary,
-    marginLeft: -4,
-  },
-  nowBar: {
-    flex: 1,
-    height: 1.5,
-  },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    ...require('react-native').Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
-      android: { elevation: 6 },
-      web: { boxShadow: '0px 3px 6px rgba(0,0,0,0.25)' },
-    }),
-  },
-
-  // Bottom sheet
-  sheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 36,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 16,
-  },
-  sheetTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sheetWorkerDot: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetWorkerInitial: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  sheetService: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sheetClient: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  sheetBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  sheetBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  sheetDetails: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 20,
-  },
-  sheetDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sheetDetailText: {
-    fontSize: 13,
-  },
-  sheetActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-  },
-  sheetAction: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  sheetActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetActionLabel: {
-    fontSize: 11,
-    letterSpacing: 0.2,
-  },
-
-  // Modal Form
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-    letterSpacing: 0.5,
-  },
-  modalLabel: {
-    fontSize: 12,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-    marginTop: 12,
-  },
-  modalInput: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  modalRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modalChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  modalChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 32,
-  },
-  modalBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  modalBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-
-  // Business header (Tesla style)
-  businessHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  businessHeaderLabel: {
-    fontSize: 10,
-    letterSpacing: 2,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  businessHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  suspensionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  suspensionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-
-  // Gym membership
-  membershipBtn: {
-    position: 'absolute',
-    bottom: 28,
-    left: 24,
-    right: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
-      android: { elevation: 6 },
-    }),
-  },
-  membershipBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  membershipBadge: {
-    position: 'absolute',
-    bottom: 28,
-    left: 24,
-    right: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  membershipBadgeText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  membershipModalCard: {
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 24,
-    marginHorizontal: 4,
-  },
-  membershipModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  membershipModalSub: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  membershipInput: {
-    height: 90,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    padding: 12,
-    paddingTop: 12,
-    fontSize: 13,
-    textAlignVertical: 'top',
-  },
-  membershipModalBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Weekly selection
-  weeklyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  weeklyBannerText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  weeklyModalContent: {
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: StyleSheet.hairlineWidth,
-  },
-  weeklyDayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexWrap: 'wrap',
-  },
-  weeklyApptChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-
-  // Gym classes indicator
-  gymClassesBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  gymClassesLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  gymClassesTrack: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  gymClassesFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  gymClassesWeekLabel: {
-    fontSize: 11,
-    flexShrink: 0,
-  },
-});

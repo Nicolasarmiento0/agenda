@@ -437,6 +437,7 @@ export default function CompanyAgendaScreen() {
 
       <AppointmentFormModal
         visible={formVisible}
+        role="company"
         initialData={editingAppt}
         isRescheduling={isReschedulingRef.current}
         onClose={() => { isReschedulingRef.current = false; setFormVisible(false); }}
