@@ -9,7 +9,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { getPastelColors, HOUR_HEIGHT, STATUS_CONFIG } from '../../../constants/appointments';
-import { formatHour } from '../../agenda/agendaHelpers';
+import { formatHour } from '../../calendar/modals/agendaHelpers';
 import { calendarTokens } from '../calendarTokens';
 import { Appointment } from '../types';
 

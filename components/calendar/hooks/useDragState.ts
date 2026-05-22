@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Appointment } from '../../../constants/appointments';
-import { toLocalISOString } from '../../agenda/agendaHelpers';
+import { toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { HOUR_HEIGHT } from '../../../constants/appointments';
 
 export interface DragState {

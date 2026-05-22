@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { HOUR_HEIGHT } from '../../../constants/appointments';
-import { isToday, nowLinePosition, toLocalISOString } from '../../agenda/agendaHelpers';
+import { isToday, nowLinePosition, toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import WorkerAvatar from '../../WorkerAvatar';
 import { NowLine } from '../grid/NowLine';
 import { TimeGrid, LABEL_WIDTH } from '../grid/TimeGrid';

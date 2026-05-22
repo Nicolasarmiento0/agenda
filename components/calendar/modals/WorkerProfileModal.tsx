@@ -1,9 +1,9 @@
 import { BlurView } from 'expo-blur';
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Appointment, WorkerRow } from '../../constants/appointments';
-import { glassColors } from '../../styles/appStyles';
-import WorkerAvatar from '../WorkerAvatar';
+import { Appointment, WorkerRow } from '../../../constants/appointments';
+import { glassColors } from '../../../styles/appStyles';
+import WorkerAvatar from '../../WorkerAvatar';
 import { toLocalISOString } from './agendaHelpers';
 
 type Props = {

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { getPastelColors } from '../../../constants/appointments';
-import { isToday, shortDayName, toLocalISOString } from '../../agenda/agendaHelpers';
+import { isToday, shortDayName, toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { calendarTokens } from '../calendarTokens';
 import { Appointment } from '../types';
 

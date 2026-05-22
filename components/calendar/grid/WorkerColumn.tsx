@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { HOUR_HEIGHT } from '../../../constants/appointments';
-import { toLocalISOString } from '../../agenda/agendaHelpers';
+import { toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { getUnavailableBlocks } from '../../../app/utils/helpers';
 import { EventCard } from '../events/EventCard';
 import { GhostEvent } from '../events/GhostEvent';
@@ -105,7 +105,7 @@ export function WorkerColumn({
               <View style={{ alignItems: 'center', gap: 6, opacity: 0.6 }}>
                 <Feather name={isClosed ? 'lock' : 'coffee'} size={16} color={colors.textSecondary} />
                 <Text style={{ fontSize: 9, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1 }}>
-                  {isClosed ? 'CERRADO' : block.title.toUpperCase()}
+                  {isClosed ? 'CERRADO' : (block.title ? String(block.title).toUpperCase() : '')}
                 </Text>
               </View>
             ) : (

@@ -12,14 +12,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
   useWindowDimensions,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { Appointment, WorkerRow } from '../../constants/appointments';
-import { supabase } from '../../lib/supabase';
-import { appColors, glassColors } from '../../styles/appStyles';
-import { useTheme } from '../../context/ThemeContext';
-import TimeWheelPicker from '../TimeWheelPicker';
+import { Appointment, WorkerRow } from '../../../constants/appointments';
+import { supabase } from '../../../lib/supabase';
+import { appColors, glassColors } from '../../../styles/appStyles';
+import { useTheme } from '../../../context/ThemeContext';
+import TimeWheelPicker from '../../TimeWheelPicker';
 import { toLocalISOString } from './agendaHelpers';
 
 type Role = 'company' | 'worker' | 'client';
@@ -44,6 +45,7 @@ type Props = {
   isRescheduling?: boolean;
   onClose: () => void;
   onSave: (appt: Partial<Appointment>) => Promise<boolean>;
+  onAction?: (action: any, appt: Appointment) => void;
   businessId: string;
   workers: WorkerRow[];
   selectedDateStr: string;
@@ -52,7 +54,7 @@ type Props = {
   allowBlocking?: boolean;
   isGym?: boolean;
   showAlert: (opts: { title: string; message: string }) => void;
-  colors: Colors;
+  colors: { textPrimary: string; textSecondary: string; border: string };
 };
 
 export default function AppointmentFormModal({
@@ -381,8 +383,8 @@ export default function AppointmentFormModal({
   const notesPlaceholder = role === 'client' ? 'Agrega información adicional...' : 'Notas para el equipo...';
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 2000 }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, width: '100%' }}>
         <View style={[styles.overlay, { justifyContent: 'flex-end', padding: 0 }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
 
@@ -405,16 +407,18 @@ export default function AppointmentFormModal({
             </View>
           )}
 
-          <View style={[styles.sheet, { overflow: 'hidden', maxHeight: SHEET_MAX_HEIGHT }]}>
-            <BlurView
-              intensity={isDarkMode ? 65 : 85}
-              tint={isDarkMode ? 'dark' : 'light'}
-              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
-            />
+          <View style={[styles.sheet, { overflow: 'hidden', maxHeight: SHEET_MAX_HEIGHT, width: '100%' }]}>
+            {Platform.OS === 'ios' && (
+              <BlurView
+                intensity={isDarkMode ? 65 : 85}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}
+              />
+            )}
             <View style={[StyleSheet.absoluteFill, {
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
-              backgroundColor: sheetBg,
+              backgroundColor: Platform.OS === 'android' ? (isDarkMode ? '#0E1217' : '#FFFFFF') : sheetBg,
               borderWidth: StyleSheet.hairlineWidth,
               borderColor: sheetBorder,
             }]} />
@@ -638,7 +642,7 @@ export default function AppointmentFormModal({
           </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </Modal>
   );
 }
 

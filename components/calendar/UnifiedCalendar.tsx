@@ -9,9 +9,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AppointmentFormModal from '../agenda/AppointmentFormModal';
-import AppointmentSheet from '../agenda/AppointmentSheet';
-import WorkerProfileModal from '../agenda/WorkerProfileModal';
+import AppointmentFormModal from './modals/AppointmentFormModal';
+import WorkerProfileModal from './modals/WorkerProfileModal';
+import * as Haptics from 'expo-haptics';
 import WorkerAvatar from '../WorkerAvatar';
 import { Appointment } from '../../constants/appointments';
 import { useAlert } from '../../context/AlertContext';
@@ -19,7 +19,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { getUnavailableBlocks } from '../../app/utils/helpers';
-import { toLocalISOString } from '../agenda/agendaHelpers';
+import { toLocalISOString } from '../calendar/modals/agendaHelpers';
+import { useAppointmentMutations } from '../calendar/modals/hooks/useAppointmentMutations';
+import { AppointmentAction } from '../calendar/modals/hooks/useAppointmentPermissions';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebar } from './CalendarSidebar';
 import { calendarTokens } from './calendarTokens';
@@ -79,25 +81,39 @@ export function UnifiedCalendar({ role, businessId }: UnifiedCalendarProps) {
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const openSheet = useCallback((appt: Appointment) => {
-    if (appt.service === 'BLOQUEO') return;
-    setSelectedAppt(appt);
-    setSheetVisible(true);
-  }, [setSelectedAppt, setSheetVisible]);
+    if (appt.service === 'BLOQUEO') {
+      // Si es un bloqueo, lo tratamos normal, el modal lo procesará en view mode.
+    }
+    setEditingAppt(appt);
+    setFormVisible(true);
+  }, [setEditingAppt, setFormVisible]);
 
-  const handleSlotPress = useCallback((slotData: PressedSlotData) => {
-    if (!permissions.canCreate) return;
-
-    // Client gym check
-    if (gymData?.isGym && gymMembershipRef.current?.status === 'suspended') {
-      showAlert({ title: 'Membresía Suspendida', message: 'No puedes agendar mientras tu membresía esté suspendida.' });
+  const handleSlotPress = useCallback((slotData: any) => {
+    console.log('[DEBUG] handleSlotPress llamado con:', slotData);
+    console.log('[DEBUG] role:', role, 'permissions.canCreate:', permissions.canCreate);
+    console.log('[DEBUG] isGym:', gymData?.isGym);
+    
+    // Si no es client y faltan configuraciones críticas, no hacemos nada (o mostramos alerta, pero por UX silencioso si no hay conf)
+    if (!permissions.canCreate) {
+      console.log('[DEBUG] Fallo: permissions.canCreate es false');
+      if (role === 'client') {
+        showAlert({ title: 'No permitido', message: 'No puedes crear citas en este momento.' });
+      }
       return;
     }
 
-    const clientName = role === 'client' ? ((profile as any)?.nickname || '') : '';
+    if (gymData?.isGym) {
+      // Si es gym y no es un admin, no se puede clickear una hora vacía (las clases ya están creadas)
+      if (role === 'client') {
+        console.log('[DEBUG] Fallo: client no puede crear en gym');
+        return;
+      }
+    }
 
+    console.log('[DEBUG] Seteando formVisible = true');
     setPrefillData({
       id: '',
-      clientName,
+      clientName: role === 'client' ? (profile as any)?.nickname || '' : '',
       service: '',
       worker_id: slotData.workerId,
       worker: slotData.workerName,
@@ -111,23 +127,26 @@ export function UnifiedCalendar({ role, businessId }: UnifiedCalendarProps) {
     setFormVisible(true);
   }, [permissions.canCreate, gymData?.isGym, role, profile, setPrefillData, setEditingAppt, setFormVisible, showAlert]);
 
-  const handleSheetAction = useCallback(async (actionId: string, appt: Appointment) => {
+  // ─── Mutations Hook ────────────────────────────────────────────────────────
+  const { changeAppointmentStatus } = useAppointmentMutations({
+    showAlert,
+    refetchAppts,
+  });
+
+  const handleModalAction = useCallback(async (actionId: AppointmentAction, appt: Appointment) => {
     if (actionId === 'edit') {
       setEditingAppt(appt);
       isReschedulingRef.current = false;
-      setSheetVisible(false);
-      setFormVisible(true);
+      // Form modal maneja el switch a edit internamente, o podemos forzar un re-render
       return;
     }
-    if (actionId === 'rescheduled') {
+    if (actionId === 'reschedule') {
       setEditingAppt(appt);
       isReschedulingRef.current = true;
-      setSheetVisible(false);
-      setFormVisible(true);
       return;
     }
     if (actionId === 'cancel') {
-      if (permissions.canCancelOwn && appt.date) {
+      if (role === 'client' && appt.date) {
         const [y, m, d] = appt.date.split('-').map(Number);
         const startH = Math.floor(appt.startHour);
         const startM = Math.round((appt.startHour % 1) * 60);
@@ -138,15 +157,21 @@ export function UnifiedCalendar({ role, businessId }: UnifiedCalendarProps) {
         }
       }
     }
-    const STATUS_MAP: Record<string, string> = {
-      confirm: 'confirmed', complete: 'completed', 'no-show': 'no-show', cancel: 'cancelled',
-    };
-    const newStatus = STATUS_MAP[actionId];
+    
+    // Para 'unblock', es un caso especial donde cancelamos o eliminamos el bloqueo
+    if (actionId === 'unblock') {
+       await changeAppointmentStatus(appt, 'cancelled');
+       return;
+    }
+
+    const newStatus = actionId === 'confirm' ? 'confirmed' :
+                      actionId === 'complete' ? 'completed' :
+                      actionId === 'no-show' ? 'no_show' :
+                      actionId === 'cancel' ? 'cancelled' : null;
+                      
     if (!newStatus) return;
-    const { error } = await supabase.from('appointments').update({ status: newStatus }).eq('id', appt.id);
-    if (error) showAlert({ title: 'Error', message: error.message });
-    else refetchAppts();
-  }, [permissions.canCancelOwn, isReschedulingRef, setEditingAppt, setSheetVisible, setFormVisible, showAlert, refetchAppts]);
+    await changeAppointmentStatus(appt, newStatus);
+  }, [role, isReschedulingRef, setEditingAppt, showAlert, changeAppointmentStatus]);
 
   const handleDragDrop = useCallback(async (
     apptId: string,
@@ -383,8 +408,14 @@ export function UnifiedCalendar({ role, businessId }: UnifiedCalendarProps) {
     return (
       <TouchableOpacity
         onPress={() => {
-          const defaultWorker = workers[0];
-          if (!defaultWorker) return;
+          console.log('[DEBUG] FAB Presionado');
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          const defaultWorker = Array.isArray(workers) && workers.length > 0 ? workers[0] : null;
+          console.log('[DEBUG] defaultWorker:', defaultWorker?.name);
+          if (!defaultWorker) {
+            console.log('[DEBUG] Cancelado por falta de workers');
+            return;
+          }
           handleSlotPress({ hour: 10, workerId: defaultWorker.id, workerName: defaultWorker.name, workerColor: defaultWorker.color, date: selectedDate });
         }}
         style={[styles.fab, { backgroundColor: colors.primary }]}
@@ -531,24 +562,15 @@ export function UnifiedCalendar({ role, businessId }: UnifiedCalendarProps) {
         onNavigateMonth={navigateBy}
       />
 
-      {/* AppointmentSheet */}
-      <AppointmentSheet
-        appt={selectedAppt}
-        visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
-        onAction={handleSheetAction}
-        isGym={gymData?.isGym ?? false}
-        colors={colors}
-        isDarkMode={isDarkMode}
-      />
-
-      {/* AppointmentFormModal */}
+      {/* AppointmentFormModal (Unified Create/Edit/View) */}
       <AppointmentFormModal
         visible={formVisible}
         role={role}
         initialData={editingAppt ?? prefillData}
+        isRescheduling={isReschedulingRef.current}
         workers={workers}
         onSave={handleSaveAppt}
+        onAction={handleModalAction}
         onClose={() => { setFormVisible(false); setEditingAppt(undefined); setPrefillData(undefined); }}
         businessId={effectiveBusinessId}
         colors={colors}

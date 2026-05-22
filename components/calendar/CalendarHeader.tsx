@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatDateLabel, isToday } from '../agenda/agendaHelpers';
+import { formatDateLabel, isToday } from '../calendar/modals/agendaHelpers';
 import { calendarTokens } from './calendarTokens';
 import { CalendarViewMode } from './types';
 

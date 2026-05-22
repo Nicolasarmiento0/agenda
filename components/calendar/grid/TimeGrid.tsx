@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { HOUR_HEIGHT } from '../../../constants/appointments';
-import { formatHour } from '../../agenda/agendaHelpers';
+import { formatHour } from '../../calendar/modals/agendaHelpers';
 import { calendarTokens } from '../calendarTokens';
 
 export const LABEL_WIDTH = 46;

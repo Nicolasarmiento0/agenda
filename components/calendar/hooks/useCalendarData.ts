@@ -4,7 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAgendaAppointments } from '../../../hooks/useAgendaAppointments';
 import { useWorkers } from '../../../hooks/useWorkers';
 import { supabase } from '../../../lib/supabase';
-import { getWeekDays, toLocalISOString } from '../../agenda/agendaHelpers';
+import { getWeekDays, toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { CalendarRole, CalendarViewMode, GymData, GymMembership, MembershipRequest, WorkerRow } from '../types';
 
 export interface UseCalendarDataReturn {
@@ -110,7 +110,7 @@ export function useCalendarData(
             id: w.id,
             name: w.name,
             color: w.color || '#D00024',
-            initials: w.name.substring(0, 2).toUpperCase(),
+            initials: w.name ? String(w.name).substring(0, 2).toUpperCase() : 'W',
             avatar_url: w.profiles?.avatar_url ?? null,
             specialty: w.specialty || '',
             blocks: w.blocks || [],

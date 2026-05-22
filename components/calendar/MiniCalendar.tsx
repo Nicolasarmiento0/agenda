@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { isToday, toLocalISOString } from '../agenda/agendaHelpers';
+import { isToday, toLocalISOString } from '../calendar/modals/agendaHelpers';
 import { calendarTokens } from './calendarTokens';
 import { Appointment } from './types';
 

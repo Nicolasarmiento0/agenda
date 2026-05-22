@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { getWeekDays, toLocalISOString } from '../../agenda/agendaHelpers';
+import { getWeekDays, toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { Appointment, CalendarViewMode, GhostSlot, PressedSlotData, WorkerRow } from '../types';
 
 export interface UseCalendarStateReturn {

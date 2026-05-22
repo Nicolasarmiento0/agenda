@@ -1,4 +1,4 @@
-import { HOUR_HEIGHT } from '../../constants/appointments';
+import { HOUR_HEIGHT } from '../../../constants/appointments';
 
 export function getWeekDays(baseDate: Date): Date[] {
   const d = new Date(baseDate);

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { HOUR_HEIGHT } from '../../../constants/appointments';
-import { isToday, nowLinePosition, shortDayName, toLocalISOString } from '../../agenda/agendaHelpers';
+import { isToday, nowLinePosition, shortDayName, toLocalISOString } from '../../calendar/modals/agendaHelpers';
 import { calendarTokens } from '../calendarTokens';
 import { NowLine } from '../grid/NowLine';
 import { LABEL_WIDTH, TimeGrid } from '../grid/TimeGrid';
