@@ -55,7 +55,7 @@ export default function ProfileScreen() {
         supabase
           .from('appointments')
           .select('status')
-          .or(`client_id.eq.${user.id},client_name.eq.${profile?.nickname}`),
+          .eq('client_id', user.id),
         supabase
           .from('reviews')
           .select('id, score, comment, created_at, businesses(name)')

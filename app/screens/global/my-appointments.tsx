@@ -57,7 +57,9 @@ export default function MyAppointmentsScreen() {
       .order('date', { ascending: true })
       .order('start_hour', { ascending: true });
 
-    if (data) {
+    if (error) {
+      showAlert({ title: 'Error', message: 'No se pudieron cargar tus citas.' });
+    } else if (data) {
       setAppointments(data);
     }
     setLoading(false);
@@ -72,21 +74,21 @@ export default function MyAppointmentsScreen() {
   const handleCancel = (apptId: string) => {
     showAlert({
       title: 'CANCELAR CITA',
-      message: '¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer.',
+      message: '¿Estás seguro de que deseas cancelar esta cita?',
       buttons: [
         { text: 'Volver', style: 'cancel' },
         {
           text: 'Cancelar cita',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase.from('appointments').delete().eq('id', apptId);
+            const { error } = await supabase
+              .from('appointments')
+              .update({ status: 'cancelled' })
+              .eq('id', apptId);
             if (!error) {
               fetchAppointments();
             } else {
-              showAlert({
-                title: 'Error',
-                message: 'No se pudo cancelar la cita. Intenta nuevamente.',
-              });
+              showAlert({ title: 'Error', message: 'No se pudo cancelar la cita. Intenta nuevamente.' });
             }
           },
         },
@@ -102,8 +104,10 @@ export default function MyAppointmentsScreen() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const upcomingApps = appointments.filter(a => a.date >= todayStr && a.status !== 'completed' && a.status !== 'no-show');
-  const historyApps = appointments.filter(a => a.date < todayStr || a.status === 'completed' || a.status === 'no-show');
+  const ACTIVE_STATUSES = ['pending', 'confirmed', 'rescheduled'];
+  const PAST_STATUSES = ['completed', 'no-show', 'cancelled'];
+  const upcomingApps = appointments.filter(a => a.date >= todayStr && ACTIVE_STATUSES.includes(a.status));
+  const historyApps = appointments.filter(a => a.date < todayStr || PAST_STATUSES.includes(a.status));
   const displayedApps = activeTab === 'upcoming' ? upcomingApps : historyApps;
 
   return (
@@ -168,11 +172,22 @@ export default function MyAppointmentsScreen() {
                         <Text style={[localStyles.businessName, { color: colors.textPrimary }]}>{appt.businesses?.name || 'Negocio'}</Text>
                         <Text style={[localStyles.serviceName, { color: colors.textSecondary }]}>{appt.service}</Text>
                       </View>
-                      <View style={[localStyles.statusBadge, appt.status === 'confirmed' ? { backgroundColor: '#EEF8F0' } : { backgroundColor: '#FFF5E5' }]}>
-                        <Text style={[localStyles.statusText, appt.status === 'confirmed' ? { color: '#2E7D45' } : { color: '#A0660A' }]}>
-                          {appt.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
-                        </Text>
-                      </View>
+                      {(() => {
+                        const STATUS_MAP: Record<string, { bg: string; text: string; label: string }> = {
+                          confirmed:   { bg: '#EEF8F0', text: '#2E7D45', label: 'Confirmado' },
+                          pending:     { bg: '#FFF5E5', text: '#A0660A', label: 'Pendiente' },
+                          rescheduled: { bg: '#FFF5E5', text: '#F39C12', label: 'Reprogramado' },
+                          completed:   { bg: '#F0F0F0', text: '#555555', label: 'Completado' },
+                          'no-show':   { bg: '#FDEAEB', text: '#D00024', label: 'No asistió' },
+                          cancelled:   { bg: '#F0F0F0', text: '#888888', label: 'Cancelado' },
+                        };
+                        const s = STATUS_MAP[appt.status] ?? STATUS_MAP.pending;
+                        return (
+                          <View style={[localStyles.statusBadge, { backgroundColor: s.bg }]}>
+                            <Text style={[localStyles.statusText, { color: s.text }]}>{s.label}</Text>
+                          </View>
+                        );
+                      })()}
                     </View>
 
                     <View style={localStyles.apptDetails}>

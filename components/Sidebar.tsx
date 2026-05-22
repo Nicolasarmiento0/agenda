@@ -71,7 +71,7 @@ export default function Sidebar({ visible, onClose }: Props) {
             count = (a ?? 0) + (m ?? 0);
           }
         } else if (role === 'worker') {
-          const { data: worker } = await supabase.from('workers').select('id').eq('profile_id', profile!.id).maybeSingle();
+          const { data: worker } = await supabase.from('workers').select('id').eq('user_id', profile!.id).maybeSingle();
           if (worker) {
             const { count: c } = await supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('worker_id', worker.id).eq('status', 'pending');
             count = c ?? 0;
@@ -205,7 +205,7 @@ export default function Sidebar({ visible, onClose }: Props) {
               <>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
                   <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR</Text>
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR NEGOCIOS</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/my-appointments')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
@@ -223,7 +223,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
                   <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR</Text>
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR NEGOCIOS</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-agenda')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
@@ -235,7 +235,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-employees')}>
                   <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPLEADOS</Text>
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>TRABAJADORES</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-business')}>
                   <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
@@ -283,7 +283,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/explore')}>
                   <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR</Text>
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR NEGOCIOS</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-history')}>
                   <Feather name="clock" size={20} color={colors.textSecondary} style={styles.iconWidth} />

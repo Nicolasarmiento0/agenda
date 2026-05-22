@@ -189,7 +189,7 @@ export default function InboxScreen() {
       const { data: worker } = await supabase
         .from('workers')
         .select('id')
-        .eq('profile_id', profile.id)
+        .eq('user_id', profile.id)
         .maybeSingle();
 
       if (worker) {

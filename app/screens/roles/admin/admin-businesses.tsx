@@ -10,8 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import EmptyState from '../../../../components/EmptyState';
 import GlassCard from '../../../../components/GlassCard';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
+import StatusBadge from '../../../../components/StatusBadge';
+import { STATUS_COLORS, STATUS_LABELS } from '../../../../constants/businessStatus';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
@@ -27,22 +31,8 @@ type Business = {
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F59E0B',
-  approved: '#10B981',
-  rejected: '#EF4444',
-  suspended: '#6B7280',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'PENDIENTE',
-  approved: 'APROBADA',
-  rejected: 'RECHAZADA',
-  suspended: 'SUSPENDIDA',
-};
-
 export default function AdminBusinessesScreen() {
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,19 +85,20 @@ export default function AdminBusinessesScreen() {
     <GlassCard style={styles.card}>
       <TouchableOpacity
         activeOpacity={0.75}
-        onPress={() => router.push({ pathname: '/screens/roles/admin/admin-business-detail' as any, params: { id: item.id } })}
+        onPress={() =>
+          router.push({
+            pathname: '/screens/roles/admin/admin-business-detail' as any,
+            params: { id: item.id },
+          })
+        }
         style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
       >
-        <View style={styles.cardHeader}>
+        <View style={styles.cardBody}>
           <View style={styles.cardTitleRow}>
             <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
               {item.name}
             </Text>
-            <View style={[styles.badge, { backgroundColor: `${STATUS_COLORS[item.status]}20`, borderColor: STATUS_COLORS[item.status] }]}>
-              <Text style={[styles.badgeText, { color: STATUS_COLORS[item.status] }]}>
-                {STATUS_LABELS[item.status]}
-              </Text>
-            </View>
+            <StatusBadge status={item.status} colors={STATUS_COLORS} labels={STATUS_LABELS} />
           </View>
           <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
             {item.category?.name ?? '—'} · {item.owner?.nickname ?? '—'}
@@ -123,16 +114,7 @@ export default function AdminBusinessesScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Feather name="menu" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>EMPRESAS</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="EMPRESAS" onLeft={() => setSidebarVisible(true)} leftIcon="menu" />
 
       <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
         {/* Filtros */}
@@ -150,7 +132,12 @@ export default function AdminBusinessesScreen() {
                 },
               ]}
             >
-              <Text style={[styles.filterText, { color: filter === f.key ? appColors.primary : colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: filter === f.key ? appColors.primary : colors.textSecondary },
+                ]}
+              >
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -158,15 +145,20 @@ export default function AdminBusinessesScreen() {
         </View>
 
         {loading ? (
-          <View style={styles.center}>
+          <View style={appStyles.centerFlex}>
             <ActivityIndicator size="large" color={appColors.primary} />
           </View>
         ) : filtered.length === 0 ? (
-          <View style={styles.center}>
-            <Feather name="inbox" size={40} color={colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {filter === 'pending' ? 'No hay solicitudes pendientes' : 'Sin resultados'}
-            </Text>
+          <View style={appStyles.centerFlex}>
+            <EmptyState
+              icon="inbox"
+              title={filter === 'pending' ? 'SIN PENDIENTES' : 'SIN RESULTADOS'}
+              subtitle={
+                filter === 'pending'
+                  ? 'No hay solicitudes pendientes de revisión'
+                  : 'No se encontraron empresas con este filtro'
+              }
+            />
           </View>
         ) : (
           <FlatList
@@ -187,23 +179,13 @@ export default function AdminBusinessesScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50 },
-  hamburger: { fontSize: 26 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   filterChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   filterText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
-  card: {
-    borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  cardHeader: { flex: 1, gap: 4 },
+  card: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 14 },
+  cardBody: { flex: 1, gap: 4 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   cardName: { fontSize: 15, fontWeight: '600', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, flex: 1 },
   cardMeta: { fontSize: 12, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
   cardDate: { fontSize: 11, letterSpacing: 0.3, fontFamily: 'Inter_400Regular' },
-  badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { fontSize: 9, letterSpacing: 1.5, fontWeight: '700', fontFamily: 'Inter_700Bold' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  emptyText: { fontSize: 14, letterSpacing: 0.5 },
 });

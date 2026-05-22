@@ -4,9 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,12 +13,15 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
+import WorkerAvatar from '../../../../components/WorkerAvatar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
-import { appColors } from '../../../../styles/appStyles';
+import { appColors, glassColors } from '../../../../styles/appStyles';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -54,30 +55,17 @@ const TYPE_LABELS: Record<string, string> = {
   dynamic: 'DINÁMICO',
 };
 
-// ─── Componente: Avatar simple ───────────────────────────────────────────────
-
-function ClientAvatar({ name, avatarUrl, size = 44 }: { name: string; avatarUrl: string | null; size?: number }) {
-  return avatarUrl ? (
-    <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
-  ) : (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: appColors.primary + '22', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: appColors.primary, fontSize: size * 0.38, fontWeight: '700' }}>{name?.[0]?.toUpperCase() ?? '?'}</Text>
-    </View>
-  );
-}
-
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
 export default function CompanyMembersScreen() {
-  const { profile } = useAuth();
+  const { business } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { showAlert } = useAlert();
+  const isGym = useIsGym();
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [businessId, setBusinessId] = useState<string | null>(null);
-  const [isGym, setIsGym] = useState(false);
 
   const [requests, setRequests] = useState<MemberRequest[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -92,39 +80,18 @@ export default function CompanyMembersScreen() {
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!profile?.id) return;
+    if (!business?.id) { setLoading(false); setRefreshing(false); return; }
 
-    // 1. Buscar negocio del company
-    const { data: biz } = await supabase
-      .from('businesses')
-      .select('id, category_id')
-      .eq('owner_id', profile.id)
-      .eq('status', 'approved')
-      .maybeSingle();
-
-    if (!biz) { setLoading(false); setRefreshing(false); return; }
-    setBusinessId(biz.id);
-
-    // 2. Verificar si es gym
-    const { data: cat } = await supabase
-      .from('service_categories')
-      .select('name')
-      .eq('id', biz.category_id)
-      .maybeSingle();
-    const gymCategory = cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS');
-    setIsGym(!!gymCategory);
-
-    // 3. Cargar solicitudes y miembros en paralelo
     const [reqRes, memRes] = await Promise.all([
       supabase
         .from('membership_requests')
         .select('id, client_id, message, status, created_at, profiles(nickname, avatar_url)')
-        .eq('business_id', biz.id)
+        .eq('business_id', business.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('gym_memberships')
         .select('id, client_id, client_type, plan, status, created_at, profiles(nickname, avatar_url)')
-        .eq('business_id', biz.id)
+        .eq('business_id', business.id)
         .order('created_at', { ascending: false }),
     ]);
 
@@ -132,7 +99,7 @@ export default function CompanyMembersScreen() {
     setMembers((memRes.data as unknown as Member[]) ?? []);
     setLoading(false);
     setRefreshing(false);
-  }, [profile?.id]);
+  }, [business?.id]);
 
   useFocusEffect(useCallback(() => { setLoading(true); fetchData(); }, [fetchData]));
 
@@ -162,11 +129,10 @@ export default function CompanyMembersScreen() {
   };
 
   const handleApprove = async () => {
-    if (!selectedRequest || !businessId) return;
+    if (!selectedRequest || !business?.id) return;
     setSaving(true);
-    // Upsert en gym_memberships
     const { error: memError } = await supabase.from('gym_memberships').upsert({
-      business_id: businessId,
+      business_id: business.id,
       client_id: selectedRequest.client_id,
       client_type: chosenType,
       plan: chosenPlan,
@@ -220,16 +186,10 @@ export default function CompanyMembersScreen() {
   if (!isGym) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
-          <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn}>
-            <Feather name="menu" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>MIEMBROS</Text>
-          <View style={styles.iconBtn} />
-        </View>
+        <ScreenHeader title="MIEMBROS" onLeft={() => setSidebarVisible(true)} hideRight />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
           <Feather name="users" size={48} color={colors.border} />
-          <Text style={[{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginTop: 16, textAlign: 'center' }]}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginTop: 16, textAlign: 'center' }}>
             Esta función es exclusiva para negocios tipo Gimnasio.
           </Text>
         </View>
@@ -240,14 +200,7 @@ export default function CompanyMembersScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn}>
-          <Feather name="menu" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>MIEMBROS</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <ScreenHeader title="MIEMBROS" onLeft={() => setSidebarVisible(true)} hideRight />
 
       {/* ── Tabs ─────────────────────────────────────────────────── */}
       <View style={[styles.tabRow, { borderBottomColor: colors.border }]}>
@@ -281,7 +234,7 @@ export default function CompanyMembersScreen() {
             {requests.map(req => (
               <View key={req.id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.cardHeader}>
-                  <ClientAvatar name={req.profiles?.nickname ?? '?'} avatarUrl={req.profiles?.avatar_url ?? null} />
+                  <WorkerAvatar name={req.profiles?.nickname ?? '?'} avatarUrl={req.profiles?.avatar_url ?? null} color={appColors.primary} size={44} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardName, { color: colors.textPrimary }]}>{req.profiles?.nickname ?? 'Cliente'}</Text>
                     <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
@@ -337,7 +290,7 @@ export default function CompanyMembersScreen() {
             {members.map(mem => (
               <View key={mem.id} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.cardHeader}>
-                  <ClientAvatar name={mem.profiles?.nickname ?? '?'} avatarUrl={mem.profiles?.avatar_url ?? null} />
+                  <WorkerAvatar name={mem.profiles?.nickname ?? '?'} avatarUrl={mem.profiles?.avatar_url ?? null} color={appColors.primary} size={44} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardName, { color: colors.textPrimary }]}>{mem.profiles?.nickname ?? 'Cliente'}</Text>
                     <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
@@ -383,7 +336,7 @@ export default function CompanyMembersScreen() {
             <TouchableWithoutFeedback>
               <BlurView intensity={isDarkMode ? 60 : 80} tint={isDarkMode ? 'dark' : 'light'} style={{ borderRadius: 20, overflow: 'hidden' }}>
                 <View style={[styles.modalContent, {
-                  backgroundColor: isDarkMode ? 'rgba(15,15,20,0.88)' : 'rgba(255,255,255,0.92)',
+                  backgroundColor: isDarkMode ? glassColors.sheetDark : glassColors.sheetModalLight,
                   borderColor: colors.border,
                 }]}>
                   <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
@@ -479,26 +432,6 @@ export default function CompanyMembersScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  screenTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   // Tabs
   tabRow: {
@@ -597,7 +530,7 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: glassColors.overlayMedium,
     justifyContent: 'center',
     padding: 20,
   },

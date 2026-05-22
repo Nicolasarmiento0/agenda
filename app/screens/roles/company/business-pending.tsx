@@ -12,13 +12,14 @@ import {
   View,
 } from 'react-native';
 import GlassCard from '../../../../components/GlassCard';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { appColors, appStyles } from '../../../../styles/appStyles';
 
 export default function BusinessPendingScreen() {
   const { profile, business, signOut, refreshProfile } = useAuth();
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors } = useTheme();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -65,18 +66,11 @@ export default function BusinessPendingScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={signOut} activeOpacity={0.7} style={styles.headerBtn}>
-          <Feather name="log-out" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>
-          {isRejected ? 'SOLICITUD RECHAZADA' : 'EN REVISIÓN'}
-        </Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={[styles.headerBtn, { alignItems: 'flex-end' }]}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title={isRejected ? 'SOLICITUD RECHAZADA' : 'EN REVISIÓN'}
+        leftIcon="log-out"
+        onLeft={signOut}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -158,14 +152,6 @@ export default function BusinessPendingScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 50,
-  },
-  headerBtn: { width: 40 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   iconCircle: {
     width: 100, height: 100, borderRadius: 50,

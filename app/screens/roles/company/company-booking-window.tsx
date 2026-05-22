@@ -2,13 +2,14 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import { useAlert } from '../../../../context/AlertContext';
@@ -76,13 +77,12 @@ export default function CompanyBookingWindowScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.iconBtn}>
-          <Feather name="menu" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>TOMA DE HORARIO</Text>
-        <View style={styles.iconBtn} />
-      </View>
+      <ScreenHeader
+        title="TOMA DE HORARIO"
+        titleStyle={{ color: colors.textPrimary }}
+        onLeft={() => setSidebarVisible(true)}
+        hideRight
+      />
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -95,7 +95,7 @@ export default function CompanyBookingWindowScreen() {
           </Text>
 
           {/* Day selector */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <GlassCard style={styles.card}>
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>DÍA DE SELECCIÓN</Text>
             <View style={styles.daysGrid}>
               {DAYS.map((d, i) => (
@@ -119,7 +119,7 @@ export default function CompanyBookingWindowScreen() {
               Día seleccionado:{' '}
               <Text style={{ color: appColors.primary, fontWeight: '700' }}>{DAYS[bookingDay]}</Text>
             </Text>
-          </View>
+          </GlassCard>
 
           {/* Time pickers in 2 columns */}
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -183,26 +183,6 @@ export default function CompanyBookingWindowScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  screenTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   description: {
     fontSize: 14,
     lineHeight: 20,
@@ -210,7 +190,6 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 12,
   },

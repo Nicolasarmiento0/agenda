@@ -8,10 +8,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassInput from '../../../../components/GlassInput';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -204,14 +204,13 @@ export default function BusinessSetupScreen() {
             {/* ── PASO 1: Identidad ── */}
             {step === 1 && (
               <>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>NOMBRE DEL NEGOCIO *</Text>
-                <TextInput
-                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 20 }]}
+                <GlassInput
+                  label="NOMBRE DEL NEGOCIO *"
                   placeholder="Ej: Barbería Los Andes"
-                  placeholderTextColor={colors.textSecondary}
                   value={name}
                   onChangeText={setName}
                   autoFocus
+                  style={{ marginBottom: 20 }}
                 />
 
                 <Text style={[styles.label, { color: colors.textSecondary }]}>SECTOR *</Text>
@@ -258,14 +257,13 @@ export default function BusinessSetupScreen() {
             {/* ── PASO 2: Ubicación y horario ── */}
             {step === 2 && (
               <>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>DIRECCIÓN *</Text>
-                <TextInput
-                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 24 }]}
+                <GlassInput
+                  label="DIRECCIÓN *"
                   placeholder="Calle, número, ciudad"
-                  placeholderTextColor={colors.textSecondary}
                   value={address}
                   onChangeText={setAddress}
                   autoFocus
+                  style={{ marginBottom: 24 }}
                 />
 
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -347,24 +345,22 @@ export default function BusinessSetupScreen() {
             {/* ── PASO 3: No gym — Primer servicio (opcional) ── */}
             {step === 3 && !isGym && (
               <>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>NOMBRE DEL SERVICIO</Text>
-                <TextInput
-                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}
+                <GlassInput
+                  label="NOMBRE DEL SERVICIO"
                   placeholder="Ej: Corte de cabello o Plan Básico"
-                  placeholderTextColor={colors.textSecondary}
                   value={serviceName}
                   onChangeText={setServiceName}
                   autoFocus
+                  style={{ marginBottom: 16 }}
                 />
 
-                <Text style={[styles.label, { color: colors.textSecondary }]}>PRECIO</Text>
-                <TextInput
-                  style={[appStyles.input, { color: colors.textPrimary, backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}
+                <GlassInput
+                  label="PRECIO"
                   placeholder="Ej: 5000"
-                  placeholderTextColor={colors.textSecondary}
                   value={servicePrice}
                   onChangeText={setServicePrice}
                   keyboardType="numeric"
+                  style={{ marginBottom: 12 }}
                 />
 
                 <Text style={[styles.hint, { color: colors.textSecondary }]}>

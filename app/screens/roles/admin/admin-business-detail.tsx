@@ -1,12 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Image,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,7 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassModal from '../../../../components/GlassModal';
+import InfoRow from '../../../../components/ui/InfoRow';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
+import StatusBadge from '../../../../components/StatusBadge';
+import { STATUS_COLORS, STATUS_LABELS } from '../../../../constants/businessStatus';
 import { useAlert } from '../../../../context/AlertContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
@@ -34,23 +37,9 @@ type BusinessDetail = {
   owner: { nickname: string; id: string } | null;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F59E0B',
-  approved: '#10B981',
-  rejected: '#EF4444',
-  suspended: '#6B7280',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'PENDIENTE',
-  approved: 'APROBADA',
-  rejected: 'RECHAZADA',
-  suspended: 'SUSPENDIDA',
-};
-
 export default function AdminBusinessDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
@@ -92,6 +81,18 @@ export default function AdminBusinessDetailScreen() {
     setRefreshing(false);
   }, []);
 
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  const updateStatus = async (status: string) => {
+    setProcessing(true);
+    const { error } = await supabase.from('businesses').update({ status }).eq('id', id);
+    setProcessing(false);
+    return error;
+  };
+
   const handleApprove = () => {
     showAlert({
       title: 'Aprobar empresa',
@@ -101,45 +102,34 @@ export default function AdminBusinessDetailScreen() {
         {
           text: 'APROBAR',
           onPress: async () => {
-            setProcessing(true);
-            const { error } = await supabase
-              .from('businesses')
-              .update({ status: 'approved' })
-              .eq('id', id);
-            setProcessing(false);
+            const error = await updateStatus('approved');
             if (error) {
               showAlert({ title: 'Error', message: 'No se pudo aprobar. Inténtalo de nuevo.' });
             } else {
-              setBusiness((prev) => prev ? { ...prev, status: 'approved' } : prev);
+              setBusiness((prev) => (prev ? { ...prev, status: 'approved' } : prev));
               showAlert({
                 title: '✓ Empresa aprobada',
                 message: 'La empresa puede operar ahora.',
-                buttons: [{ text: 'OK', onPress: () => router.back() }]
+                buttons: [{ text: 'OK', onPress: () => router.back() }],
               });
             }
           },
         },
-      ]
+      ],
     });
   };
 
   const handleReject = async () => {
-    setProcessing(true);
-    const { error } = await supabase
-      .from('businesses')
-      .update({ status: 'rejected' })
-      .eq('id', id);
-    setProcessing(false);
+    const error = await updateStatus('rejected');
     setRejectModal(false);
-
     if (error) {
       showAlert({ title: 'Error', message: 'No se pudo rechazar. Inténtalo de nuevo.' });
     } else {
-      setBusiness((prev) => prev ? { ...prev, status: 'rejected' } : prev);
+      setBusiness((prev) => (prev ? { ...prev, status: 'rejected' } : prev));
       showAlert({
         title: 'Solicitud rechazada',
         message: 'La empresa fue notificada.',
-        buttons: [{ text: 'OK', onPress: () => router.back() }]
+        buttons: [{ text: 'OK', onPress: () => router.back() }],
       });
     }
   };
@@ -154,21 +144,16 @@ export default function AdminBusinessDetailScreen() {
           text: 'SUSPENDER',
           style: 'destructive',
           onPress: async () => {
-            setProcessing(true);
-            const { error } = await supabase
-              .from('businesses')
-              .update({ status: 'suspended' })
-              .eq('id', id);
-            setProcessing(false);
+            const error = await updateStatus('suspended');
             if (error) {
               showAlert({ title: 'Error', message: 'No se pudo suspender.' });
             } else {
-              setBusiness((prev) => prev ? { ...prev, status: 'suspended' } : prev);
+              setBusiness((prev) => (prev ? { ...prev, status: 'suspended' } : prev));
               showAlert({ title: '✓ Empresa suspendida', message: 'El negocio ha sido bloqueado temporalmente.' });
             }
           },
         },
-      ]
+      ],
     });
   };
 
@@ -181,55 +166,33 @@ export default function AdminBusinessDetailScreen() {
         {
           text: 'ACTIVAR',
           onPress: async () => {
-            setProcessing(true);
-            const { error } = await supabase
-              .from('businesses')
-              .update({ status: 'approved' })
-              .eq('id', id);
-            setProcessing(false);
+            const error = await updateStatus('approved');
             if (error) {
               showAlert({ title: 'Error', message: 'No se pudo activar.' });
             } else {
-              setBusiness((prev) => prev ? { ...prev, status: 'approved' } : prev);
+              setBusiness((prev) => (prev ? { ...prev, status: 'approved' } : prev));
               showAlert({ title: '✓ Empresa activada', message: 'El negocio ya puede operar normalmente.' });
             }
           },
         },
-      ]
+      ],
     });
   };
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  };
-
-  const InfoRow = ({ label, value }: { label: string; value: string | null }) => (
-    <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{value || '—'}</Text>
-    </View>
-  );
-
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={{ width: 40 }}>
-          <Feather name="arrow-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>DETALLE DE EMPRESA</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="DETALLE DE EMPRESA"
+        onLeft={() => router.back()}
+        leftIcon="arrow-left"
+      />
 
       {loading ? (
-        <View style={styles.center}>
+        <View style={appStyles.centerFlex}>
           <ActivityIndicator size="large" color={appColors.primary} />
         </View>
       ) : !business ? (
-        <View style={styles.center}>
+        <View style={appStyles.centerFlex}>
           <Text style={{ color: colors.textSecondary }}>No encontrado</Text>
         </View>
       ) : (
@@ -239,7 +202,6 @@ export default function AdminBusinessDetailScreen() {
             contentContainerStyle={{ paddingBottom: 120 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
           >
-
             {/* Logo + nombre + estado */}
             <View style={styles.profileSection}>
               {business.logo_url ? (
@@ -250,11 +212,7 @@ export default function AdminBusinessDetailScreen() {
                 </View>
               )}
               <Text style={[styles.businessName, { color: colors.textPrimary }]}>{business.name}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLORS[business.status]}20`, borderColor: STATUS_COLORS[business.status] }]}>
-                <Text style={[styles.statusText, { color: STATUS_COLORS[business.status] }]}>
-                  {STATUS_LABELS[business.status]}
-                </Text>
-              </View>
+              <StatusBadge status={business.status} colors={STATUS_COLORS} labels={STATUS_LABELS} />
             </View>
 
             {/* Info */}
@@ -266,7 +224,6 @@ export default function AdminBusinessDetailScreen() {
               <InfoRow label="PROPIETARIO" value={business.owner?.nickname ?? null} />
               <InfoRow label="SOLICITUD" value={formatDate(business.created_at)} />
             </View>
-
           </ScrollView>
 
           {/* Botones de acción */}
@@ -279,12 +236,8 @@ export default function AdminBusinessDetailScreen() {
                   onPress={() => setRejectModal(true)}
                   disabled={processing}
                 >
-                  {processing ? <ActivityIndicator size="small" color="#EF4444" /> : (
-                    <>
-                      <Feather name="x" size={18} color="#EF4444" />
-                      <Text style={styles.rejectText}>RECHAZAR</Text>
-                    </>
-                  )}
+                  <Feather name="x" size={18} color="#EF4444" />
+                  <Text style={styles.rejectText}>RECHAZAR</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -293,7 +246,9 @@ export default function AdminBusinessDetailScreen() {
                   onPress={handleApprove}
                   disabled={processing}
                 >
-                  {processing ? <ActivityIndicator size="small" color="#fff" /> : (
+                  {processing ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
                     <>
                       <Feather name="check" size={18} color="#fff" />
                       <Text style={styles.approveText}>APROBAR</Text>
@@ -341,43 +296,40 @@ export default function AdminBusinessDetailScreen() {
         </Animated.View>
       )}
 
-      {/* Modal de rechazo con motivo opcional */}
-      <Modal visible={rejectModal} transparent animationType="fade" onRequestClose={() => setRejectModal(false)}>
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurCard}>
-            <View style={[styles.glassContent, !isDarkMode && styles.glassContentLight]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rechazar solicitud</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Puedes dejar un motivo opcional. La empresa verá que fue rechazada.
-            </Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Motivo del rechazo (opcional)"
-              placeholderTextColor={colors.textSecondary}
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              multiline
-              numberOfLines={3}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { borderColor: colors.border }]}
-                onPress={() => setRejectModal(false)}
-              >
-                <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>CANCELAR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalRejectBtn]}
-                onPress={handleReject}
-                disabled={processing}
-              >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>CONFIRMAR RECHAZO</Text>
-              </TouchableOpacity>
-            </View>
-            </View>
-          </BlurView>
+      {/* Modal de rechazo */}
+      <GlassModal visible={rejectModal} onClose={() => setRejectModal(false)}>
+        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rechazar solicitud</Text>
+        <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+          Puedes dejar un motivo opcional. La empresa verá que fue rechazada.
+        </Text>
+        <TextInput
+          style={[
+            styles.modalInput,
+            { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background },
+          ]}
+          placeholder="Motivo del rechazo (opcional)"
+          placeholderTextColor={colors.textSecondary}
+          value={rejectReason}
+          onChangeText={setRejectReason}
+          multiline
+          numberOfLines={3}
+        />
+        <View style={appStyles.glassModalActions}>
+          <TouchableOpacity
+            style={[appStyles.glassModalBtn, { borderColor: colors.border }]}
+            onPress={() => setRejectModal(false)}
+          >
+            <Text style={[appStyles.glassModalBtnText, { color: colors.textSecondary }]}>CANCELAR</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[appStyles.glassModalBtn, styles.rejectModalBtn]}
+            onPress={handleReject}
+            disabled={processing}
+          >
+            <Text style={[appStyles.glassModalBtnText, { color: '#fff' }]}>CONFIRMAR RECHAZO</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </GlassModal>
 
       <Sidebar visible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
     </View>
@@ -385,35 +337,57 @@ export default function AdminBusinessDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   profileSection: { alignItems: 'center', paddingVertical: 24, gap: 10 },
   logo: { width: 88, height: 88, borderRadius: 10, borderWidth: 2, borderColor: appColors.primary },
-  logoPlaceholder: { width: 88, height: 88, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  businessName: { fontSize: 22, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1, textAlign: 'center' },
-  statusBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  statusText: { fontSize: 11, letterSpacing: 2, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  logoPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  businessName: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
   infoCard: { borderWidth: 1, borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  infoLabel: { fontSize: 10, letterSpacing: 2, flexShrink: 0 },
-  infoValue: { fontSize: 14, letterSpacing: 0.3, flex: 1, textAlign: 'right' },
-  actionBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: 12, paddingBottom: 24, paddingTop: 12 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 999 },
+  actionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    gap: 12,
+    paddingBottom: 24,
+    paddingTop: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 999,
+  },
   rejectBtn: { borderWidth: 1.5, borderColor: '#EF4444', backgroundColor: '#EF444410' },
   approveBtn: { backgroundColor: '#10B981' },
   rejectText: { color: '#EF4444', fontWeight: '700', fontSize: 13, letterSpacing: 1.5 },
   approveText: { color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1.5 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  blurCard: { width: '100%', borderRadius: 20, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)' },
-  glassContent: { backgroundColor: 'rgba(16,16,16,0.82)', padding: 24, gap: 16 },
-  glassContentLight: { backgroundColor: 'rgba(250,250,250,0.90)' },
-  modalCard: { width: '100%', borderWidth: 1, borderRadius: 10, padding: 24, gap: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', letterSpacing: 1 },
   modalSubtitle: { fontSize: 13, letterSpacing: 0.3, lineHeight: 20 },
-  modalInput: { borderWidth: 1, borderRadius: 16, padding: 14, fontSize: 14, fontFamily: 'Inter_400Regular', textAlignVertical: 'top', minHeight: 80 },
-  modalActions: { flexDirection: 'row', gap: 12 },
-  modalBtn: { flex: 1, borderWidth: 1, borderRadius: 6, paddingVertical: 14, alignItems: 'center' },
-  modalRejectBtn: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
-  modalBtnText: { fontSize: 11, letterSpacing: 2, fontWeight: '700' },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    textAlignVertical: 'top',
+    minHeight: 80,
+  },
+  rejectModalBtn: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
 });

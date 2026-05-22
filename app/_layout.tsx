@@ -159,6 +159,16 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/roles/company/company-employees" />
                 <Stack.Screen name="screens/roles/company/company-history" />
                 <Stack.Screen name="screens/roles/company/company-business" />
+                <Stack.Screen name="screens/roles/company/company-members" options={{ headerShown: false }} />
+                <Stack.Screen name="screens/roles/company/company-booking-window" options={{ headerShown: false }} />
+                {/* Trabajador */}
+                <Stack.Screen name="screens/roles/worker/worker-dashboard" options={{ headerShown: false }} />
+                <Stack.Screen name="screens/roles/worker/worker-agenda" options={{ headerShown: false }} />
+                <Stack.Screen name="screens/roles/worker/worker-history" options={{ headerShown: false }} />
+                {/* Admin */}
+                <Stack.Screen name="screens/roles/admin/admin-business-employees" options={{ headerShown: false }} />
+                {/* Global */}
+                <Stack.Screen name="screens/global/inbox" options={{ headerShown: false }} />
               </Stack>
             </GlobalGuard>
             <TeslaAlert />

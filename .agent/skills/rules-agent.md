@@ -53,11 +53,6 @@ Diseña bases de datos optimizadas para costos y escalabilidad:
 
 ## 🎨 5. SISTEMA DE DISEÑO UI/UX (Tesla + Liquid Glass)
 El diseño debe ser minimalista, premium, responsivo y accesible.
-- **Estética Tesla:** Uso radical del espacio negativo, tipografía sans-serif con jerarquía clara (inter-font), sin bordes toscos ni saturación de elementos.
-- **Liquid Glass UI:** Contenedores translúcidos con desenfoque de fondo (`backdrop-blur` / `expo-blur`). Bordes milimétricos semi-transparentes (1px `rgba(255,255,255,0.18)`) simulando relieve y refracción.
-- **Dark/Light Mode Nativo:** - Light: Fondos suaves, sombras difuminadas.
-  - Dark: Prohibido negro puro (`#000000`). Usa grises profundos o azul espacial (`#0B0E14`) para dar profundidad a los contenedores de cristal.
-- **Componentes Premium:** Botones y tarjetas con border-radius de 16px a 24px. Evitar inputs clásicos; usar sliders líquidos, carruseles visuales y microinteracciones fluidas.
 
 ---
 

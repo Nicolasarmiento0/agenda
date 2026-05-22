@@ -13,19 +13,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassInput from '../../../../components/GlassInput';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
-import { appColors, appStyles } from '../../../../styles/appStyles';
+import { appColors, appStyles, glassColors } from '../../../../styles/appStyles';
 
 export default function CompanyBusinessScreen() {
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { profile, business, refreshProfile } = useAuth();
   const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -181,16 +182,7 @@ export default function CompanyBusinessScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={localStyles.header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
-        </TouchableOpacity>
-        <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>MI NEGOCIO</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="MI NEGOCIO" onLeft={() => setSidebarVisible(true)} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -271,7 +263,7 @@ export default function CompanyBusinessScreen() {
       {/* Modal de Edición */}
       <Modal transparent visible={editModalVisible} animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={[localStyles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+          <View style={[localStyles.modalOverlay, { backgroundColor: glassColors.overlayMedium }]}>
             <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={localStyles.blurCard}>
               <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary }]}>Editar Negocio</Text>
@@ -290,58 +282,57 @@ export default function CompanyBusinessScreen() {
               </TouchableOpacity>
               {isUploading && <Text style={{ textAlign: 'center', color: appColors.primary, marginBottom: 16 }}>Subiendo imagen...</Text>}
 
-              <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Nombre del negocio</Text>
-              <TextInput
-                style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              <GlassInput
                 value={name}
                 onChangeText={setName}
+                label="Nombre del negocio"
+                style={{ marginBottom: 16 }}
               />
 
-              <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Descripción</Text>
-              <TextInput
-                style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, height: 80 }]}
+              <GlassInput
                 value={description}
                 onChangeText={setDescription}
                 multiline
-                textAlignVertical="top"
+                numberOfLines={3}
                 placeholder="Cuenta sobre tu negocio..."
-                placeholderTextColor={colors.textSecondary}
+                label="Descripción"
+                inputStyle={{ height: 80 }}
+                style={{ marginBottom: 16 }}
               />
 
-              <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Enlace de Google Maps</Text>
-              <TextInput
-                style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+              <GlassInput
                 value={mapsUrl}
                 onChangeText={setMapsUrl}
                 placeholder="https://maps.app.goo.gl/..."
-                placeholderTextColor={colors.textSecondary}
+                label="Enlace de Google Maps"
+                autoCapitalize="none"
+                style={{ marginBottom: 16 }}
               />
-              <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Enlace de Instagram</Text>
-              <TextInput
-                style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+
+              <GlassInput
                 value={instagramUrl}
                 onChangeText={setInstagramUrl}
                 placeholder="https://instagram.com/..."
-                placeholderTextColor={colors.textSecondary}
+                label="Enlace de Instagram"
+                autoCapitalize="none"
+                style={{ marginBottom: 16 }}
               />
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Apertura</Text>
-                  <TextInput
-                    style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  <GlassInput
                     value={openingTime}
                     onChangeText={setOpeningTime}
                     placeholder="09:00"
+                    label="Apertura"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[localStyles.modalLabel, { color: colors.textSecondary }]}>Cierre</Text>
-                  <TextInput
-                    style={[localStyles.modalInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  <GlassInput
                     value={closingTime}
                     onChangeText={setClosingTime}
                     placeholder="18:00"
+                    label="Cierre"
                   />
                 </View>
               </View>
@@ -373,14 +364,6 @@ export default function CompanyBusinessScreen() {
 }
 
 const localStyles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 50,
-  },
-  hamburger: { fontSize: 26 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -428,19 +411,14 @@ const localStyles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: glassColors.borderDarkMedium,
   },
   glassContent: {
-    backgroundColor: 'rgba(16,16,16,0.82)',
+    backgroundColor: glassColors.sheetModalDark,
     padding: 24,
   },
   glassContentLight: {
-    backgroundColor: 'rgba(250,250,250,0.90)',
-  },
-  modalContent: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: glassColors.sheetModalLight,
   },
   modalTitle: {
     fontSize: 18,
@@ -469,19 +447,6 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#fff',
-  },
-  modalLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    marginBottom: 16,
   },
   modalButton: {
     flex: 1,

@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,14 +12,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import GlassCard from '../../../../components/GlassCard';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
-import GlassCard from '../../../../components/GlassCard';
+import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
 
-const GYM_KEYWORDS = ['gym', 'gimnasio', 'gimnasios', 'fitness'];
 const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
 const PLAN_LABELS: Record<string, string> = { basic: 'BÁSICO', premium: 'PREMIUM', vip: 'VIP' };
 
@@ -33,13 +33,11 @@ type GymMember = {
 
 export default function CompanyHistoryScreen() {
   const { business } = useAuth();
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors } = useTheme();
   const { showAlert } = useAlert();
   const { range } = useLocalSearchParams<{ range?: 'day' | 'week' | 'month' }>();
 
-  const isGym = GYM_KEYWORDS.some(kw =>
-    business?.category_name?.toLowerCase().includes(kw)
-  );
+  const isGym = useIsGym();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,7 +129,7 @@ export default function CompanyHistoryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [business?.id, business?.category_name, selectedWorkerId, timeRange, isGym]);
+  }, [business?.id, selectedWorkerId, timeRange, isGym]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -197,15 +195,7 @@ export default function CompanyHistoryScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 56 : 36 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>HISTORIAL</Text>
-        <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader leftIcon="arrow-left" onLeft={() => router.back()} title="HISTORIAL" />
 
       <GlassCard style={styles.summaryCard}>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
@@ -236,6 +226,7 @@ export default function CompanyHistoryScreen() {
                 onPress={() => setTimeRange(r)}
                 style={[
                   styles.filterChip,
+                  { borderColor: colors.border },
                   timeRange === r && { backgroundColor: appColors.primary, borderColor: appColors.primary },
                 ]}
               >
@@ -245,16 +236,17 @@ export default function CompanyHistoryScreen() {
               </TouchableOpacity>
             ))}
 
-            <View style={styles.filterDivider} />
+            <View style={[styles.filterDivider, { backgroundColor: colors.border }]} />
 
             <TouchableOpacity
               onPress={() => setSelectedWorkerId('all')}
               style={[
                 styles.filterChip,
-                selectedWorkerId === 'all' && { backgroundColor: '#444', borderColor: '#444' },
+                { borderColor: colors.border },
+                selectedWorkerId === 'all' && { backgroundColor: colors.textSecondary, borderColor: colors.textSecondary },
               ]}
             >
-              <Text style={[styles.filterChipText, { color: selectedWorkerId === 'all' ? '#fff' : colors.textSecondary }]}>
+              <Text style={[styles.filterChipText, { color: selectedWorkerId === 'all' ? colors.background : colors.textSecondary }]}>
                 TODOS
               </Text>
             </TouchableOpacity>
@@ -264,10 +256,11 @@ export default function CompanyHistoryScreen() {
                 onPress={() => setSelectedWorkerId(w.id)}
                 style={[
                   styles.filterChip,
-                  selectedWorkerId === w.id && { backgroundColor: '#444', borderColor: '#444' },
+                  { borderColor: colors.border },
+                  selectedWorkerId === w.id && { backgroundColor: colors.textSecondary, borderColor: colors.textSecondary },
                 ]}
               >
-                <Text style={[styles.filterChipText, { color: selectedWorkerId === w.id ? '#fff' : colors.textSecondary }]}>
+                <Text style={[styles.filterChipText, { color: selectedWorkerId === w.id ? colors.background : colors.textSecondary }]}>
                   {w.name.toUpperCase()}
                 </Text>
               </TouchableOpacity>
@@ -320,25 +313,6 @@ export default function CompanyHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 12,
-    letterSpacing: 3,
-    fontWeight: '600',
-  },
   summaryCard: {
     marginHorizontal: 16,
     padding: 24,
@@ -378,7 +352,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#333',
   },
   filterChipText: {
     fontSize: 10,
@@ -388,7 +361,6 @@ const styles = StyleSheet.create({
   filterDivider: {
     width: 1,
     height: 20,
-    backgroundColor: '#333',
     marginHorizontal: 8,
   },
   listContent: {

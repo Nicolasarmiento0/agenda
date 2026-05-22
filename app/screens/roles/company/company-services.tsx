@@ -9,23 +9,25 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TextInput,
   View,
   Modal,
   ActivityIndicator,
-  Alert
 } from 'react-native';
 import GlassCard from '../../../../components/GlassCard';
+import GlassInput from '../../../../components/GlassInput';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
-import { appColors, appStyles } from '../../../../styles/appStyles';
+import { appColors, appStyles, glassColors } from '../../../../styles/appStyles';
 
 export default function CompanyServicesScreen() {
   const { business } = useAuth();
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { colors, isDarkMode } = useTheme();
+  const isGym = useIsGym();
   const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,23 +37,10 @@ export default function CompanyServicesScreen() {
   const [editPrice, setEditPrice] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [isGym, setIsGym] = useState(false);
-
   const fetchServices = React.useCallback(async () => {
     if (!business?.id) return;
 
     try {
-      let gymFlag = false;
-      if (business?.category_id) {
-        const { data: cat } = await supabase
-          .from('service_categories')
-          .select('name')
-          .eq('id', business.category_id)
-          .single();
-        gymFlag = !!(cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS'));
-        setIsGym(gymFlag);
-      }
-
       const { data, error } = await supabase
         .from('business_services')
         .select('*')
@@ -62,7 +51,7 @@ export default function CompanyServicesScreen() {
         console.warn('Error fetching services:', error);
       }
 
-      if (gymFlag) {
+      if (isGym) {
         // Enforce the existence of the 3 plans
         const planNames = ['Plan Básico', 'Plan Premium', 'Plan VIP'];
         const existingPlans = data ? data.filter(s => planNames.includes(s.name)) : [];
@@ -99,7 +88,7 @@ export default function CompanyServicesScreen() {
     } catch (err) {
       console.error('Error fetching services:', err);
     }
-  }, [business?.id]);
+  }, [business?.id, isGym]);
 
   // Refresca servicios cada vez que la pantalla gana foco
   useFocusEffect(useCallback(() => {
@@ -264,16 +253,7 @@ export default function CompanyServicesScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={localStyles.header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
-        </TouchableOpacity>
-        <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>SERVICIOS</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="SERVICIOS" onLeft={() => setSidebarVisible(true)} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -336,7 +316,7 @@ export default function CompanyServicesScreen() {
       {/* Modal de Edición / Creación */}
       <Modal visible={!!editingService} transparent animationType="fade">
         <View style={localStyles.modalOverlay}>
-          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={localStyles.blurCard}>
+          <BlurView intensity={20} tint="dark" style={localStyles.blurCard}>
             <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
             <View style={localStyles.modalHeader}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
@@ -351,7 +331,7 @@ export default function CompanyServicesScreen() {
             
             <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 20 }]}>NOMBRE DEL SERVICIO</Text>
             {isGym && editingService?.id !== 'new' && ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService?.name) ? (
-              <Text style={[localStyles.input, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background, opacity: 0.6 }]}>
+              <Text style={[localStyles.readonlyField, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background }]}>
                 {editName}
               </Text>
             ) : isGym && editingService?.id === 'new' ? (
@@ -370,23 +350,20 @@ export default function CompanyServicesScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <TextInput
-                style={[localStyles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+              <GlassInput
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Ej: Corte y Barba"
-                placeholderTextColor={colors.textSecondary}
               />
             )}
 
-            <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 16 }]}>PRECIO ($)</Text>
-            <TextInput
-              style={[localStyles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+            <GlassInput
               value={editPrice}
               onChangeText={setEditPrice}
               keyboardType="numeric"
               placeholder="Ej: 15000"
-              placeholderTextColor={colors.textSecondary}
+              label="PRECIO ($)"
+              style={{ marginTop: 16 }}
             />
 
             <View style={localStyles.modalActions}>
@@ -419,14 +396,6 @@ export default function CompanyServicesScreen() {
 }
 
 const localStyles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 50,
-  },
-  hamburger: { fontSize: 26 },
-  headerLabel: { fontSize: 11, letterSpacing: 3 },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,7 +441,7 @@ const localStyles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: glassColors.overlayMedium,
     justifyContent: 'center',
     padding: 24,
   },
@@ -480,19 +449,14 @@ const localStyles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: glassColors.borderDarkMedium,
   },
   glassContent: {
-    backgroundColor: 'rgba(16,16,16,0.82)',
+    backgroundColor: glassColors.sheetModalDark,
     padding: 24,
   },
   glassContentLight: {
-    backgroundColor: 'rgba(250,250,250,0.90)',
-  },
-  modalContent: {
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
+    backgroundColor: glassColors.sheetModalLight,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -510,14 +474,16 @@ const localStyles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 8,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
-  input: {
+  readonlyField: {
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
     fontFamily: 'Inter_400Regular',
+    opacity: 0.6,
   },
   modalActions: {
     flexDirection: 'row',
