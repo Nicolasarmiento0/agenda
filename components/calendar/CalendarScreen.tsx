@@ -298,10 +298,13 @@ function EventBlock({
   const subSize = isUltraNarrow ? 7.5 : isNarrow ? 8.5 : 10;
 
   const isBlocked = appointment.status === 'blocked';
-  const borderLeftColor = isBlocked ? '#6B7280' : appointment.workerColor;
+  const pastelColorsConfig = getPastelColors(appointment.id ?? appointment.clientName, isDarkMode);
+
+  const borderLeftColor = isBlocked ? '#6B7280' : pastelColorsConfig.border;
   const backgroundColor = isBlocked
     ? (isDarkMode ? 'rgba(75, 85, 99, 0.45)' : 'rgba(209, 213, 219, 0.65)')
-    : appointment.workerColor + '30';
+    : pastelColorsConfig.bg;
+  const textTitleColor = isBlocked ? colors.textPrimary : pastelColorsConfig.text;
 
   return (
     <Pressable
@@ -328,12 +331,12 @@ function EventBlock({
             style={{ marginRight: 1 }}
           />
         )}
-        <Text style={[styles.eventTitle, { color: colors.textPrimary, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none', flex: 1 }]} numberOfLines={1}>
+        <Text style={[styles.eventTitle, { color: textTitleColor, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none', flex: 1, fontWeight: '600' }]} numberOfLines={1}>
           {appointment.service}
         </Text>
       </View>
       {height > 32 && (
-        <Text style={[styles.eventSub, { color: colors.textSecondary, fontSize: subSize }]} numberOfLines={1}>
+        <Text style={[styles.eventSub, { color: isBlocked ? colors.textSecondary : textTitleColor, fontSize: subSize, opacity: isBlocked ? 1 : 0.85 }]} numberOfLines={1}>
           {isBlocked ? 'Horario bloqueado' : appointment.clientName}
         </Text>
       )}
@@ -616,7 +619,7 @@ function FAB({
 
 export default function CalendarScreen() {
   const { profile, business } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDarkMode, toggleTheme } = useTheme();
   const { selectedBusiness } = useBusiness();
   const role = profile?.role ?? 'client';
   const businessId = role === 'client' ? selectedBusiness?.id : business?.id;
@@ -728,9 +731,14 @@ export default function CalendarScreen() {
                 <Feather name="chevron-right" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => setAnchor(new Date())} style={styles.todayBtn}>
-              <Text style={[styles.todayText, { color: colors.accent }]}>Hoy</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <TouchableOpacity onPress={toggleTheme} style={styles.themeToggleBtn} activeOpacity={0.7}>
+                <Feather name={isDarkMode ? "sun" : "moon"} size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setAnchor(new Date())} style={styles.todayBtn}>
+                <Text style={[styles.todayText, { color: colors.accent }]}>Hoy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* View mode tabs */}
@@ -904,6 +912,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     minWidth: 160,
     textAlign: 'center',
+  },
+  themeToggleBtn: {
+    padding: 6,
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   todayBtn: {
     padding: 4,
