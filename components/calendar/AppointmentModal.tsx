@@ -3,6 +3,7 @@ import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+import { BlurView } from 'expo-blur';
 import React, {
   forwardRef,
   useCallback,
@@ -15,11 +16,13 @@ import React, {
 import {
   ActivityIndicator,
   ScrollView,
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from 'react-native';
 import { Appointment, AppointmentStatus, STATUS_CONFIG, WorkerRow } from '../../constants/appointments';
 import { useAlert } from '../../context/AlertContext';
@@ -30,7 +33,7 @@ import { ToastOptions } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
 import TimeWheelPicker from '../TimeWheelPicker';
 
-export type ModalMode = 'create' | 'detail';
+export type ModalMode = 'create' | 'detail' | 'edit';
 
 export type OpenCreatePayload = {
   mode: 'create';
@@ -93,10 +96,24 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [mode, setMode] = useState<ModalMode>('create');
     const [appointment, setAppointment] = useState<Appointment | null>(null);
 
+    const canEditOrCancel = useMemo(() => {
+      if (!appointment) return false;
+      if (role === 'company' || role === 'worker') return true;
+
+      const isPastOrFinished = appointment.status === 'completed' || appointment.status === 'cancelled' || appointment.status === 'no-show';
+      if (isPastOrFinished) return false;
+
+      const apptDate = new Date(appointment.date ?? '');
+      apptDate.setHours(Math.floor(appointment.startHour), Math.round((appointment.startHour % 1) * 60));
+      const diff = apptDate.getTime() - Date.now();
+      return diff >= 2 * 60 * 60 * 1000;
+    }, [appointment, role]);
+
     // Create form state
     const [clientName, setClientName] = useState('');
     const [service, setService] = useState('');
     const [serviceSearch, setServiceSearch] = useState('');
+    const [price, setPrice] = useState(0);
     const [date, setDate] = useState('');
     const [startHour, setStartHour] = useState(9);
     const [duration, setDuration] = useState(1);
@@ -195,6 +212,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         worker_id: workerIdVal,
         client_id: (role === 'client' && !isBlockedSlot) ? profile?.id : null,
         status: isBlockedSlot ? 'confirmed' : 'pending',
+        price: isBlockedSlot ? 0 : price,
       });
 
       if (error) {
@@ -315,12 +333,18 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         : (selectedWorkerId ?? workers[0]?.id);
 
       // 5. Double Booking Conflict Detection
-      const { data: conflicts, error: conflictError } = await supabase
+      let query = supabase
         .from('appointments')
         .select('id, start_hour, duration_hours')
         .eq('date', date)
         .eq('worker_id', workerForInsert)
         .neq('status', 'cancelled');
+
+      if (mode === 'edit' && appointment) {
+        query = query.neq('id', appointment.id);
+      }
+
+      const { data: conflicts, error: conflictError } = await query;
 
       if (!conflictError && conflicts && conflicts.length > 0) {
         const hasOverlap = conflicts.some(appt => {
@@ -342,7 +366,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 {
                   text: 'Bloquear de todas formas',
                   style: 'default',
-                  onPress: () => executeInsert(workerForInsert),
+                  onPress: () => mode === 'edit' ? executeUpdate(workerForInsert) : executeInsert(workerForInsert),
                 },
               ],
             });
@@ -356,7 +380,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 {
                   text: 'Agendar de todas formas',
                   style: 'default',
-                  onPress: () => executeInsert(workerForInsert),
+                  onPress: () => mode === 'edit' ? executeUpdate(workerForInsert) : executeInsert(workerForInsert),
                 },
               ],
             });
@@ -371,13 +395,17 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         }
       }
 
-      await executeInsert(workerForInsert);
+      if (mode === 'edit') {
+        await executeUpdate(workerForInsert);
+      } else {
+        await executeInsert(workerForInsert);
+      }
     };
 
     const handleStatusChange = async (newStatus: AppointmentStatus) => {
       if (!appointment) return;
 
-      if (newStatus === 'cancelled') {
+      if (newStatus === 'cancelled' && role === 'client') {
         const apptDate = new Date(appointment.date ?? '');
         apptDate.setHours(Math.floor(appointment.startHour), Math.round((appointment.startHour % 1) * 60));
         const diff = apptDate.getTime() - Date.now();
@@ -388,9 +416,22 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       }
 
       setSaving(true);
+
+      let updatePayload: any = { status: newStatus };
+      if (newStatus === 'completed') {
+        // Ensure price is set to sum up for barber & business
+        const currentPrice = appointment.price || 0;
+        if (currentPrice === 0) {
+          const matchingService = businessServices.find(s => s.name === appointment.service);
+          if (matchingService) {
+            updatePayload.price = matchingService.price;
+          }
+        }
+      }
+
       const { error } = await supabase
         .from('appointments')
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq('id', appointment.id);
 
       setSaving(false);
@@ -399,6 +440,70 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       } else {
         showToast({ type: 'success', message: `Cita ${STATUS_CONFIG[newStatus].label.toLowerCase()}` });
         onSaved();
+        sheetRef.current?.close();
+      }
+    };
+
+    const handleDelete = async () => {
+      if (!appointment) return;
+
+      const isBlocked = appointment.status === 'blocked';
+
+      showAlert({
+        title: isBlocked ? 'DESBLOQUEAR HORARIO' : 'ELIMINAR CITA',
+        message: isBlocked 
+          ? '¿Estás seguro de que deseas desbloquear este horario y quitar el bloqueo del calendario?' 
+          : '¿Estás seguro de que deseas eliminar permanentemente esta cita del calendario?',
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: isBlocked ? 'Desbloquear' : 'Eliminar',
+            style: 'destructive',
+            onPress: async () => {
+              setSaving(true);
+              const { error } = await supabase
+                .from('appointments')
+                .delete()
+                .eq('id', appointment.id);
+
+              setSaving(false);
+              if (error) {
+                showToast({ type: 'error', message: isBlocked ? 'Error al desbloquear. Intenta de nuevo.' : 'Error al eliminar. Intenta de nuevo.' });
+              } else {
+                showToast({ type: 'success', message: isBlocked ? 'Horario desbloqueado con éxito' : 'Cita eliminada permanentemente' });
+                onSaved();
+                sheetRef.current?.close();
+              }
+            },
+          },
+        ],
+      });
+    };
+
+    const executeUpdate = async (workerIdVal: string) => {
+      if (!appointment) return;
+      setSaving(true);
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          client_name: isBlockedSlot ? 'Bloqueo de horario' : clientName.trim(),
+          service: isBlockedSlot ? (service.trim() || 'Bloqueo') : service.trim(),
+          date,
+          start_hour: startHour,
+          duration_hours: duration,
+          worker_id: workerIdVal,
+          price: isBlockedSlot ? 0 : price,
+        })
+        .eq('id', appointment.id);
+
+      if (error) {
+        console.error("SUPABASE UPDATE ERROR:", error);
+        setSaving(false);
+        showToast({ type: 'error', message: `Error al guardar cambios: ${error.message}` });
+      } else {
+        showToast({ type: 'success', message: 'Cita modificada con éxito' });
+        await onSaved();
+        setSaving(false);
         sheetRef.current?.close();
       }
     };
@@ -439,9 +544,20 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
           showsVerticalScrollIndicator={false}
         >
-          {mode === 'create' ? (
+          {mode === 'create' || mode === 'edit' ? (
             <>
-              <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 12 }]}>Nueva cita</Text>
+              {mode === 'edit' ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+                  <TouchableOpacity onPress={() => setMode('detail')} style={{ paddingRight: 4 }}>
+                    <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                  <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 0 }]}>
+                    {isBlockedSlot ? 'Editar bloqueo' : 'Editar cita'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 12 }]}>Nueva cita</Text>
+              )}
 
               {role !== 'client' && (
                 <View style={[styles.tabs, { backgroundColor: colors.surface, marginBottom: 16 }]}>
@@ -541,6 +657,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                                     if (s.duration_min) {
                                       setDuration(s.duration_min / 60);
                                     }
+                                    setPrice(s.price || 0);
                                   }}
                                   activeOpacity={0.7}
                                 >
@@ -581,10 +698,22 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Fecha</Text>
-                  <View style={[styles.input, styles.readOnly, { backgroundColor: inputBg, borderColor: colors.border }]}>
-                    <Text style={{ color: colors.textPrimary }}>{date}</Text>
-                  </View>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>
+                    {mode === 'edit' ? 'Fecha (AAAA-MM-DD)' : 'Fecha'}
+                  </Text>
+                  {mode === 'edit' ? (
+                    <TextInput
+                      style={[styles.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border }]}
+                      placeholderTextColor={colors.textSecondary}
+                      placeholder="AAAA-MM-DD"
+                      value={date}
+                      onChangeText={setDate}
+                    />
+                  ) : (
+                    <View style={[styles.input, styles.readOnly, { backgroundColor: inputBg, borderColor: colors.border }]}>
+                      <Text style={{ color: colors.textPrimary }}>{date}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -677,60 +806,162 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 {saving ? (
                   <ActivityIndicator color={colors.primaryText} />
                 ) : (
-                  <Text style={[styles.saveBtnText, { color: colors.primaryText }]}>Guardar cita</Text>
+                  <Text style={[styles.saveBtnText, { color: colors.primaryText }]}>
+                    {mode === 'edit' ? 'Guardar cambios' : 'Guardar cita'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </>
           ) : appointment ? (
             <>
               <View style={styles.detailHeader}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>{appointment.service}</Text>
+                <View style={{ flex: 1, marginRight: 16 }}>
+                  <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
+                  <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{appointment.service}</Text>
+                </View>
                 <View
                   style={[
                     styles.statusBadge,
-                    { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface },
+                    { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
                   ]}
                 >
-                  <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary }]}>
-                    {STATUS_CONFIG[appointment.status]?.label ?? appointment.status}
+                  <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary, fontWeight: '700' }]}>
+                    {STATUS_CONFIG[appointment.status]?.label?.toUpperCase() ?? appointment.status?.toUpperCase()}
                   </Text>
                 </View>
               </View>
 
-              <DetailRow icon="user" label="Cliente" value={appointment.clientName} colors={colors} />
-              <DetailRow icon="calendar" label="Fecha" value={appointment.date ?? '-'} colors={colors} />
-              <DetailRow icon="clock" label="Hora" value={formatHour(appointment.startHour)} colors={colors} />
-              <DetailRow icon="activity" label="Duración" value={`${appointment.durationHours * 60} min`} colors={colors} />
-              <DetailRow icon="users" label="Trabajador" value={appointment.worker} colors={colors} />
-
-              {role !== 'client' && (
-                <View style={styles.actions}>
-                  {appointment.status !== 'confirmed' && (
-                    <ActionBtn
-                      label="Confirmar"
-                      color={colors.statusConfirmed}
-                      onPress={() => handleStatusChange('confirmed')}
-                      saving={saving}
-                    />
-                  )}
-                  {appointment.status !== 'completed' && (
-                    <ActionBtn
-                      label="Completar"
-                      color={colors.statusCompleted}
-                      onPress={() => handleStatusChange('completed')}
-                      saving={saving}
-                    />
-                  )}
-                  {role === 'company' && appointment.status !== 'cancelled' && (
-                    <ActionBtn
-                      label="Cancelar"
-                      color={colors.statusCancelled}
-                      onPress={() => handleStatusChange('cancelled')}
-                      saving={saving}
-                    />
-                  )}
+              <BlurView
+                intensity={isDarkMode ? 15 : 40}
+                tint={isDarkMode ? 'dark' : 'light'}
+                style={[
+                  styles.premiumCard,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                    overflow: 'hidden'
+                  }
+                ]}
+              >
+                {/* Date & Time Row */}
+                <View style={styles.premiumDetailRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                    <Feather name="calendar" size={18} color="#3B82F6" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
+                    <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                      {appointment.date}  •  {formatHour(appointment.startHour)} hs
+                    </Text>
+                  </View>
                 </View>
-              )}
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                {/* Duration Row */}
+                <View style={styles.premiumDetailRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                    <Feather name="clock" size={18} color="#F59E0B" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
+                    <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                      {appointment.durationHours * 60} minutos
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                {/* Client Row */}
+                <View style={styles.premiumDetailRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)' }]}>
+                    <Feather name="user" size={18} color="#A855F7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Cliente</Text>
+                    <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                      {appointment.clientName}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                {/* Worker Row */}
+                <View style={styles.premiumDetailRow}>
+                  <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
+                    <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                        {appointment.worker}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </BlurView>
+
+              <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
+                {/* 1. Primary Action (Confirmar or Completar) */}
+                {role !== 'client' && appointment.status !== 'blocked' && (
+                  <>
+                    {appointment.status === 'pending' && (
+                      <ActionBtn
+                        label="Confirmar"
+                        color="#2E7D45"
+                        onPress={() => handleStatusChange('confirmed')}
+                        saving={saving}
+                        style={{ flex: 1.4 }}
+                      />
+                    )}
+                    {appointment.status === 'confirmed' && (
+                      <ActionBtn
+                        label="Completar"
+                        color="#2563EB"
+                        onPress={() => handleStatusChange('completed')}
+                        saving={saving}
+                        style={{ flex: 1.4 }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* 2. Secondary Actions (Editar, Eliminar) */}
+                {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
+                  <ActionBtn
+                    label="Editar"
+                    color="#fda428ff"
+                    onPress={() => {
+                      setMode('edit');
+                      setClientName(appointment.clientName);
+                      setService(appointment.service);
+                      setServiceSearch('');
+                      setDate(appointment.date ?? '');
+                      setStartHour(appointment.startHour);
+                      setDuration(appointment.durationHours);
+                      setSelectedWorkerId(appointment.worker_id);
+                      setIsBlockedSlot(appointment.status === 'blocked');
+                      setPrice(appointment.price || 0);
+                    }}
+                    saving={saving}
+                    style={{ flex: 1 }}
+                  />
+                )}
+
+                {canEditOrCancel && (
+                  <ActionBtn
+                    label={appointment.status === 'blocked' ? 'Desbloquear' : 'Eliminar'}
+                    color="#DC2626"
+                    onPress={handleDelete}
+                    saving={saving}
+                    style={{ flex: 1 }}
+                  />
+                )}
+              </View>
             </>
           ) : null}
         </BottomSheetScrollView>
@@ -764,22 +995,37 @@ function DetailRow({
 function ActionBtn({
   label,
   color,
+  textColor,
   onPress,
   saving,
+  style,
 }: {
   label: string;
   color: string;
+  textColor?: string;
   onPress: () => void;
   saving: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const finalTextColor = textColor || '#FFFFFF';
   return (
     <TouchableOpacity
-      style={[styles.actionBtn, { borderColor: color, opacity: saving ? 0.5 : 1 }]}
+      style={[
+        styles.actionBtn,
+        {
+          backgroundColor: color,
+          borderColor: color,
+          opacity: saving ? 0.5 : 1,
+        },
+        style,
+      ]}
       onPress={onPress}
       disabled={saving}
       activeOpacity={0.75}
     >
-      <Text style={[styles.actionBtnText, { color }]}>{label}</Text>
+      <Text style={[styles.actionBtnText, { color: finalTextColor, textAlign: 'center', fontWeight: '700' }]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -962,13 +1208,64 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   actionBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
+  },
+  detailServiceLabel: {
+    fontSize: 10,
+    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  detailTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  premiumCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  premiumDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 4,
+  },
+  iconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  premiumValue: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  divider: {
+    height: 1,
+    opacity: 0.3,
+  },
+  smallDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

@@ -73,13 +73,13 @@ export default function MyAppointmentsScreen() {
 
   const handleCancel = (apptId: string) => {
     showAlert({
-      title: 'CANCELAR CITA',
-      message: '¿Estás seguro de que deseas cancelar esta cita?',
+      title: 'CANCELAR O ELIMINAR CITA',
+      message: '¿Qué deseas hacer con esta cita?',
       buttons: [
         { text: 'Volver', style: 'cancel' },
         {
-          text: 'Cancelar cita',
-          style: 'destructive',
+          text: 'Marcar como Cancelada',
+          style: 'default',
           onPress: async () => {
             const { error } = await supabase
               .from('appointments')
@@ -89,6 +89,21 @@ export default function MyAppointmentsScreen() {
               fetchAppointments();
             } else {
               showAlert({ title: 'Error', message: 'No se pudo cancelar la cita. Intenta nuevamente.' });
+            }
+          },
+        },
+        {
+          text: 'Eliminar permanentemente',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('appointments')
+              .delete()
+              .eq('id', apptId);
+            if (!error) {
+              fetchAppointments();
+            } else {
+              showAlert({ title: 'Error', message: 'No se pudo eliminar la cita. Intenta nuevamente.' });
             }
           },
         },
