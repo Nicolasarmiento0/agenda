@@ -309,7 +309,7 @@ export default function ClientBusinessProfileScreen() {
               style={[appStyles.primaryButton, { width: '100%' }]}
               onPress={() =>
                 router.push(
-                  (`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any
+                  `/screens/global/calendar` as any
                 )
               }
             >
@@ -326,7 +326,7 @@ export default function ClientBusinessProfileScreen() {
               >
                 <Text style={appStyles.primaryButtonText}>SOLICITUD EN REVISIÓN</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
+              <TouchableOpacity onPress={() => router.push(`/screens/global/calendar` as any)}>
                 <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
               </TouchableOpacity>
             </View>
@@ -340,7 +340,7 @@ export default function ClientBusinessProfileScreen() {
               >
                 {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}>
+              <TouchableOpacity onPress={() => router.push(`/screens/global/calendar` as any)}>
                 <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
               </TouchableOpacity>
             </View>
@@ -348,7 +348,7 @@ export default function ClientBusinessProfileScreen() {
             <TouchableOpacity
               activeOpacity={0.8}
               style={[appStyles.primaryButton, { width: '100%' }]}
-              onPress={() => router.push((`/screens/roles/client/client-agenda?id=${fetchedBusiness.id}`) as any)}
+              onPress={() => router.push(`/screens/global/calendar` as any)}
             >
               <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
             </TouchableOpacity>

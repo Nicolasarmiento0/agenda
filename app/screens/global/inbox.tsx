@@ -165,7 +165,7 @@ export default function InboxScreen() {
             subtitle: `${a.client_name} · ${a.date}`,
             date: a.created_at,
             actionLabel: 'Ver agenda',
-            onAction: () => router.push('/screens/roles/company/company-agenda' as any),
+            onAction: () => router.push('/screens/global/calendar' as any),
           });
         });
 

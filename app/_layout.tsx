@@ -11,11 +11,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, Linking, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TeslaAlert from '../components/TeslaAlert';
 import { AlertProvider, useAlert } from '../context/AlertContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { BusinessProvider } from '../context/BusinessContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import { ToastProvider } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
 
 function GlobalGuard({ children }: { children: React.ReactNode }) {
@@ -126,8 +128,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaProvider>
     <ThemeProvider>
       <AlertProvider>
+        <ToastProvider>
         <BusinessProvider>
           <AuthProvider>
             {/* DeepLinkHandler dentro de AuthProvider para poder setSession */}
@@ -149,13 +153,13 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/roles/admin/admin-business-detail" />
                 <Stack.Screen name="screens/roles/company/business-setup" />
                 <Stack.Screen name="screens/roles/company/business-pending" />
+                {/* Calendario unificado */}
+                <Stack.Screen name="screens/global/calendar" options={{ headerShown: false }} />
                 {/* Cliente */}
                 <Stack.Screen name="screens/global/explore" />
                 <Stack.Screen name="screens/global/my-appointments" />
                 <Stack.Screen name="screens/roles/client/client-business-profile" />
-                <Stack.Screen name="screens/roles/client/client-agenda" />
                 {/* Empresa */}
-                <Stack.Screen name="screens/roles/company/company-agenda" />
                 <Stack.Screen name="screens/roles/company/company-services" />
                 <Stack.Screen name="screens/roles/company/company-employees" />
                 <Stack.Screen name="screens/roles/company/company-history" />
@@ -164,7 +168,6 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/roles/company/company-booking-window" options={{ headerShown: false }} />
                 {/* Trabajador */}
                 <Stack.Screen name="screens/roles/worker/worker-dashboard" options={{ headerShown: false }} />
-                <Stack.Screen name="screens/roles/worker/worker-agenda" options={{ headerShown: false }} />
                 <Stack.Screen name="screens/roles/worker/worker-history" options={{ headerShown: false }} />
                 {/* Admin */}
                 <Stack.Screen name="screens/roles/admin/admin-business-employees" options={{ headerShown: false }} />
@@ -176,8 +179,10 @@ export default function RootLayout() {
             <StatusBar style="auto" />
           </AuthProvider>
         </BusinessProvider>
+        </ToastProvider>
       </AlertProvider>
     </ThemeProvider>
+    </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

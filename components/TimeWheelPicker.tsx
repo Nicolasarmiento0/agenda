@@ -1,4 +1,4 @@
-import { BlurView } from 'expo-blur';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
@@ -8,6 +8,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -61,8 +62,6 @@ function WheelColumn({
       const index = Math.max(0, Math.min(Math.round(rawOffset / ITEM_HEIGHT), items.length - 1));
       const snappedOffset = index * ITEM_HEIGHT;
 
-      // Only manually snap on Android. iOS handles snapToInterval natively and perfectly.
-      // Manually calling scrollTo on iOS during momentum can cancel the scroll prematurely.
       if (Platform.OS !== 'ios' && Math.abs(rawOffset - snappedOffset) > 1) {
         scrollRef.current?.scrollTo({ y: snappedOffset, animated: true });
       }
@@ -76,8 +75,6 @@ function WheelColumn({
     [items.length, onSelect],
   );
 
-  // Haptics-only listener — does NOT call onSelect to avoid parent re-renders
-  // interrupting the ongoing scroll animation.
   useEffect(() => {
     const id = scrollY.addListener(({ value }) => {
       const index = Math.max(0, Math.min(Math.round(value / ITEM_HEIGHT), items.length - 1));
@@ -98,8 +95,6 @@ function WheelColumn({
 
   const handleScrollEndDrag = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      // Only snap if there is no momentum. If there is momentum, handleMomentumScrollEnd will catch it.
-      // snapToInterval natively handles the physical snapping on iOS.
       const velocity = e.nativeEvent.velocity?.y ?? 0;
       if (Math.abs(velocity) < 0.1) {
         snapToIndex(e.nativeEvent.contentOffset.y);
@@ -108,8 +103,8 @@ function WheelColumn({
     [snapToIndex]
   );
 
-  const textColor = isDarkMode ? '#FFFFFF' : '#0F172A';
-  const busyColor = '#EF4444'; // Rojo Tesla sutil y de alta visibilidad
+  const busyColor = '#EF4444';
+  const accentColor = '#B4F736'; // Neon lime green of the app
 
   return (
     <View style={styles.column}>
@@ -150,6 +145,7 @@ function WheelColumn({
           });
 
           const isBusy = busyIndices?.has(i);
+          const isSelected = i === selectedIndex;
 
           return (
             <Animated.View
@@ -160,7 +156,16 @@ function WheelColumn({
                 onPress={() => snapToIndex(i * ITEM_HEIGHT)}
                 style={[
                   styles.itemText,
-                  { color: isBusy ? busyColor : textColor }
+                  {
+                    color: isBusy
+                      ? busyColor
+                      : isSelected
+                        ? accentColor
+                        : isDarkMode
+                          ? 'rgba(255, 255, 255, 0.45)'
+                          : 'rgba(15, 23, 42, 0.45)',
+                    fontFamily: isSelected ? 'Inter_600SemiBold' : 'Inter_400Regular',
+                  }
                 ]}
               >
                 {item}
@@ -252,22 +257,20 @@ export default function TimeWheelPicker({
     [minutes, onSlotSelect],
   );
 
-  // Paleta de colores Premium & Liquid Glass (Azul espacial profundo para Dark Mode)
+  // Paleta de colores Neon Lime Premium
   const glassBorder = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
   const separatorColor = isDarkMode ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)';
   const labelColor = isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(15, 23, 42, 0.46)';
-  const highlightBg = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)';
-  const highlightBorder = isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)';
+  const highlightBg = isDarkMode ? 'rgba(180, 247, 54, 0.08)' : 'rgba(180, 247, 54, 0.05)';
+  const highlightBorder = 'rgba(180, 247, 54, 0.35)'; // Accent neon green border glow
 
   return (
-    <BlurView
-      intensity={isDarkMode ? 25 : 40}
-      tint={isDarkMode ? 'dark' : 'light'}
+    <View
       style={[
         styles.card,
         {
           borderColor: glassBorder,
-          backgroundColor: isDarkMode ? 'rgba(11, 14, 20, 0.8)' : 'rgba(255, 255, 255, 0.75)',
+          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
         },
       ]}
     >
@@ -311,7 +314,7 @@ export default function TimeWheelPicker({
         <View style={styles.labelSpacer} />
         <Text style={[styles.label, { color: labelColor }]}>MIN</Text>
       </View>
-    </BlurView>
+    </View>
   );
 }
 
@@ -319,21 +322,10 @@ export default function TimeWheelPicker({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
-    marginVertical: 12,
+    marginVertical: 8,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
   pickerContainer: {
     position: 'relative',
@@ -357,7 +349,7 @@ const styles = StyleSheet.create({
     right: 16,
     height: ITEM_HEIGHT,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 10,
     zIndex: 1,
   },
   item: {
@@ -368,7 +360,6 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 22,
-    fontWeight: '500',
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },
@@ -388,8 +379,8 @@ const styles = StyleSheet.create({
   labelsRow: {
     flexDirection: 'row',
     paddingHorizontal: 24,
-    paddingBottom: 16,
-    paddingTop: 4,
+    paddingBottom: 12,
+    paddingTop: 2,
     alignItems: 'center',
   },
   labelSpacer: {

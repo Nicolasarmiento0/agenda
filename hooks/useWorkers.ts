@@ -28,6 +28,7 @@ export function useWorkers(businessId: string | undefined): {
           initials: w.name.substring(0, 2).toUpperCase(),
           avatar_url: w.profiles?.avatar_url ?? null,
           specialty: w.specialty || '',
+          user_id: w.user_id ?? undefined,
         }))
       );
     }

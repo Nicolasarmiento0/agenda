@@ -17,6 +17,17 @@ const darkColors = {
   textPrimary: '#F9FAFB',
   textSecondary: '#9CA3AF',
   error: '#FF4B4B',
+  // Calendar semantic tokens
+  backgroundPrimary: '#1A1A1A',
+  backgroundSurface: 'rgba(255,255,255,0.06)',
+  accent: '#B4F736',
+  accentDim: 'rgba(180,247,54,0.18)',
+  statusConfirmed: '#30D158',
+  statusPending: '#FF9F0A',
+  statusCompleted: '#636366',
+  statusCancelled: '#FF453A',
+  statusNoShow: '#FF6961',
+  workerColors: ['#FF6B6B', '#4DD4C0', '#FFD166', '#C77DFF', '#FF8FAB', '#4F8EF7'] as string[],
 };
 
 const lightColors = {
@@ -30,6 +41,17 @@ const lightColors = {
   textPrimary: '#111827',
   textSecondary: '#6B7280',
   error: '#FF4B4B',
+  // Calendar semantic tokens
+  backgroundPrimary: '#F4F5F7',
+  backgroundSurface: 'rgba(255,255,255,0.80)',
+  accent: '#B4F736',
+  accentDim: 'rgba(180,247,54,0.18)',
+  statusConfirmed: '#30D158',
+  statusPending: '#FF9F0A',
+  statusCompleted: '#636366',
+  statusCancelled: '#FF453A',
+  statusNoShow: '#FF6961',
+  workerColors: ['#FF6B6B', '#4DD4C0', '#FFD166', '#C77DFF', '#FF8FAB', '#4F8EF7'] as string[],
 };
 
 const ThemeContext = createContext<ThemeContextType>({

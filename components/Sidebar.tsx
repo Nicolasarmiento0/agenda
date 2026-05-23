@@ -211,7 +211,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR NEGOCIOS</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/my-appointments')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/calendar')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIS CITAS</Text>
                 </TouchableOpacity>
@@ -229,7 +229,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="compass" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>DESCUBRIR NEGOCIOS</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/company/company-agenda')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/calendar')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>AGENDA</Text>
                 </TouchableOpacity>
@@ -285,7 +285,7 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="home" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>INICIO</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/roles/worker/worker-agenda')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/screens/global/calendar')}>
                   <Feather name="calendar" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI AGENDA</Text>
                 </TouchableOpacity>

@@ -1,0 +1,1095 @@
+import { Feather } from '@expo/vector-icons';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Dimensions,
+  FlatList,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT } from '../../constants/appointments';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useAgendaAppointments } from '../../hooks/useAgendaAppointments';
+import { useWorkers } from '../../hooks/useWorkers';
+import { useToast } from '../../context/ToastContext';
+import Sidebar from '../Sidebar';
+import AppointmentModal, { AppointmentModalHandle } from './AppointmentModal';
+import WorkersBar from './WorkersBar';
+import { useBusiness } from '../../context/BusinessContext';
+
+type ViewMode = 'month' | 'week' | 'day';
+
+const DAYS_SHORT = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const MONTHS_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+function toLocalISO(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function startOfWeek(d: Date) {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const result = new Date(d);
+  result.setDate(d.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function addDays(d: Date, n: number) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function getWeekDays(anchor: Date): Date[] {
+  const monday = startOfWeek(anchor);
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+function getMonthDays(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const days: Date[] = [];
+  for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+    days.push(new Date(d));
+  }
+  return days;
+}
+
+function getDayMonthGrid(year: number, month: number): (Date | null)[] {
+  const days = getMonthDays(year, month);
+  const firstDow = days[0].getDay();
+  const offset = firstDow === 0 ? 6 : firstDow - 1;
+  const grid: (Date | null)[] = Array(offset).fill(null);
+  days.forEach((d) => grid.push(d));
+  while (grid.length % 7 !== 0) grid.push(null);
+  return grid;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+function formatHour(h: number) {
+  return `${pad2(Math.floor(h))}:${pad2(Math.round((h % 1) * 60))}`;
+}
+
+function isToday(d: Date) {
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+// ─────────────────────────── My-Appointments list (client tab) ───────────────
+
+function MyAppointmentsList({ appointments, colors }: { appointments: Appointment[]; colors: any }) {
+  const sorted = [...appointments].sort((a, b) => {
+    const da = (a.date ?? '') + formatHour(a.startHour);
+    const db = (b.date ?? '') + formatHour(b.startHour);
+    return da.localeCompare(db);
+  });
+
+  if (sorted.length === 0) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+        <Feather name="calendar" size={40} color={colors.textSecondary} />
+        <Text style={{ color: colors.textSecondary, marginTop: 12, textAlign: 'center', fontFamily: 'Inter_400Regular' }}>
+          No tienes citas próximas
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={sorted}
+      keyExtractor={(a) => a.id}
+      contentContainerStyle={{ padding: 16, gap: 10 }}
+      renderItem={({ item }) => (
+        <View style={[styles.listCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.listAccent, { backgroundColor: item.workerColor }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.listService, { color: colors.textPrimary }]}>{item.service}</Text>
+            <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
+              {item.date}  ·  {formatHour(item.startHour)}  ·  {item.worker}
+            </Text>
+          </View>
+        </View>
+      )}
+    />
+  );
+}
+
+// ─────────────────────────── Month Grid ───────────────────────────────────────
+
+function MonthGrid({
+  year,
+  month,
+  appointments,
+  colors,
+  onDayPress,
+  onEventPress,
+}: {
+  year: number;
+  month: number;
+  appointments: Appointment[];
+  colors: any;
+  onDayPress: (date: Date) => void;
+  onEventPress: (a: Appointment) => void;
+}) {
+  const grid = useMemo(() => getDayMonthGrid(year, month), [year, month]);
+
+  const apptByDate = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    for (const a of appointments) {
+      if (!a.date) continue;
+      (map[a.date] = map[a.date] || []).push(a);
+    }
+    return map;
+  }, [appointments]);
+
+  const today = useMemo(() => toLocalISO(new Date()), []);
+
+  return (
+    <View style={styles.monthContainer}>
+      {/* Day headers */}
+      <View style={styles.monthHeader}>
+        {DAYS_SHORT.map((d) => (
+          <Text key={d} style={[styles.monthHeaderText, { color: colors.textSecondary }]}>
+            {d}
+          </Text>
+        ))}
+      </View>
+      {/* Grid */}
+      <View style={styles.monthGrid}>
+        {grid.map((day, idx) => {
+          if (!day) {
+            return <View key={`empty-${idx}`} style={styles.monthCell} />;
+          }
+          const iso = toLocalISO(day);
+          const events = apptByDate[iso] ?? [];
+          const isT = iso === today;
+
+          return (
+            <Pressable
+              key={iso}
+              style={styles.monthCell}
+              onPress={() => onDayPress(day)}
+              onLongPress={() => onDayPress(day)}
+            >
+              <View
+                style={[
+                  styles.monthDayCircle,
+                  isT && { backgroundColor: colors.accent },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.monthDayNum,
+                    { color: isT ? colors.primaryText : colors.textPrimary },
+                  ]}
+                >
+                  {day.getDate()}
+                </Text>
+              </View>
+              <View style={styles.monthEventPills}>
+                {events.slice(0, 2).map((e) => (
+                  <Pressable
+                    key={e.id}
+                    style={[styles.monthPill, { backgroundColor: e.workerColor + 'CC' }]}
+                    onPress={() => onEventPress(e)}
+                  >
+                    <Text style={styles.monthPillText} numberOfLines={1}>
+                      {e.service}
+                    </Text>
+                  </Pressable>
+                ))}
+                {events.length > 2 && (
+                  <Text style={[styles.monthMore, { color: colors.textSecondary }]}>
+                    +{events.length - 2}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────── Week / Day shared time grid ──────────────────────
+
+const SCREEN_W = Dimensions.get('window').width;
+const TIME_COL_W = 44;
+const WEEK_COL_W = 72;   // fixed width per day column (enables horizontal scroll)
+const WEEK_HEADER_H = 52; // height of the day-names header row
+
+function TimeColumn({ colors }: { colors: any }) {
+  const hours = Array.from(
+    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
+    (_, i) => DEFAULT_START_HOUR + i,
+  );
+  return (
+    <View style={[styles.timeCol, { width: TIME_COL_W }]}>
+      {hours.map((h) => (
+        <View key={h} style={[styles.timeCell, { height: HOUR_HEIGHT }]}>
+          <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>{pad2(h)}:00</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function NowLine({ colors }: { colors: any }) {
+  const now = new Date();
+  const frac = (now.getHours() - DEFAULT_START_HOUR + now.getMinutes() / 60) * HOUR_HEIGHT;
+  if (frac < 0) return null;
+  return (
+    <View style={[styles.nowLine, { top: frac }]}>
+      <View style={[styles.nowDot, { backgroundColor: colors.statusCancelled }]} />
+      <View style={[styles.nowRule, { backgroundColor: colors.statusCancelled }]} />
+    </View>
+  );
+}
+
+function EventBlock({
+  appointment,
+  colWidth,
+  colors,
+  onPress,
+}: {
+  appointment: Appointment;
+  colWidth: number;
+  colors: any;
+  onPress: () => void;
+}) {
+  const { isDarkMode } = useTheme();
+  const top = (appointment.startHour - DEFAULT_START_HOUR) * HOUR_HEIGHT;
+  const height = Math.max(appointment.durationHours * HOUR_HEIGHT - 4, 24);
+
+  const isNarrow = colWidth < 60;
+  const isUltraNarrow = colWidth < 50;
+
+  const paddingHorizontal = isUltraNarrow ? 2 : isNarrow ? 3 : 5;
+  const titleSize = isUltraNarrow ? 8.5 : isNarrow ? 9.5 : 11;
+  const subSize = isUltraNarrow ? 7.5 : isNarrow ? 8.5 : 10;
+
+  const isBlocked = appointment.status === 'blocked';
+  const borderLeftColor = isBlocked ? '#6B7280' : appointment.workerColor;
+  const backgroundColor = isBlocked
+    ? (isDarkMode ? 'rgba(75, 85, 99, 0.45)' : 'rgba(209, 213, 219, 0.65)')
+    : appointment.workerColor + '30';
+
+  return (
+    <Pressable
+      style={[
+        styles.eventBlock,
+        {
+          top,
+          height,
+          width: colWidth - (isNarrow ? 4 : 8),
+          left: isNarrow ? 2 : 4,
+          paddingHorizontal,
+          borderLeftColor,
+          backgroundColor,
+        },
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[styles.eventTitle, { color: colors.textPrimary, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none' }]} numberOfLines={1}>
+        {isBlocked ? `🚫 ${appointment.service}` : appointment.service}
+      </Text>
+      {height > 32 && (
+        <Text style={[styles.eventSub, { color: colors.textSecondary, fontSize: subSize }]} numberOfLines={1}>
+          {isBlocked ? 'Horario bloqueado' : appointment.clientName}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+function WeekGrid({
+  weekDays,
+  appointments,
+  colors,
+  onSlotPress,
+  onEventPress,
+}: {
+  weekDays: Date[];
+  appointments: Appointment[];
+  colors: any;
+  onSlotPress: (date: Date, hour: number) => void;
+  onEventPress: (a: Appointment) => void;
+}) {
+  const [containerWidth, setContainerWidth] = useState(SCREEN_W);
+
+  const handleLayout = useCallback((event: any) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setContainerWidth(width);
+    }
+  }, []);
+
+  const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
+  const availableWidth = containerWidth - TIME_COL_W;
+  const weekColWidth = availableWidth / 7;
+  const totalW = 7 * weekColWidth;
+
+  const apptByDay = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    for (const a of appointments) {
+      (map[a.date ?? ''] = map[a.date ?? ''] || []).push(a);
+    }
+    return map;
+  }, [appointments]);
+
+  const rows = Array.from(
+    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
+    (_, i) => DEFAULT_START_HOUR + i,
+  );
+
+  return (
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <View style={{ flexDirection: 'row' }} onLayout={handleLayout}>
+        {/* Time column — fixed horizontally */}
+        <View style={{ width: TIME_COL_W, flexShrink: 0 }}>
+          {/* Spacer that matches day-header height */}
+          <View style={{ height: WEEK_HEADER_H, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
+          <TimeColumn colors={colors} />
+        </View>
+
+        {/* Day columns — scroll horizontally */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          style={{ flex: 1 }}
+        >
+          <View style={{ width: totalW }}>
+            {/* Day headers */}
+            <View
+              style={{
+                flexDirection: 'row',
+                height: WEEK_HEADER_H,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: colors.border,
+              }}
+            >
+              {weekDays.map((d) => {
+                const t = isToday(d);
+                return (
+                  <View
+                    key={d.toISOString()}
+                    style={{
+                      width: weekColWidth,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRightWidth: StyleSheet.hairlineWidth,
+                      borderRightColor: colors.border,
+                    }}
+                  >
+                    <Text style={[styles.weekDayName, { color: t ? colors.accent : colors.textSecondary }]}>
+                      {DAYS_SHORT[(d.getDay() + 6) % 7]}
+                    </Text>
+                    <View style={[styles.weekDayCircle, t && { backgroundColor: colors.accent }]}>
+                      <Text style={[styles.weekDayNum, { color: t ? '#111827' : colors.textPrimary }]}>
+                        {d.getDate()}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Body: grid lines + events */}
+            <View style={{ height: totalH, position: 'relative' }}>
+              {/* Horizontal hour lines */}
+              {rows.map((h) => (
+                <View
+                  key={h}
+                  style={[
+                    styles.gridLine,
+                    { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border },
+                  ]}
+                />
+              ))}
+
+              {/* Day columns */}
+              <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
+                {weekDays.map((day) => {
+                  const iso = toLocalISO(day);
+                  const t = isToday(day);
+                  const dayAppts = apptByDay[iso] ?? [];
+                  return (
+                    <View
+                      key={iso}
+                      style={{
+                        width: weekColWidth,
+                        height: totalH,
+                        borderRightWidth: StyleSheet.hairlineWidth,
+                        borderRightColor: colors.border,
+                        backgroundColor: t ? colors.accent + '0A' : undefined,
+                      }}
+                    >
+                      {rows.map((h) => (
+                        <Pressable
+                          key={h}
+                          style={[styles.slotCell, { height: HOUR_HEIGHT }]}
+                          onLongPress={() => onSlotPress(day, h)}
+                        />
+                      ))}
+                      {dayAppts.map((a) => (
+                        <EventBlock
+                          key={a.id}
+                          appointment={a}
+                          colWidth={weekColWidth}
+                          colors={colors}
+                          onPress={() => onEventPress(a)}
+                        />
+                      ))}
+                    </View>
+                  );
+                })}
+              </View>
+
+              <NowLine colors={colors} />
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </ScrollView>
+  );
+}
+
+function DayGrid({
+  day,
+  appointments,
+  colors,
+  onSlotPress,
+  onEventPress,
+}: {
+  day: Date;
+  appointments: Appointment[];
+  colors: any;
+  onSlotPress: (date: Date, hour: number) => void;
+  onEventPress: (a: Appointment) => void;
+}) {
+  const [gridWidth, setGridWidth] = useState(SCREEN_W - TIME_COL_W - 32);
+  const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
+  const rows = Array.from(
+    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
+    (_, i) => DEFAULT_START_HOUR + i,
+  );
+
+  const handleLayout = useCallback((event: any) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setGridWidth(width);
+    }
+  }, []);
+
+  return (
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <View style={[styles.weekBody, { paddingHorizontal: 16 }]}>
+        <TimeColumn colors={colors} />
+        <View 
+          style={{ flex: 1, height: totalH, position: 'relative' }}
+          onLayout={handleLayout}
+        >
+          {rows.map((h) => (
+            <Pressable
+              key={h}
+              style={[
+                styles.gridLine,
+                styles.slotCell,
+                { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, height: HOUR_HEIGHT },
+              ]}
+              onLongPress={() => onSlotPress(day, h)}
+            />
+          ))}
+          {appointments.map((a) => (
+            <EventBlock
+              key={a.id}
+              appointment={a}
+              colWidth={gridWidth}
+              colors={colors}
+              onPress={() => onEventPress(a)}
+            />
+          ))}
+          <NowLine colors={colors} />
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─────────────────────────── FAB ───────────────────────────────────
+
+function FAB({
+  onNewAppointment,
+  colors,
+}: {
+  onNewAppointment: () => void;
+  colors: any;
+}) {
+  return (
+    <View style={styles.fabContainer}>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.accent }]}
+        onPress={onNewAppointment}
+        activeOpacity={0.85}
+      >
+        <Feather name="plus" size={26} color={colors.primaryText} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─────────────────────────── Main CalendarScreen ──────────────────────────────
+
+export default function CalendarScreen() {
+  const { profile, business } = useAuth();
+  const { colors } = useTheme();
+  const { selectedBusiness } = useBusiness();
+  const role = profile?.role ?? 'client';
+  const businessId = role === 'client' ? selectedBusiness?.id : business?.id;
+
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [anchor, setAnchor] = useState(new Date());
+  const [clientTab, setClientTab] = useState<'calendar' | 'list'>('calendar');
+  const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const { showToast } = useToast();
+  const modalRef = useRef<AppointmentModalHandle>(null);
+
+  // Compute date range for the hook
+  const dateRange = useMemo(() => {
+    if (viewMode === 'month') {
+      const year = anchor.getFullYear();
+      const month = anchor.getMonth();
+      return getMonthDays(year, month);
+    }
+    if (viewMode === 'week') {
+      return getWeekDays(anchor);
+    }
+    return [anchor];
+  }, [viewMode, anchor]);
+
+  const { workers } = useWorkers(businessId);
+
+  // For worker role, find their workers-table row ID (not profile.id)
+  const selfWorkerId = useMemo(
+    () => workers.find((w) => w.user_id === profile?.id)?.id,
+    [workers, profile?.id],
+  );
+
+  // Worker self-identification for display in the self bar
+  const selfWorker = useMemo(
+    () => workers.find((w) => w.user_id === profile?.id) ?? workers[0] ?? null,
+    [workers, profile?.id],
+  );
+
+  const workerId = role === 'worker'
+    ? selfWorkerId
+    : (selectedWorker ?? undefined);
+
+  const { appointments, refetch } = useAgendaAppointments(
+    businessId,
+    dateRange,
+    workerId,
+  );
+
+  const periodLabel = useMemo(() => {
+    if (viewMode === 'month') {
+      return `${MONTHS_ES[anchor.getMonth()]} ${anchor.getFullYear()}`;
+    }
+    if (viewMode === 'week') {
+      const days = getWeekDays(anchor);
+      const first = days[0];
+      const last = days[6];
+      if (first.getMonth() === last.getMonth()) {
+        return `${first.getDate()} – ${last.getDate()} ${MONTHS_ES[first.getMonth()]}`;
+      }
+      return `${first.getDate()} ${MONTHS_ES[first.getMonth()].slice(0, 3)} – ${last.getDate()} ${MONTHS_ES[last.getMonth()].slice(0, 3)}`;
+    }
+    return `${anchor.getDate()} de ${MONTHS_ES[anchor.getMonth()]}`;
+  }, [viewMode, anchor]);
+
+  const navigate = (dir: -1 | 1) => {
+    setAnchor((prev) => {
+      const next = new Date(prev);
+      if (viewMode === 'month') next.setMonth(next.getMonth() + dir);
+      else if (viewMode === 'week') next.setDate(next.getDate() + 7 * dir);
+      else next.setDate(next.getDate() + dir);
+      return next;
+    });
+  };
+
+  const openCreate = useCallback((date: Date, hour?: number) => {
+    modalRef.current?.open({ mode: 'create', date: toLocalISO(date), startHour: hour });
+  }, []);
+
+  const openDetail = useCallback((a: Appointment) => {
+    modalRef.current?.open({ mode: 'detail', appointment: a });
+  }, []);
+
+  const handleFABNew = () => openCreate(new Date());
+
+  const weekDays = useMemo(() => getWeekDays(anchor), [anchor]);
+
+  // Day-view appointments filtered
+  const dayAppts = useMemo(() => {
+    const iso = toLocalISO(anchor);
+    return appointments.filter((a) => a.date === iso);
+  }, [appointments, anchor]);
+
+  return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
+        {/* ── Header ── */}
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+              <Feather name="menu" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <View style={styles.headerCenter}>
+              <TouchableOpacity onPress={() => navigate(-1)}>
+                <Feather name="chevron-left" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>{periodLabel}</Text>
+              <TouchableOpacity onPress={() => navigate(1)}>
+                <Feather name="chevron-right" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => setAnchor(new Date())} style={styles.todayBtn}>
+              <Text style={[styles.todayText, { color: colors.accent }]}>Hoy</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* View mode tabs */}
+          <View style={[styles.tabs, { backgroundColor: colors.surface }]}>
+            {(['month', 'week', 'day'] as ViewMode[]).map((m) => (
+              <TouchableOpacity
+                key={m}
+                style={[
+                  styles.tab,
+                  viewMode === m && { backgroundColor: colors.accentDim },
+                ]}
+                onPress={() => setViewMode(m)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: viewMode === m ? colors.accent : colors.textSecondary },
+                  ]}
+                >
+                  {m === 'month' ? 'Mes' : m === 'week' ? 'Semana' : 'Día'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Workers Bar ── */}
+        {role === 'company' && (
+          <WorkersBar
+            workers={workers}
+            selectedWorkerId={selectedWorker}
+            onSelectWorker={setSelectedWorker}
+          />
+        )}
+        {role === 'worker' && selfWorker && (
+          <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
+            <View style={[styles.selfDot, { backgroundColor: selfWorker.color }]} />
+            <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
+          </View>
+        )}
+
+        {/* ── Client Tabs ── */}
+        {role === 'client' && (
+          <View style={[styles.clientTabs, { borderBottomColor: colors.border }]}>
+            {(['calendar', 'list'] as const).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.clientTab,
+                  clientTab === t && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
+                ]}
+                onPress={() => setClientTab(t)}
+              >
+                <Text
+                  style={[
+                    styles.clientTabText,
+                    { color: clientTab === t ? colors.accent : colors.textSecondary },
+                  ]}
+                >
+                  {t === 'calendar' ? 'Calendario' : 'Mis Citas'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ── Calendar Views ── */}
+        {(role !== 'client' || clientTab === 'calendar') && (
+          <>
+            {viewMode === 'month' && (
+              <MonthGrid
+                year={anchor.getFullYear()}
+                month={anchor.getMonth()}
+                appointments={appointments}
+                colors={colors}
+                onDayPress={(d) => openCreate(d)}
+                onEventPress={openDetail}
+              />
+            )}
+            {viewMode === 'week' && (
+              <WeekGrid
+                weekDays={weekDays}
+                appointments={appointments}
+                colors={colors}
+                onSlotPress={(d, h) => openCreate(d, h)}
+                onEventPress={openDetail}
+              />
+            )}
+            {viewMode === 'day' && (
+              <DayGrid
+                day={anchor}
+                appointments={dayAppts}
+                colors={colors}
+                onSlotPress={(d, h) => openCreate(d, h)}
+                onEventPress={openDetail}
+              />
+            )}
+          </>
+        )}
+
+        {/* ── Client: List tab ── */}
+        {role === 'client' && clientTab === 'list' && (
+          <MyAppointmentsList appointments={appointments} colors={colors} />
+        )}
+
+        {/* ── FAB ── */}
+        <FAB 
+          onNewAppointment={handleFABNew} 
+          colors={colors} 
+        />
+
+        {/* ── Appointment Modal ── */}
+        <AppointmentModal
+          ref={modalRef}
+          workers={workers}
+          businessId={businessId ?? ''}
+          onSaved={refetch}
+          showToast={showToast}
+        />
+
+        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  periodLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    minWidth: 160,
+    textAlign: 'center',
+  },
+  todayBtn: {
+    padding: 4,
+  },
+  todayText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.3,
+  },
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  selfBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  selfDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  selfName: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  clientTabs: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  clientTab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  clientTabText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  // Month
+  monthContainer: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  monthHeader: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  monthHeaderText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.5,
+    paddingVertical: 8,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  monthCell: {
+    width: `${100 / 7}%`,
+    minHeight: 72,
+    paddingBottom: 4,
+    paddingHorizontal: 2,
+  },
+  monthDayCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+    alignSelf: 'center',
+  },
+  monthDayNum: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  monthEventPills: {
+    gap: 2,
+  },
+  monthPill: {
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+  },
+  monthPillText: {
+    fontSize: 9,
+    color: '#fff',
+    fontFamily: 'Inter_500Medium',
+  },
+  monthMore: {
+    fontSize: 9,
+    paddingLeft: 2,
+  },
+  // Week/Day
+  weekBody: {
+    flexDirection: 'row',
+  },
+  weekDayName: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+  },
+  weekDayCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weekDayNum: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  timeCol: {
+    flexShrink: 0,
+  },
+  timeCell: {
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    paddingRight: 4,
+  },
+  timeLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'right',
+  },
+  gridLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  slotCell: {
+    width: '100%',
+  },
+  nowLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nowDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: -4,
+  },
+  nowRule: {
+    flex: 1,
+    height: 2,
+  },
+  eventBlock: {
+    position: 'absolute',
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+  },
+  eventTitle: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  eventSub: {
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 1,
+  },
+  // FAB
+  fabContainer: {
+    position: 'absolute',
+    bottom: 32,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 8 },
+    }),
+  },
+  fabOptions: {
+    marginBottom: 12,
+    gap: 10,
+    alignItems: 'flex-end',
+  },
+  fabOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fabOptionLabel: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  fabOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Client list
+  listCard: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  listAccent: {
+    width: 4,
+  },
+  listService: {
+    padding: 12,
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  listMeta: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+});

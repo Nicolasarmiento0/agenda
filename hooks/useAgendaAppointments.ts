@@ -55,7 +55,7 @@ export function useAgendaAppointments(
           workerColor: a.workers?.color || '#000',
           startHour: Number(a.start_hour),
           durationHours: Number(a.duration_hours),
-          status: a.status,
+          status: (a.client_name === 'Bloqueo de horario' || a.status === 'blocked') ? 'blocked' : a.status,
           date: a.date,
           price: a.price || 0,
           notes: a.notes || undefined,

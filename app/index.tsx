@@ -68,8 +68,8 @@ export default function Index() {
         console.log('INDEX: Company role, business is pending/rejected, redirecting to Business Pending');
         setTimeout(() => router.replace('/screens/roles/company/business-pending' as any), 0);
       } else {
-        console.log('INDEX: Company role, business is approved, redirecting to Company Agenda');
-        setTimeout(() => router.replace('/screens/roles/company/company-agenda' as any), 0);
+        console.log('INDEX: Company role, business is approved, redirecting to Calendar');
+        setTimeout(() => router.replace('/screens/global/calendar' as any), 0);
       }
     } else if (profile.role === 'worker') {
       console.log('INDEX: Worker role, redirecting to Worker Dashboard');

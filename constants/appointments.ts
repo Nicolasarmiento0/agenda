@@ -7,7 +7,8 @@ export type AppointmentStatus =
   | 'completed'
   | 'no-show'
   | 'rescheduled'
-  | 'cancelled';
+  | 'cancelled'
+  | 'blocked';
 
 export type Appointment = {
   id: string;
@@ -32,6 +33,7 @@ export type WorkerRow = {
   initials: string;
   avatar_url: string | null;
   specialty: string;
+  user_id?: string;
 };
 
 export const STATUS_CONFIG: Record<AppointmentStatus, {
@@ -46,6 +48,7 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   rescheduled: { label: 'Reprogramado', bg: '#FFF5E5', text: '#F39C12', dot: '#F39C12' },
   'no-show':   { label: 'No Show',      bg: '#FDEAEB', text: '#D00024', dot: '#D00024' },
   cancelled:   { label: 'Cancelado',    bg: '#F0F0F0', text: '#555555', dot: '#888888' },
+  blocked:     { label: 'Bloqueado',    bg: '#374151', text: '#E5E7EB', dot: '#9CA3AF' },
 };
 
 export const PASTEL_PALETTE = [
