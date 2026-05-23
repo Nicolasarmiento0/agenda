@@ -52,14 +52,46 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
 };
 
 export const PASTEL_PALETTE = [
-  { light: { bg: '#EDE8F5', border: '#C5B4E8' }, dark: { bg: 'rgba(130,90,200,0.98)',  border: '#C5B4E8' } },
-  { light: { bg: '#D5EDE0', border: '#9ACBAA' }, dark: { bg: 'rgba(60,152,90,0.96)',   border: '#9ACBAA' } },
-  { light: { bg: '#FAE3D4', border: '#EEB898' }, dark: { bg: 'rgba(210,118,70,0.97)',  border: '#EEB898' } },
-  { light: { bg: '#D4E8F8', border: '#94C0EE' }, dark: { bg: 'rgba(60,132,220,0.97)',  border: '#94C0EE' } },
-  { light: { bg: '#FAD8E4', border: '#EDA0B8' }, dark: { bg: 'rgba(210,80,120,0.97)',  border: '#EDA0B8' } },
-  { light: { bg: '#F8F0D4', border: '#E0CC80' }, dark: { bg: 'rgba(200,175,50,0.97)',  border: '#E0CC80' } },
-  { light: { bg: '#D4F4EC', border: '#86CCBC' }, dark: { bg: 'rgba(50,175,150,0.97)',  border: '#86CCBC' } },
-  { light: { bg: '#F0E8D4', border: '#D4C098' }, dark: { bg: 'rgba(190,155,90,0.97)',  border: '#D4C098' } },
+  // 1. Blue/Teal (Work)
+  {
+    light: { bg: '#E0F2FE', border: '#0EA5E9', text: '#0369A1' },
+    dark: { bg: 'rgba(14, 165, 233, 0.2)', border: '#38BDF8', text: '#BAE6FD' }
+  },
+  // 2. Purple/Lavender (Data Science Team)
+  {
+    light: { bg: '#F3E8FF', border: '#A855F7', text: '#581C87' },
+    dark: { bg: 'rgba(168, 85, 247, 0.2)', border: '#C084FC', text: '#E9D5FF' }
+  },
+  // 3. Green/Mint (Data Science Core)
+  {
+    light: { bg: '#ECFDF5', border: '#10B981', text: '#065F46' },
+    dark: { bg: 'rgba(16, 185, 129, 0.2)', border: '#34D399', text: '#A7F3D0' }
+  },
+  // 4. Yellow/Amber (Personal/Lunch)
+  {
+    light: { bg: '#FEF3C7', border: '#F59E0B', text: '#78350F' },
+    dark: { bg: 'rgba(245, 158, 11, 0.2)', border: '#FBBF24', text: '#FDE68A' }
+  },
+  // 5. Orange/Coral (Kids/Q4)
+  {
+    light: { bg: '#FFECE5', border: '#F97316', text: '#7C2D12' },
+    dark: { bg: 'rgba(249, 115, 22, 0.2)', border: '#FB923C', text: '#FFEDD5' }
+  },
+  // 6. Red/Salmon (Holidays/Performance)
+  {
+    light: { bg: '#FEE2E2', border: '#EF4444', text: '#7F1D1D' },
+    dark: { bg: 'rgba(239, 68, 68, 0.2)', border: '#F87171', text: '#FCA5A5' }
+  },
+  // 7. Soft Blue (Virtual onsite)
+  {
+    light: { bg: '#E0F2FE', border: '#3B82F6', text: '#1E3A8A' },
+    dark: { bg: 'rgba(59, 130, 246, 0.2)', border: '#60A5FA', text: '#93C5FD' }
+  },
+  // 8. Pink/Rose
+  {
+    light: { bg: '#FCE7F3', border: '#EC4899', text: '#701A75' },
+    dark: { bg: 'rgba(236, 72, 153, 0.2)', border: '#F472B6', text: '#FBCFE8' }
+  }
 ] as const;
 
 export function getPastelColors(id: string, isDarkMode: boolean) {

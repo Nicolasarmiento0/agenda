@@ -5,6 +5,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,7 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT } from '../../constants/appointments';
+import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT, getPastelColors } from '../../constants/appointments';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAgendaAppointments } from '../../hooks/useAgendaAppointments';
@@ -318,9 +319,19 @@ function EventBlock({
       ]}
       onPress={onPress}
     >
-      <Text style={[styles.eventTitle, { color: colors.textPrimary, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none' }]} numberOfLines={1}>
-        {isBlocked ? `🚫 ${appointment.service}` : appointment.service}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: isUltraNarrow ? 2 : 4, width: '100%' }}>
+        {isBlocked && (
+          <Feather
+            name="slash"
+            size={titleSize - 1}
+            color={colors.textSecondary}
+            style={{ marginRight: 1 }}
+          />
+        )}
+        <Text style={[styles.eventTitle, { color: colors.textPrimary, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none', flex: 1 }]} numberOfLines={1}>
+          {appointment.service}
+        </Text>
+      </View>
       {height > 32 && (
         <Text style={[styles.eventSub, { color: colors.textSecondary, fontSize: subSize }]} numberOfLines={1}>
           {isBlocked ? 'Horario bloqueado' : appointment.clientName}
@@ -336,12 +347,16 @@ function WeekGrid({
   colors,
   onSlotPress,
   onEventPress,
+  refreshing,
+  onRefresh,
 }: {
   weekDays: Date[];
   appointments: Appointment[];
   colors: any;
   onSlotPress: (date: Date, hour: number) => void;
   onEventPress: (a: Appointment) => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) {
   const [containerWidth, setContainerWidth] = useState(SCREEN_W);
 
@@ -371,7 +386,20 @@ function WeekGrid({
   );
 
   return (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing ?? false}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        ) : undefined
+      }
+    >
       <View style={{ flexDirection: 'row' }} onLayout={handleLayout}>
         {/* Time column — fixed horizontally */}
         <View style={{ width: TIME_COL_W, flexShrink: 0 }}>
@@ -489,12 +517,16 @@ function DayGrid({
   colors,
   onSlotPress,
   onEventPress,
+  refreshing,
+  onRefresh,
 }: {
   day: Date;
   appointments: Appointment[];
   colors: any;
   onSlotPress: (date: Date, hour: number) => void;
   onEventPress: (a: Appointment) => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) {
   const [gridWidth, setGridWidth] = useState(SCREEN_W - TIME_COL_W - 32);
   const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
@@ -511,7 +543,20 @@ function DayGrid({
   }, []);
 
   return (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing ?? false}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        ) : undefined
+      }
+    >
       <View style={[styles.weekBody, { paddingHorizontal: 16 }]}>
         <TimeColumn colors={colors} />
         <View 
@@ -616,7 +661,7 @@ export default function CalendarScreen() {
     ? selfWorkerId
     : (selectedWorker ?? undefined);
 
-  const { appointments, refetch } = useAgendaAppointments(
+  const { appointments, loading, refetch } = useAgendaAppointments(
     businessId,
     dateRange,
     workerId,
@@ -756,14 +801,28 @@ export default function CalendarScreen() {
         {(role !== 'client' || clientTab === 'calendar') && (
           <>
             {viewMode === 'month' && (
-              <MonthGrid
-                year={anchor.getFullYear()}
-                month={anchor.getMonth()}
-                appointments={appointments}
-                colors={colors}
-                onDayPress={(d) => openCreate(d)}
-                onEventPress={openDetail}
-              />
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={loading}
+                    onRefresh={refetch}
+                    tintColor={colors.accent}
+                    colors={[colors.accent]}
+                  />
+                }
+              >
+                <MonthGrid
+                  year={anchor.getFullYear()}
+                  month={anchor.getMonth()}
+                  appointments={appointments}
+                  colors={colors}
+                  onDayPress={(d) => openCreate(d)}
+                  onEventPress={openDetail}
+                />
+              </ScrollView>
             )}
             {viewMode === 'week' && (
               <WeekGrid
@@ -772,6 +831,8 @@ export default function CalendarScreen() {
                 colors={colors}
                 onSlotPress={(d, h) => openCreate(d, h)}
                 onEventPress={openDetail}
+                refreshing={loading}
+                onRefresh={refetch}
               />
             )}
             {viewMode === 'day' && (
@@ -781,6 +842,8 @@ export default function CalendarScreen() {
                 colors={colors}
                 onSlotPress={(d, h) => openCreate(d, h)}
                 onEventPress={openDetail}
+                refreshing={loading}
+                onRefresh={refetch}
               />
             )}
           </>
