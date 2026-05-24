@@ -75,7 +75,7 @@ export default function BusinessSetupScreen() {
     if (business && business.status === 'pending') {
       router.replace('/screens/roles/company/business-pending' as any);
     } else if (business && business.status === 'approved') {
-      router.replace('/screens/global/calendar' as any);
+      router.replace('/screens/roles/company/dashboard-company' as any);
     }
   }, [business]);
 

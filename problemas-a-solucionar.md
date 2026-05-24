@@ -26,23 +26,6 @@ Mostrar ingresos correctamente para company y worker.
 
 ---
 
-# 7. Acceso directo agenda en dashboard
-
-## Objetivo
-Agregar acceso rápido hacia agenda desde dashboard company y worker.
-
-## Tareas
-- Crear card/botón agenda.
-- Navegación fluida.
-- Mantener diseño actual.
-- Agregar iconografía consistente.
-
-## Resultado esperado
-- Company y worker acceden rápidamente a calendar.
-
-
----
-
 # 9. Mejorar vista día y semana del calendario
 
 ## Objetivo
@@ -58,21 +41,6 @@ Permitir visualizar correctamente citas simultáneas de múltiples trabajadores.
 
 ## Resultado esperado
 - Todas las citas se visualizan correctamente aunque existan múltiples workers.
-
----
-
-# 10. Eliminar texto “Hoy”
-
-## Objetivo
-Eliminar el texto “Hoy” ubicado en la esquina superior derecha del calendar.
-
-## Tareas
-- Identificar componente.
-- Remover texto sin romper layout.
-- Mantener responsive.
-
-## Resultado esperado
-- El texto desaparece correctamente.
 
 ---
 

@@ -735,9 +735,6 @@ export default function CalendarScreen() {
               <TouchableOpacity onPress={toggleTheme} style={styles.themeToggleBtn} activeOpacity={0.7}>
                 <Feather name={isDarkMode ? "sun" : "moon"} size={20} color={colors.textPrimary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setAnchor(new Date())} style={styles.todayBtn}>
-                <Text style={[styles.todayText, { color: colors.accent }]}>Hoy</Text>
-              </TouchableOpacity>
             </View>
           </View>
 
