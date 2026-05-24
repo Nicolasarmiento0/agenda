@@ -2,7 +2,7 @@
 
 # Prompts para Agente IA — Sistema de Agenda / SaaS
 
-# 6. Ingresos company y worker
+# 1. Ingresos company y worker
 
 ## Objetivo
 Mostrar ingresos correctamente para company y worker.
@@ -24,7 +24,7 @@ Mostrar ingresos correctamente para company y worker.
 - Los ingresos coinciden correctamente con servicios realizados.
 ---
 
-# 12. Mini calendario al cambiar fecha
+# 2. Mini calendario al cambiar fecha
 
 ## Objetivo
 Permitir cambiar fecha desde crear cita usando mini calendario mensual.
@@ -39,7 +39,7 @@ Permitir cambiar fecha desde crear cita usando mini calendario mensual.
 - El usuario puede seleccionar fecha fácilmente.
 ---
 
-# 14. Loading states globales
+# 3. Loading states globales
 
 ## Objetivo
 Agregar estados de carga visuales para todas las screens.
@@ -61,7 +61,7 @@ Agregar estados de carga visuales para todas las screens.
 
 ---
 
-# 15. Navegar desde Mis Citas al calendario
+# 4. Navegar desde Mis Citas al calendario
 
 ## Objetivo
 Permitir abrir cita directamente en calendar desde “Mis Citas” opción valida para rol client.
@@ -75,26 +75,9 @@ Permitir abrir cita directamente en calendar desde “Mis Citas” opción valid
 
 ## Resultado esperado
 - El usuario llega directamente a la cita seleccionada en calendar.
-
 ---
 
-# 16. Mejorar scroll tipo de servicio
-
-## Objetivo
-Cambiar experiencia de scroll en selección de tipo de servicio.
-
-## Tareas
-- Reemplazar scroll actual.
-- Mejorar UX.
-- Agregar snapping o cards modernas.
-- Optimizar rendimiento.
-
-## Resultado esperado
-- La selección de servicios es más fluida y moderna.
-
----
-
-# 17. Mejorar navegación “Mi negocio”
+# 5. Mejorar navegación “Mi negocio”
 
 ## Objetivo
 Corregir falta de fluidez al ingresar a “Mi negocio” desde sidebar.
@@ -110,7 +93,7 @@ Corregir falta de fluidez al ingresar a “Mi negocio” desde sidebar.
 
 ---
 
-# 20. Bandeja de entrada global
+# 6. Bandeja de entrada global
 
 ## Objetivo
 Crear sistema de inbox/notificaciones para todos los roles.
@@ -137,25 +120,12 @@ Crear sistema de inbox/notificaciones para todos los roles.
 
 ---
 
-# 21. Mejorar appointModal
+# 7. Mejorar appointModal
 
-## Objetivo
-Modernizar el modal de citas.
-
-## Tareas
-- Redondear bordes.
-- Aplicar estilo liquid glass/glassmorphism.
-- Mejorar sombras.
-- Agregar blur si es posible.
-- Mantener performance en móviles.
-- Mantener accesibilidad.
-
-## Resultado esperado
-- Modal moderno, premium y consistente con el diseño de la app.
-
+MODO CLARO, COLORES DE AGENDAR CITA Y BLOQUEAR HORARIO.
 ---
-```
-# 5. Solucionar creación de citas para negocios gym
+
+# 8. Solucionar creación de citas para negocios gym
 
 ## Objetivo
 Corregir la lógica de creación de citas para negocios tipo gym.

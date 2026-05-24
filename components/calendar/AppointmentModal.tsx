@@ -15,6 +15,7 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -24,6 +25,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+
 import { Appointment, AppointmentStatus, STATUS_CONFIG, WorkerRow } from '../../constants/appointments';
 import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
@@ -32,6 +34,22 @@ import { useIsGym } from '../../hooks/useIsGym';
 import { ToastOptions } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
 import TimeWheelPicker from '../TimeWheelPicker';
+
+const SCREEN_W = Dimensions.get('window').width;
+
+const DURATION_OPTIONS = [
+  { label: '30 min', value: 0.5 },
+  { label: '45 min', value: 0.75 },
+  { label: '1 h', value: 1 },
+  { label: '1.5 h', value: 1.5 },
+  { label: '2 h', value: 2 },
+  { label: '2.5 h', value: 2.5 },
+  { label: '3 h', value: 3 },
+  { label: '3.5 h', value: 3.5 },
+  { label: '4 h', value: 4 },
+  { label: '4.5 h', value: 4.5 },
+  { label: '5 h', value: 5 },
+];
 
 export type ModalMode = 'create' | 'detail' | 'edit';
 
@@ -59,19 +77,7 @@ type Props = {
   showToast: (opts: ToastOptions) => void;
 };
 
-const DURATION_OPTIONS = [
-  { label: '30 min', value: 0.5 },
-  { label: '45 min', value: 0.75 },
-  { label: '1 h', value: 1 },
-  { label: '1.5 h', value: 1.5 },
-  { label: '2 h', value: 2 },
-  { label: '2.5 h', value: 2.5 },
-  { label: '3 h', value: 3 },
-  { label: '3.5 h', value: 3.5 },
-  { label: '4 h', value: 4 },
-  { label: '4.5 h', value: 4.5 },
-  { label: '5 h', value: 5 },
-];
+
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -465,8 +471,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
       showAlert({
         title: isBlocked ? 'DESBLOQUEAR HORARIO' : 'ELIMINAR CITA',
-        message: isBlocked 
-          ? '¿Estás seguro de que deseas desbloquear este horario y quitar el bloqueo del calendario?' 
+        message: isBlocked
+          ? '¿Estás seguro de que deseas desbloquear este horario y quitar el bloqueo del calendario?'
           : '¿Estás seguro de que deseas eliminar permanentemente esta cita del calendario?',
         buttons: [
           { text: 'Cancelar', style: 'cancel' },
@@ -540,6 +546,36 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       [],
     );
 
+    const renderBackground = useCallback(
+      (props: any) => (
+        <View
+          style={[
+            props.style,
+            {
+              backgroundColor: isDarkMode ? 'rgba(28, 28, 30, 0.85)' : 'rgba(242, 242, 247, 0.85)',
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              borderWidth: 1.5,
+              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -8 },
+              shadowOpacity: isDarkMode ? 0.3 : 0.15,
+              shadowRadius: 16,
+              elevation: 10,
+            },
+          ]}
+        >
+          <BlurView
+            intensity={isDarkMode ? 20 : 20}
+            tint={isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      ),
+      [isDarkMode],
+    );
+
     const bg = isDarkMode ? '#1C1C1E' : '#F2F2F7';
     const inputBg = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
 
@@ -557,8 +593,14 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         snapPoints={snapPoints}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: bg }}
-        handleIndicatorStyle={{ backgroundColor: colors.textSecondary }}
+        backgroundComponent={renderBackground}
+        backgroundStyle={{ backgroundColor: 'transparent' }}
+        handleIndicatorStyle={{
+          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+          width: 44,
+          height: 5,
+          borderRadius: 2.5,
+        }}
       >
         <BottomSheetScrollView
           contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
@@ -655,23 +697,40 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         )}
                       </View>
 
-                      <View style={[styles.listContainer, { borderColor: colors.border, backgroundColor: inputBg }]}>
-                        <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                      <View style={{ position: 'relative', marginTop: 8, marginBottom: 12 }}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ gap: 12, paddingBottom: 8, paddingRight: 36 }}
+                          snapToInterval={145 + 12} // card width + gap
+                          snapToAlignment="start"
+                          decelerationRate="fast"
+                        >
                           {filteredServices.length === 0 ? (
-                            <Text style={[styles.noResults, { color: colors.textSecondary }]}>No se encontraron servicios</Text>
+                            <Text style={[styles.noResults, { color: colors.textSecondary, width: SCREEN_W - 32, textAlign: 'center', paddingVertical: 20 }]}>
+                              No se encontraron servicios
+                            </Text>
                           ) : (
                             filteredServices.map((s) => {
                               const isSelected = service === s.name;
+                              const cardBg = isSelected
+                                ? colors.accentDim
+                                : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)');
+                              const cardBorderColor = isSelected ? colors.accent : colors.border;
+
                               return (
                                 <TouchableOpacity
                                   key={s.id}
-                                  style={[
-                                    styles.serviceRow,
-                                    {
-                                      backgroundColor: isSelected ? colors.accent + '22' : 'transparent',
-                                      borderBottomColor: colors.border,
-                                    },
-                                  ]}
+                                  style={{
+                                    backgroundColor: cardBg,
+                                    borderColor: cardBorderColor,
+                                    width: 145,
+                                    height: 86,
+                                    padding: 12,
+                                    borderRadius: 14,
+                                    borderWidth: 1.5,
+                                    justifyContent: 'space-between',
+                                  }}
                                   onPress={() => {
                                     setService(s.name);
                                     if (s.duration_min) {
@@ -679,24 +738,46 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                                     }
                                     setPrice(s.price || 0);
                                   }}
-                                  activeOpacity={0.7}
+                                  activeOpacity={0.8}
                                 >
-                                  <View style={{ flex: 1 }}>
-                                    <Text style={[styles.serviceName, { color: isSelected ? colors.accent : colors.textPrimary }]}>
-                                      {s.name}
-                                    </Text>
-                                    <Text style={[styles.serviceSubText, { color: colors.textSecondary }]}>
-                                      {s.duration_min} min • ${Math.round(s.price)}
-                                    </Text>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <View style={{ flex: 1, marginRight: 4 }}>
+                                      <Text style={{ color: isSelected ? colors.accent : colors.textPrimary, fontSize: 12, fontFamily: 'Inter_600SemiBold', lineHeight: 15 }} numberOfLines={2}>
+                                        {s.name}
+                                      </Text>
+                                    </View>
+                                    {isSelected && (
+                                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                                        <Feather name="check" size={10} color={colors.primaryText || '#fff'} />
+                                      </View>
+                                    )}
                                   </View>
-                                  {isSelected && (
-                                    <Feather name="check" size={18} color={colors.accent} />
-                                  )}
+                                  <View style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                                    <View style={{
+                                      backgroundColor: isSelected
+                                        ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+                                        : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'),
+                                      paddingHorizontal: 8,
+                                      paddingVertical: 3,
+                                      borderRadius: 6,
+                                    }}>
+                                      <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? colors.accent : colors.textSecondary, fontFamily: 'Inter_700Bold' }}>
+                                        ${Math.round(s.price)}
+                                      </Text>
+                                    </View>
+                                  </View>
                                 </TouchableOpacity>
                               );
                             })
                           )}
                         </ScrollView>
+                        <View style={styles.fadeOverlay} pointerEvents="none">
+                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.05 }} />
+                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.15 }} />
+                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.25 }} />
+                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.50 }} />
+                          <View style={{ width: 12, height: '100%', backgroundColor: bg, opacity: 0.75 }} />
+                        </View>
                       </View>
                     </>
                   )}
@@ -752,9 +833,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 durationMinutes={duration * 60}
                 isDarkMode={isDarkMode}
               />
-
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Duración</Text>
-              <View style={{ position: 'relative' }}>
+              <Text style={[styles.label, { color: colors.textSecondary, marginTop: 12 }]}>Duración</Text>
+              <View style={{ position: 'relative', marginTop: 4, marginBottom: 12 }}>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -803,14 +883,19 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         style={[
                           styles.pill,
                           {
-                            backgroundColor: selectedWorkerId === w.id ? w.color + '33' : inputBg,
-                            borderColor: selectedWorkerId === w.id ? w.color : colors.border,
+                            backgroundColor: selectedWorkerId === w.id ? colors.accentDim : inputBg,
+                            borderColor: selectedWorkerId === w.id ? colors.accent : colors.border,
                           },
                         ]}
                         onPress={() => setSelectedWorkerId(w.id)}
                       >
-                        <View style={[styles.workerDot, { backgroundColor: w.color }]} />
-                        <Text style={[styles.pillText, { color: colors.textPrimary }]}>{w.name.split(' ')[0]}</Text>
+                        <Feather
+                          name="user"
+                          size={14}
+                          color={selectedWorkerId === w.id ? colors.accent : colors.textSecondary}
+                          style={{ marginRight: 2 }}
+                        />
+                        <Text style={[styles.pillText, { color: selectedWorkerId === w.id ? colors.accent : colors.textPrimary }]}>{w.name.split(' ')[0]}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -909,15 +994,32 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
                   <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+                  {/* Duration Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                      <Feather name="clock" size={18} color="#F59E0B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                        {appointment.durationHours >= 1
+                          ? `${appointment.durationHours} ${appointment.durationHours === 1 ? 'hora' : 'horas'}`
+                          : `${appointment.durationHours * 60} minutos`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
                   {/* Worker Row */}
                   <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
-                      <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(48, 209, 88, 0.15)' : 'rgba(48, 209, 88, 0.1)' }]}>
+                      <Feather name="users" size={18} color="#30D158" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
+                        <View style={[styles.smallDot, { backgroundColor: '#30D158' }]} />
                         <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
                           {appointment.worker}
                         </Text>
@@ -988,7 +1090,9 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
                       <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                        {appointment.durationHours * 60} minutos
+                        {appointment.durationHours >= 1
+                          ? `${appointment.durationHours} ${appointment.durationHours === 1 ? 'hora' : 'horas'}`
+                          : `${appointment.durationHours * 60} minutos`}
                       </Text>
                     </View>
                   </View>
@@ -1012,13 +1116,13 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
                   {/* Worker Row */}
                   <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
-                      <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(48, 209, 88, 0.15)' : 'rgba(48, 209, 88, 0.1)' }]}>
+                      <Feather name="users" size={18} color="#30D158" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
+                        <View style={[styles.smallDot, { backgroundColor: '#30D158' }]} />
                         <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
                           {appointment.worker}
                         </Text>

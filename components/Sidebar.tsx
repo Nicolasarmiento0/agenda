@@ -19,7 +19,19 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { appColors } from '../styles/appStyles';
 
-const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.55;
+import { Platform } from 'react-native';
+
+const windowWidth = Dimensions.get('window').width;
+
+const SIDEBAR_WIDTH =
+  Platform.OS === 'web'
+    ? windowWidth * 0.25
+    : Platform.OS === 'ios'
+      ? windowWidth * 0.65
+      : windowWidth * 0.65;
+
+
+//const SIDEBAR_WIDTH = Dimensions.get('window').width * 0.50;
 
 type Props = {
   visible: boolean;
@@ -159,7 +171,7 @@ export default function Sidebar({ visible, onClose }: Props) {
       <Animated.View style={[styles.drawerContainer, { transform: [{ translateX: slideAnim }] }]}>
 
         <BlurView
-          intensity={40}
+          intensity={35}
           tint={isDarkMode ? 'dark' : 'light'}
           style={[styles.drawer, { borderRightColor: colors.border }]}
         >

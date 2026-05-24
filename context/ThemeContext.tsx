@@ -31,9 +31,9 @@ const darkColors = {
 };
 
 const lightColors = {
-  white: '#FFFFFF',
+  white: '#ffffffd5',
   black: '#000000',
-  background: '#F4F5F7',
+  background: '#f4f5f7db',
   surface: 'rgba(255,255,255,0.80)',
   border: 'rgba(0,0,0,0.08)',
   primary: '#B4F736',
@@ -42,7 +42,7 @@ const lightColors = {
   textSecondary: '#6B7280',
   error: '#FF4B4B',
   // Calendar semantic tokens
-  backgroundPrimary: '#F4F5F7',
+  backgroundPrimary: '#f4f5f7cd',
   backgroundSurface: 'rgba(255,255,255,0.80)',
   accent: '#B4F736',
   accentDim: 'rgba(180,247,54,0.18)',
@@ -56,7 +56,7 @@ const lightColors = {
 
 const ThemeContext = createContext<ThemeContextType>({
   isDarkMode: true,
-  toggleTheme: () => {},
+  toggleTheme: () => { },
   colors: darkColors,
 });
 

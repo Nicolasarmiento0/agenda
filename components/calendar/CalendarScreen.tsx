@@ -974,7 +974,7 @@ export default function CalendarScreen() {
         )}
         {role === 'worker' && selfWorker && (
           <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
-            <View style={[styles.selfDot, { backgroundColor: selfWorker.color }]} />
+            <View style={[styles.selfDot, { backgroundColor: '#30D158' }]} />
             <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
           </View>
         )}
