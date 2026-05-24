@@ -25,7 +25,7 @@ const windowWidth = Dimensions.get('window').width;
 
 const SIDEBAR_WIDTH =
   Platform.OS === 'web'
-    ? windowWidth * 0.25
+    ? windowWidth * 0.55
     : Platform.OS === 'ios'
       ? windowWidth * 0.65
       : windowWidth * 0.65;
