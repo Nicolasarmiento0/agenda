@@ -3,7 +3,9 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import GlassInput from '../../../../components/GlassInput';
 import TimeWheelPicker from '../../../../components/TimeWheelPicker';
 import { useAuth } from '../../../../context/AuthContext';
@@ -29,7 +32,7 @@ const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const GYM_KEYWORDS = ['gym', 'gimnasio', 'gimnasios', 'fitness'];
 
 export default function BusinessSetupScreen() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, business, refreshProfile } = useAuth();
   const { colors, isDarkMode } = useTheme();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -50,15 +53,31 @@ export default function BusinessSetupScreen() {
   const [bookingWindowOpenTime, setBookingWindowOpenTime] = useState('19:00');
   const [bookingWindowCloseTime, setBookingWindowCloseTime] = useState('23:00');
 
-  // Paso 3 — Servicio (no gym)
-  const [serviceName, setServiceName] = useState('');
-  const [servicePrice, setServicePrice] = useState('');
+  // Paso 3 — Completar Después (no gym)
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Time picker modal state
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerField, setPickerField] = useState<'opening' | 'closing' | 'bookingOpen' | 'bookingClose' | null>(null);
+  const [tempTime, setTempTime] = useState('09:00');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Redirigir si ya existe un negocio pendiente o aprobado
+  useEffect(() => {
+    if (business && business.status === 'pending') {
+      router.replace('/screens/roles/company/business-pending' as any);
+    } else if (business && business.status === 'approved') {
+      router.replace('/screens/global/calendar' as any);
+    }
+  }, [business]);
 
   const animateIn = () => {
     fadeAnim.setValue(0);
@@ -90,13 +109,13 @@ export default function BusinessSetupScreen() {
     selectedSub?.name?.toLowerCase().includes(kw)
   );
 
-  const stepTitles = ['TU NEGOCIO', 'DÓNDE Y CUÁNDO', isGym ? 'RESERVAS' : 'PRIMER SERVICIO'];
+  const stepTitles = ['TU NEGOCIO', 'DÓNDE Y CUÁNDO', isGym ? 'RESERVAS' : 'COMPLETAR DESPUÉS'];
   const stepSubtitles = [
     'Cuéntanos quién eres.',
     'Para que tus clientes te encuentren.',
     isGym
       ? 'Define cuándo pueden reservar tus alumnos.'
-      : 'Opcional — puedes agregar más desde tu panel.',
+      : 'Agrega una foto, tu cuenta de Instagram y una descripción (opcional).',
   ];
 
   const goToStep = (next: 1 | 2 | 3) => {
@@ -127,12 +146,116 @@ export default function BusinessSetupScreen() {
     else if (step === 2 && validateStep2()) goToStep(3);
   };
 
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Se necesitan permisos para acceder a la galería.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled) {
+        uploadImage(result.assets[0].uri);
+      }
+    } catch (err) {
+      setError('No se pudo abrir la galería');
+    }
+  };
+
+  const uploadImage = async (imageUri: string) => {
+    const userId = profile?.id;
+    if (!userId) return;
+    setIsUploading(true);
+    setError('');
+    try {
+      const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const filePath = `${userId}/business_${Date.now()}.${ext}`;
+
+      let body: any;
+      let contentType: string | undefined;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(imageUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
+      } else {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: imageUri,
+          name: filePath.split('/')[1],
+          type: `image/${ext}`,
+        } as any);
+        body = formData;
+        contentType = undefined;
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, body, {
+          upsert: true,
+          contentType,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setAvatarUrl(publicUrlData.publicUrl);
+    } catch (err: any) {
+      setError(`Error al subir imagen: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openTimePicker = (field: 'opening' | 'closing' | 'bookingOpen' | 'bookingClose') => {
+    let initialTime = '09:00';
+    if (field === 'opening') initialTime = openingTime;
+    else if (field === 'closing') initialTime = closingTime;
+    else if (field === 'bookingOpen') initialTime = bookingWindowOpenTime;
+    else if (field === 'bookingClose') initialTime = bookingWindowCloseTime;
+    
+    setTempTime(initialTime);
+    setPickerField(field);
+    setPickerVisible(true);
+  };
+
+  const confirmTime = () => {
+    if (pickerField === 'opening') setOpeningTime(tempTime);
+    else if (pickerField === 'closing') setClosingTime(tempTime);
+    else if (pickerField === 'bookingOpen') setBookingWindowOpenTime(tempTime);
+    else if (pickerField === 'bookingClose') setBookingWindowCloseTime(tempTime);
+    setPickerVisible(false);
+    setPickerField(null);
+  };
+
   const handleSubmit = async () => {
     setError('');
     setSaving(true);
     try {
       const userId = profile?.id;
       if (!userId) throw new Error('Sin sesión');
+
+      // Crear un horario por defecto
+      const defaultSchedule: Record<string, any> = {
+        '1': [{ start: openingTime, end: closingTime }],
+        '2': [{ start: openingTime, end: closingTime }],
+        '3': [{ start: openingTime, end: closingTime }],
+        '4': [{ start: openingTime, end: closingTime }],
+        '5': [{ start: openingTime, end: closingTime }],
+        '6': [{ start: openingTime, end: closingTime }],
+        '7': [],
+      };
 
       const businessData: Record<string, any> = {
         owner_id: userId,
@@ -142,6 +265,10 @@ export default function BusinessSetupScreen() {
         status: 'pending',
         opening_time: `${openingTime}:00`,
         closing_time: `${closingTime}:00`,
+        avatar_url: avatarUrl || null,
+        instagram_url: instagramUrl.trim() || null,
+        description: description.trim() || null,
+        schedule: defaultSchedule,
       };
 
       if (isGym) {
@@ -150,21 +277,42 @@ export default function BusinessSetupScreen() {
         businessData.booking_window_close_time = `${bookingWindowCloseTime}:00`;
       }
 
+      // Si ya existe un negocio (ej. rechazado), hacemos upsert por ID
+      if (business?.id) {
+        businessData.id = business.id;
+      }
+
       const { data: biz, error: dbError } = await supabase
         .from('businesses')
-        .insert(businessData)
+        .upsert(businessData)
         .select('id')
         .single();
 
       if (dbError) throw dbError;
 
-      if (!isGym && biz?.id && serviceName.trim() && servicePrice.trim()) {
-        await supabase.from('business_services').insert({
+      // Seed de relaciones iniciales SOLO si es un negocio nuevo
+      if (!business?.id && biz?.id) {
+        // 1. Agregar al dueño como primer empleado
+        await supabase.from('workers').insert({
           business_id: biz.id,
-          name: serviceName.trim(),
-          price: parseFloat(servicePrice.replace(',', '.')) || 0,
-          is_active: true,
+          user_id: userId,
+          name: profile?.nickname || 'Propietario',
+          specialty: 'Servicios Generales',
+          color: '#3B7BE0',
+          active: true,
+          available_days: ['1', '2', '3', '4', '5', '6']
         });
+
+        // 2. Agregar un servicio general por defecto
+        if (!isGym) {
+          await supabase.from('business_services').insert({
+            business_id: biz.id,
+            name: 'Servicio Estándar',
+            price: 10000,
+            duration_min: 30,
+            is_active: true,
+          });
+        }
       }
 
       await refreshProfile();
@@ -183,10 +331,10 @@ export default function BusinessSetupScreen() {
           <Text style={[styles.headerLabel, { color: colors.textSecondary }]}>NUEVO NEGOCIO</Text>
           <View style={styles.stepper}>
             {([1, 2, 3] as const).map(s => (
-              <React.Fragment key={s}>
+              <View key={s} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.stepDot, { backgroundColor: s <= step ? appColors.primary : colors.border }]} />
                 {s < 3 && <View style={[styles.stepLine, { backgroundColor: s < step ? appColors.primary : colors.border }]} />}
-              </React.Fragment>
+              </View>
             ))}
           </View>
           <Text style={[styles.stepCount, { color: colors.textSecondary }]}>{step}/3</Text>
@@ -266,18 +414,28 @@ export default function BusinessSetupScreen() {
                   style={{ marginBottom: 24 }}
                 />
 
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>APERTURA *</Text>
-                    <View style={{ transform: [{ scale: 0.75 }], marginVertical: -42 }}>
-                      <TimeWheelPicker openingHour={5} closingHour={24} selectedSlot={openingTime} onSlotSelect={setOpeningTime} busyIntervals={[]} durationMinutes={30} isDarkMode={isDarkMode} />
-                    </View>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 8 }]}>APERTURA *</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => openTimePicker('opening')}
+                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Feather name="clock" size={16} color={appColors.primary} />
+                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{openingTime}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>CIERRE *</Text>
-                    <View style={{ transform: [{ scale: 0.75 }], marginVertical: -42 }}>
-                      <TimeWheelPicker openingHour={5} closingHour={24} selectedSlot={closingTime} onSlotSelect={setClosingTime} busyIntervals={[]} durationMinutes={30} isDarkMode={isDarkMode} />
-                    </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 8 }]}>CIERRE *</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => openTimePicker('closing')}
+                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Feather name="clock" size={16} color={appColors.primary} />
+                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{closingTime}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </>
@@ -309,69 +467,75 @@ export default function BusinessSetupScreen() {
                 </View>
 
                 <Text style={[styles.label, { color: colors.textSecondary }]}>HORARIO DE RESERVA</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>DESDE</Text>
-                    <View style={{ transform: [{ scale: 0.75 }], marginVertical: -42 }}>
-                      <TimeWheelPicker
-                        openingHour={0}
-                        closingHour={24}
-                        selectedSlot={bookingWindowOpenTime}
-                        onSlotSelect={setBookingWindowOpenTime}
-                        busyIntervals={[]}
-                        durationMinutes={30}
-                        isDarkMode={isDarkMode}
-                      />
-                    </View>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 6 }]}>DESDE</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => openTimePicker('bookingOpen')}
+                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Feather name="clock" size={16} color={appColors.primary} />
+                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{bookingWindowOpenTime}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>HASTA</Text>
-                    <View style={{ transform: [{ scale: 0.75 }], marginVertical: -42 }}>
-                      <TimeWheelPicker
-                        openingHour={0}
-                        closingHour={24}
-                        selectedSlot={bookingWindowCloseTime}
-                        onSlotSelect={setBookingWindowCloseTime}
-                        busyIntervals={[]}
-                        durationMinutes={30}
-                        isDarkMode={isDarkMode}
-                      />
-                    </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 6 }]}>HASTA</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => openTimePicker('bookingClose')}
+                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Feather name="clock" size={16} color={appColors.primary} />
+                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{bookingWindowCloseTime}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </>
             )}
 
-            {/* ── PASO 3: No gym — Primer servicio (opcional) ── */}
+            {/* ── PASO 3: No gym — Completar después (opcional) ── */}
             {step === 3 && !isGym && (
               <>
+                <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 8 }]}>FOTO DE PERFIL / LOGO</Text>
+                <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage} disabled={isUploading}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={styles.pickerImage} />
+                  ) : (
+                    <View style={[styles.pickerImage, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+                      <Feather name="camera" size={32} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={[styles.pickerBadge, { backgroundColor: appColors.primary }]}>
+                    <Feather name={isUploading ? "loader" : "edit-2"} size={12} color="#111827" />
+                  </View>
+                </TouchableOpacity>
+
                 <GlassInput
-                  label="NOMBRE DEL SERVICIO"
-                  placeholder="Ej: Corte de cabello o Plan Básico"
-                  value={serviceName}
-                  onChangeText={setServiceName}
-                  autoFocus
+                  label="DIRECCIÓN DE INSTAGRAM"
+                  placeholder="https://instagram.com/tu-negocio"
+                  value={instagramUrl}
+                  onChangeText={setInstagramUrl}
+                  autoCapitalize="none"
                   style={{ marginBottom: 16 }}
                 />
 
                 <GlassInput
-                  label="PRECIO"
-                  placeholder="Ej: 5000"
-                  value={servicePrice}
-                  onChangeText={setServicePrice}
-                  keyboardType="numeric"
+                  label="ACERCA DE / DESCRIPCIÓN"
+                  placeholder="Escribe una breve descripción de tu negocio..."
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                  inputStyle={{ height: 80 }}
                   style={{ marginBottom: 12 }}
                 />
-
-                <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                  Podrás agregar más servicios, fotos y empleados desde tu panel una vez aprobado.
-                </Text>
               </>
             )}
 
             {error ? <Text style={[appStyles.errorText, { marginBottom: 12 }]}>{error}</Text> : null}
 
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 28 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 28, alignItems: 'center' }}>
               {step > 1 && (
                 <TouchableOpacity
                   style={[styles.backBtn, { borderColor: colors.border }]}
@@ -383,12 +547,12 @@ export default function BusinessSetupScreen() {
               )}
 
               {step < 3 ? (
-                <TouchableOpacity style={[appStyles.primaryButton, { flex: 1 }]} activeOpacity={0.8} onPress={handleNext}>
+                <TouchableOpacity style={[appStyles.primaryButton, { flex: 1, marginTop: 0 }]} activeOpacity={0.8} onPress={handleNext}>
                   <Text style={appStyles.primaryButtonText}>CONTINUAR</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={[appStyles.primaryButton, { flex: 1, opacity: saving ? 0.6 : 1 }]}
+                  style={[appStyles.primaryButton, { flex: 1, marginTop: 0, opacity: saving ? 0.6 : 1 }]}
                   activeOpacity={0.8}
                   onPress={handleSubmit}
                   disabled={saving}
@@ -400,6 +564,45 @@ export default function BusinessSetupScreen() {
           </Animated.View>
         </ScrollView>
       </View>
+
+      {/* ── Modal Universal de Time Picker ── */}
+      <Modal visible={pickerVisible} transparent animationType="slide" onRequestClose={() => setPickerVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {pickerField === 'opening' ? 'Hora de apertura' 
+               : pickerField === 'closing' ? 'Hora de cierre'
+               : pickerField === 'bookingOpen' ? 'Apertura de reservas'
+               : 'Cierre de reservas'}
+            </Text>
+            
+            <TimeWheelPicker
+              openingHour={0}
+              closingHour={24}
+              selectedSlot={tempTime}
+              onSlotSelect={(t) => setTempTime(t)}
+              busyIntervals={[]}
+              durationMinutes={10}
+              isDarkMode={isDarkMode}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+              <TouchableOpacity 
+                style={[styles.modalBtn, { borderColor: colors.border, borderWidth: 1 }]} 
+                onPress={() => setPickerVisible(false)}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalBtn, { backgroundColor: appColors.primary }]} 
+                onPress={confirmTime}
+              >
+                <Text style={[styles.modalBtnText, { color: '#111827' }]}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -447,11 +650,78 @@ const styles = StyleSheet.create({
   subChipText: { fontSize: 12, fontWeight: '500', fontFamily: 'Inter_500Medium' },
   dayChipText: { fontSize: 11, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   backBtn: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderWidth: 1,
+    borderRadius: 999, // Perfect circular shape matching radii.full
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  timeSelectBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: 'Inter_700Bold',
+  },
+  modalBtn: {
+    flex: 1,
+    height: 52,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  imagePickerContainer: {
+    alignSelf: 'center',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  pickerImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  pickerBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });

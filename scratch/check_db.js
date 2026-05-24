@@ -1,4 +1,3 @@
-
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = 'https://qkciuhruwwrsikmkhlqm.supabase.co';
@@ -6,12 +5,19 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function checkTables() {
-  const { data: services, error: sError } = await supabase.from('services').select('*').limit(1);
-  console.log('Services check:', { hasData: !!services, error: sError?.message });
-  
-  const { data: workers, error: wError } = await supabase.from('workers').select('*').limit(1);
-  console.log('Workers check:', { hasData: !!workers, error: wError?.message });
+async function inspect() {
+  console.log("=== INSPECTING BUSINESSES ===");
+  const { data: businesses, error } = await supabase.from('businesses').select('*');
+  if (error) {
+    console.error("Error:", error);
+  } else {
+    console.log(`Found ${businesses.length} businesses:`);
+    businesses.forEach(b => {
+      console.log(`- ID: ${b.id}, Name: ${b.name}, Owner: ${b.owner_id}, Status: ${b.status}`);
+      console.log(`  Opening: ${b.opening_time}, Closing: ${b.closing_time}`);
+      console.log(`  Schedule: ${JSON.stringify(b.schedule)}`);
+    });
+  }
 }
 
-checkTables();
+inspect();

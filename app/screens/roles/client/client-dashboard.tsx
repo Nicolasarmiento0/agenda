@@ -18,7 +18,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
-import { getGreeting } from '../../../utils/helpers';
+import { getGreeting } from '../../../../utils/helpers';
 
 export default function ClientDashboardScreen() {
   const { profile, refreshProfile } = useAuth();

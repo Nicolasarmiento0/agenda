@@ -78,7 +78,7 @@ export default function BusinessPendingScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
       >
         <View style={styles.content}>
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center' }}>
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center', width: '100%' }}>
 
             {/* Ícono animado */}
             <Animated.View
@@ -126,7 +126,7 @@ export default function BusinessPendingScreen() {
             {/* Info de estado pendiente */}
             {!isRejected && (
               <View style={[styles.infoBox, { backgroundColor: `${appColors.primary}10`, borderColor: `${appColors.primary}40` }]}>
-                <Feather name="info" size={14} color={appColors.primary} />
+                <Feather name="info" size={16} color={appColors.primary} />
                 <Text style={[styles.infoText, { color: appColors.primary }]}>
                   Al abrir la app después de la aprobación, serás redirigido automáticamente a tu panel.
                 </Text>
@@ -136,7 +136,7 @@ export default function BusinessPendingScreen() {
             {/* Botón volver a registrar (solo si rechazado) */}
             {isRejected && (
               <TouchableOpacity
-                style={[appStyles.primaryButton, { marginTop: 24 }]}
+                style={[appStyles.primaryButton, { marginTop: 24, width: '100%' }]}
                 activeOpacity={0.8}
                 onPress={() => router.replace('/screens/roles/company/business-setup' as any)}
               >
@@ -152,11 +152,14 @@ export default function BusinessPendingScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  content: { flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', paddingHorizontal: 16 },
   iconCircle: {
-    width: 100, height: 100, borderRadius: 50,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 32,
   },
   title: {
@@ -180,19 +183,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
   },
-  cardLabel: { fontSize: 10, letterSpacing: 3, fontFamily: 'Inter_600SemiBold' },
-  cardValue: { fontSize: 15, letterSpacing: 0.5, fontWeight: '500', fontFamily: 'Inter_500Medium' },
+  cardLabel: { fontSize: 10, letterSpacing: 3, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  cardValue: { fontSize: 15, letterSpacing: 0.5, fontWeight: '500', fontFamily: 'Inter_500Medium', textAlign: 'center' },
   infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     borderWidth: 1,
     borderRadius: 16,
-    padding: 14,
-    marginTop: 8,
+    padding: 16,
+    marginTop: 12,
     width: '100%',
   },
-  infoText: { flex: 1, fontSize: 12, letterSpacing: 0.3, lineHeight: 18 },
+  infoText: { fontSize: 12, letterSpacing: 0.3, lineHeight: 18, textAlign: 'center' },
 });

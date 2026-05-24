@@ -21,7 +21,7 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
-import { getGreeting } from '../../../utils/helpers';
+import { getGreeting } from '../../../../utils/helpers';
 
 const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
 

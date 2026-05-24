@@ -1,0 +1,345 @@
+# prompts-tareas-app.md
+
+# Prompts para Agente IA — Sistema de Agenda / SaaS
+
+---
+
+# 3. Seguridad de citas para rol client
+
+## Objetivo
+Evitar que usuarios client eliminen o modifiquen citas que no les pertenecen.
+
+## Tareas
+- Validar ownership de appointment.
+- Restringir:
+  - delete
+  - update
+  - cancel
+- Aplicar misma lógica a bloqueos de empresas.
+- Si la cita no pertenece al client:
+  - mostrar solo vista previa readonly.
+- Reforzar seguridad backend + frontend.
+- Revisar RLS policies.
+
+## Resultado esperado
+- El client solo puede modificar sus propias citas en el rango de tiempo estipulado (hasta 2horas de que comienze la cita).
+- Las citas ajenas solo se visualizan.
+
+---
+
+# 4. Ver opiniones desde descubrir negocios
+
+## Objetivo
+Permitir visualizar opiniones/reviews al presionar un negocio desde descubrir negocios.
+
+## Tareas
+- Agregar navegación hacia reviews.
+- Mostrar:
+  - rating promedio
+  - comentarios
+  - cantidad de reviews
+  - fecha
+  - cliente
+- Optimizar carga.
+- Agregar skeleton/loading.
+- Manejar estados vacíos.
+
+## Resultado esperado
+- El usuario puede ver opiniones del negocio fácilmente.
+
+---
+
+---
+
+# 6. Ingresos company y worker
+
+## Objetivo
+Mostrar ingresos correctamente para company y worker.
+
+## Tareas
+- Calcular:
+  - ingresos diarios
+  - semanales
+  - mensuales
+  - totales
+- Verificar filtros por fecha.
+- Revisar timezone.
+- Validar cálculos de citas completadas.
+- Optimizar queries.
+- Agregar loading states.
+-Reiniciar conteo al iniciar un nuevo mes, guardar en el historial la información de ingresos de todos los meses.
+
+## Resultado esperado
+- Los ingresos coinciden correctamente con servicios realizados.
+
+---
+
+# 7. Acceso directo agenda en dashboard
+
+## Objetivo
+Agregar acceso rápido hacia agenda desde dashboard company y worker.
+
+## Tareas
+- Crear card/botón agenda.
+- Navegación fluida.
+- Mantener diseño actual.
+- Agregar iconografía consistente.
+
+## Resultado esperado
+- Company y worker acceden rápidamente a calendar.
+
+
+---
+
+# 9. Mejorar vista día y semana del calendario
+
+## Objetivo
+Permitir visualizar correctamente citas simultáneas de múltiples trabajadores.
+
+## Tareas
+- Agregar más filas/columnas.
+- Implementar scroll horizontal si es necesario.
+- Evitar superposición.
+- Optimizar virtualización/render.
+- Mantener responsive.
+- Mejorar spacing visual.
+
+## Resultado esperado
+- Todas las citas se visualizan correctamente aunque existan múltiples workers.
+
+---
+
+# 10. Eliminar texto “Hoy”
+
+## Objetivo
+Eliminar el texto “Hoy” ubicado en la esquina superior derecha del calendar.
+
+## Tareas
+- Identificar componente.
+- Remover texto sin romper layout.
+- Mantener responsive.
+
+## Resultado esperado
+- El texto desaparece correctamente.
+
+---
+
+# 11. Lista de trabajadores en calendar rol client
+
+## Objetivo
+Agregar lista/filtro de trabajadores (workersavatars circulares) para client en vistas calendar.
+
+## Tareas
+- Mostrar workers disponibles.
+- Compatible con:
+  - vista día
+  - vista semana
+- Permitir filtrado.
+- Mantener diseño limpio.
+
+## Resultado esperado
+- El client puede visualizar citas por trabajador.
+
+---
+
+# 12. Mini calendario al cambiar fecha
+
+## Objetivo
+Permitir cambiar fecha desde crear cita usando mini calendario mensual.
+
+## Tareas
+- Agregar date picker visual.
+- Compatible iOS/Android/Web.
+- Mantener diseño moderno.
+- Permitir navegación mensual rápida.
+
+## Resultado esperado
+- El usuario puede seleccionar fecha fácilmente.
+
+---
+
+# 13. Mostrar trabajador en vista previa de cita
+
+## Objetivo
+Agregar nombre del trabajador en preview/modal de cita.
+
+## Tareas
+- Mostrar:
+  - worker name
+- Mantener diseño limpio.
+- Verificar carga correcta.
+
+## Resultado esperado
+- Todas las citas muestran trabajador asignado.
+
+---
+
+# 14. Loading states globales
+
+## Objetivo
+Agregar estados de carga visuales para todas las screens.
+
+## Tareas
+- Crear sistema global reusable:
+  - skeletons
+  - spinners
+  - placeholders
+- Integrar en:
+  - calendar
+  - dashboard
+  - business
+  - appointments
+- Evitar pantallas vacías y carga de pantallas que se demoran en entrar.
+
+## Resultado esperado
+- Toda la app tiene feedback visual mientras carga.
+
+---
+
+# 15. Navegar desde Mis Citas al calendario
+
+## Objetivo
+Permitir abrir cita directamente en calendar desde “Mis Citas”.
+
+## Tareas
+- Navegar hacia:
+  - fecha correcta
+  - worker correcto
+  - cita resaltada
+- Mantener animación fluida.
+
+## Resultado esperado
+- El usuario llega directamente a la cita seleccionada en calendar.
+
+---
+
+# 16. Mejorar scroll tipo de servicio
+
+## Objetivo
+Cambiar experiencia de scroll en selección de tipo de servicio.
+
+## Tareas
+- Reemplazar scroll actual.
+- Mejorar UX.
+- Agregar snapping o cards modernas.
+- Optimizar rendimiento.
+
+## Resultado esperado
+- La selección de servicios es más fluida y moderna.
+
+---
+
+# 17. Mejorar navegación “Mi negocio”
+
+## Objetivo
+Corregir falta de fluidez al ingresar a “Mi negocio” desde sidebar.
+
+## Tareas
+- Revisar navegación.
+- Optimizar renders innecesarios.
+- Implementar lazy loading si aplica.
+- Mejorar transición.
+
+## Resultado esperado
+- Navegación rápida y fluida.
+
+---
+
+# 18. Habilitar Mis Citas en ingresos
+
+## Objetivo
+Permitir ver todas las citas relacionadas a ingresos totales para rol company y worker.
+
+## Tareas
+- Agregar navegación desde ingresos.
+- Mostrar lista:
+  - servicios
+  - fechas
+  - trabajadores
+  - montos
+
+
+## Resultado esperado
+- El usuario puede inspeccionar ingresos detalladamente y guarda en un historial todas sus citas ya pasadas.
+
+---
+
+# 19. Habilitar acceso ingresos worker
+
+## Objetivo
+Permitir a worker ingresar al detalle de ingresos desde dashboard.
+
+## Tareas
+- Habilitar card clickeable.
+- Agregar navegación.
+- Mantener consistencia con company.
+
+## Resultado esperado
+- Worker puede acceder a ingresos igual que company pero obviamente solo a sus ingresos.
+
+---
+
+# 20. Bandeja de entrada global
+
+## Objetivo
+Crear sistema de inbox/notificaciones para todos los roles.
+
+## Tareas
+- Implementar bandeja de entrada.
+- Soportar:
+  - cita creada
+  - confirmada
+  - cancelada
+  - reprogramada
+  - completada
+  - no-show
+- Compatible con:
+  - client
+  - worker
+  - company
+- Persistencia en Supabase.
+- Marcar leído/no leído.
+- Optimizar realtime.
+
+## Resultado esperado
+- Todos los roles reciben notificaciones correctamente.
+
+---
+
+# 21. Mejorar appointModal
+
+## Objetivo
+Modernizar el modal de citas.
+
+## Tareas
+- Redondear bordes.
+- Aplicar estilo liquid glass/glassmorphism.
+- Mejorar sombras.
+- Agregar blur si es posible.
+- Mantener performance en móviles.
+- Mantener accesibilidad.
+
+## Resultado esperado
+- Modal moderno, premium y consistente con el diseño de la app.
+
+---
+```
+# 5. Solucionar creación de citas para negocios gym
+
+## Objetivo
+Corregir la lógica de creación de citas para negocios tipo gym.
+
+## Tareas
+- Revisar reglas de negocio gym.
+- Validar:
+  - cupos
+  - horarios
+  - trainers/workers
+  - clases grupales
+- Revisar conflictos de agenda.
+- Verificar duración automática.
+- Validar timezone.
+- Corregir persistencia.
+
+## Resultado esperado
+- Las citas gym funcionan correctamente en todos los escenarios.
