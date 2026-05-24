@@ -293,6 +293,25 @@ export default function WorkerDashboardScreen() {
                 ))}
               </View>
             </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                const rangeParam = timeFilter === 'daily' ? 'day' : timeFilter === 'weekly' ? 'week' : 'month';
+                router.push(`/screens/roles/worker/worker-history?range=${rangeParam}` as any);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: 16,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: colors.border,
+                marginTop: 16,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: appColors.primary, fontFamily: 'Inter_600SemiBold' }}>Ver historial completo</Text>
+              <Feather name="arrow-right" size={14} color={appColors.primary} />
+            </TouchableOpacity>
           </GlassCard>
 
           <View style={appStyles.wd_rowGrid}>

@@ -39,6 +39,7 @@ export type OpenCreatePayload = {
   mode: 'create';
   date: string;
   startHour?: number;
+  workerId?: string;
 };
 
 export type OpenDetailPayload = {
@@ -187,9 +188,9 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           setDuration(1);
           if (role === 'worker') {
             const selfWorker = workers.find((w) => w.user_id === profile?.id) ?? workers[0];
-            setSelectedWorkerId(selfWorker?.id ?? null);
+            setSelectedWorkerId(payload.workerId ?? selfWorker?.id ?? null);
           } else {
-            setSelectedWorkerId(workers[0]?.id ?? null);
+            setSelectedWorkerId(payload.workerId ?? workers[0]?.id ?? null);
           }
           setAppointment(null);
         } else {

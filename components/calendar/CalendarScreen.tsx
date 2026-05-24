@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT, getPastelColors } from '../../constants/appointments';
+import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT, WorkerRow, getPastelColors } from '../../constants/appointments';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAgendaAppointments } from '../../hooks/useAgendaAppointments';
@@ -337,7 +337,7 @@ function EventBlock({
       </View>
       {height > 32 && (
         <Text style={[styles.eventSub, { color: isBlocked ? colors.textSecondary : textTitleColor, fontSize: subSize, opacity: isBlocked ? 1 : 0.85 }]} numberOfLines={1}>
-          {isBlocked ? 'Horario bloqueado' : appointment.clientName}
+          {isBlocked ? 'Horario bloqueado' : `${appointment.clientName} • ${(appointment.worker || 'Barbero').split(' ')[0]}`}
         </Text>
       )}
     </Pressable>
@@ -352,14 +352,18 @@ function WeekGrid({
   onEventPress,
   refreshing,
   onRefresh,
+  workers,
+  selectedWorkerId,
 }: {
   weekDays: Date[];
   appointments: Appointment[];
   colors: any;
-  onSlotPress: (date: Date, hour: number) => void;
+  onSlotPress: (date: Date, hour: number, workerId?: string) => void;
   onEventPress: (a: Appointment) => void;
   refreshing?: boolean;
   onRefresh?: () => void;
+  workers: WorkerRow[];
+  selectedWorkerId: string | null;
 }) {
   const [containerWidth, setContainerWidth] = useState(SCREEN_W);
 
@@ -372,8 +376,16 @@ function WeekGrid({
 
   const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
   const availableWidth = containerWidth - TIME_COL_W;
+  
+  const activeWorkers = workers;
+  const isMultiWorker = selectedWorkerId === null && activeWorkers.length > 0;
+  
   const weekColWidth = availableWidth / 7;
-  const totalW = 7 * weekColWidth;
+  const workerColWidth = isMultiWorker ? Math.max(100, availableWidth / (7 * Math.min(activeWorkers.length, 3))) : weekColWidth;
+  const dayColWidth = isMultiWorker ? workerColWidth * activeWorkers.length : weekColWidth;
+  const totalW = 7 * dayColWidth;
+  
+  const headerHeight = isMultiWorker ? 78 : WEEK_HEADER_H;
 
   const apptByDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
@@ -407,7 +419,7 @@ function WeekGrid({
         {/* Time column — fixed horizontally */}
         <View style={{ width: TIME_COL_W, flexShrink: 0 }}>
           {/* Spacer that matches day-header height */}
-          <View style={{ height: WEEK_HEADER_H, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
+          <View style={{ height: headerHeight, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
           <TimeColumn colors={colors} />
         </View>
 
@@ -423,7 +435,7 @@ function WeekGrid({
             <View
               style={{
                 flexDirection: 'row',
-                height: WEEK_HEADER_H,
+                height: headerHeight,
                 borderBottomWidth: StyleSheet.hairlineWidth,
                 borderBottomColor: colors.border,
               }}
@@ -434,21 +446,47 @@ function WeekGrid({
                   <View
                     key={d.toISOString()}
                     style={{
-                      width: weekColWidth,
+                      width: dayColWidth,
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRightWidth: StyleSheet.hairlineWidth,
                       borderRightColor: colors.border,
                     }}
                   >
-                    <Text style={[styles.weekDayName, { color: t ? colors.accent : colors.textSecondary }]}>
-                      {DAYS_SHORT[(d.getDay() + 6) % 7]}
-                    </Text>
-                    <View style={[styles.weekDayCircle, t && { backgroundColor: colors.accent }]}>
-                      <Text style={[styles.weekDayNum, { color: t ? '#111827' : colors.textPrimary }]}>
-                        {d.getDate()}
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: isMultiWorker ? 4 : 0 }}>
+                      <Text style={[styles.weekDayName, { color: t ? colors.accent : colors.textSecondary }]}>
+                        {DAYS_SHORT[(d.getDay() + 6) % 7]}
                       </Text>
+                      <View style={[styles.weekDayCircle, t && { backgroundColor: colors.accent }]}>
+                        <Text style={[styles.weekDayNum, { color: t ? '#111827' : colors.textPrimary }]}>
+                          {d.getDate()}
+                        </Text>
+                      </View>
                     </View>
+                    
+                    {isMultiWorker && (
+                      <View style={{ flexDirection: 'row', width: '100%', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, height: 32 }}>
+                        {activeWorkers.map((w) => (
+                          <View
+                            key={w.id}
+                            style={{
+                              width: workerColWidth,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexDirection: 'row',
+                              gap: 2,
+                              borderRightWidth: StyleSheet.hairlineWidth,
+                              borderRightColor: colors.border,
+                            }}
+                          >
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#30D158' }} />
+                            <Text style={{ color: colors.textSecondary, fontSize: 9, fontFamily: 'Inter_500Medium' }} numberOfLines={1}>
+                              {w.initials || w.name.split(' ')[0].slice(0, 2).toUpperCase()}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -477,29 +515,66 @@ function WeekGrid({
                     <View
                       key={iso}
                       style={{
-                        width: weekColWidth,
+                        width: dayColWidth,
                         height: totalH,
                         borderRightWidth: StyleSheet.hairlineWidth,
                         borderRightColor: colors.border,
                         backgroundColor: t ? colors.accent + '0A' : undefined,
+                        flexDirection: 'row',
                       }}
                     >
-                      {rows.map((h) => (
-                        <Pressable
-                          key={h}
-                          style={[styles.slotCell, { height: HOUR_HEIGHT }]}
-                          onLongPress={() => onSlotPress(day, h)}
-                        />
-                      ))}
-                      {dayAppts.map((a) => (
-                        <EventBlock
-                          key={a.id}
-                          appointment={a}
-                          colWidth={weekColWidth}
-                          colors={colors}
-                          onPress={() => onEventPress(a)}
-                        />
-                      ))}
+                      {isMultiWorker ? (
+                        activeWorkers.map((w) => {
+                          const wAppts = dayAppts.filter((a) => a.worker_id === w.id || a.worker === w.name);
+                          return (
+                            <View
+                              key={w.id}
+                              style={{
+                                width: workerColWidth,
+                                height: totalH,
+                                borderRightWidth: StyleSheet.hairlineWidth,
+                                borderRightColor: colors.border,
+                              }}
+                            >
+                              {rows.map((h) => (
+                                <Pressable
+                                  key={h}
+                                  style={[styles.slotCell, { height: HOUR_HEIGHT }]}
+                                  onLongPress={() => onSlotPress(day, h, w.id)}
+                                />
+                              ))}
+                              {wAppts.map((a) => (
+                                <EventBlock
+                                  key={a.id}
+                                  appointment={a}
+                                  colWidth={workerColWidth}
+                                  colors={colors}
+                                  onPress={() => onEventPress(a)}
+                                />
+                              ))}
+                            </View>
+                          );
+                        })
+                      ) : (
+                        <View style={{ flex: 1 }}>
+                          {rows.map((h) => (
+                            <Pressable
+                              key={h}
+                              style={[styles.slotCell, { height: HOUR_HEIGHT }]}
+                              onLongPress={() => onSlotPress(day, h)}
+                            />
+                          ))}
+                          {dayAppts.map((a) => (
+                            <EventBlock
+                              key={a.id}
+                              appointment={a}
+                              colWidth={dayColWidth}
+                              colors={colors}
+                              onPress={() => onEventPress(a)}
+                            />
+                          ))}
+                        </View>
+                      )}
                     </View>
                   );
                 })}
@@ -522,14 +597,18 @@ function DayGrid({
   onEventPress,
   refreshing,
   onRefresh,
+  workers,
+  selectedWorkerId,
 }: {
   day: Date;
   appointments: Appointment[];
   colors: any;
-  onSlotPress: (date: Date, hour: number) => void;
+  onSlotPress: (date: Date, hour: number, workerId?: string) => void;
   onEventPress: (a: Appointment) => void;
   refreshing?: boolean;
   onRefresh?: () => void;
+  workers: WorkerRow[];
+  selectedWorkerId: string | null;
 }) {
   const [gridWidth, setGridWidth] = useState(SCREEN_W - TIME_COL_W - 32);
   const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
@@ -544,6 +623,11 @@ function DayGrid({
       setGridWidth(width);
     }
   }, []);
+
+  const activeWorkers = workers;
+  const isMultiWorker = selectedWorkerId === null && activeWorkers.length > 0;
+  const availableWidth = Math.max(200, gridWidth - TIME_COL_W - 32);
+  const workerColWidth = isMultiWorker ? Math.max(130, availableWidth / Math.min(activeWorkers.length, 3)) : availableWidth;
 
   return (
     <ScrollView
@@ -560,34 +644,127 @@ function DayGrid({
         ) : undefined
       }
     >
-      <View style={[styles.weekBody, { paddingHorizontal: 16 }]}>
-        <TimeColumn colors={colors} />
-        <View 
-          style={{ flex: 1, height: totalH, position: 'relative' }}
-          onLayout={handleLayout}
-        >
-          {rows.map((h) => (
-            <Pressable
-              key={h}
-              style={[
-                styles.gridLine,
-                styles.slotCell,
-                { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, height: HOUR_HEIGHT },
-              ]}
-              onLongPress={() => onSlotPress(day, h)}
-            />
-          ))}
-          {appointments.map((a) => (
-            <EventBlock
-              key={a.id}
-              appointment={a}
-              colWidth={gridWidth}
-              colors={colors}
-              onPress={() => onEventPress(a)}
-            />
-          ))}
-          <NowLine colors={colors} />
+      <View style={[styles.weekBody, { paddingHorizontal: 16 }]} onLayout={handleLayout}>
+        {/* Time column — fixed horizontally */}
+        <View style={{ width: TIME_COL_W, flexShrink: 0 }}>
+          {isMultiWorker && (
+            <View style={{ height: 40, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
+          )}
+          <TimeColumn colors={colors} />
         </View>
+
+        {/* Worker columns — scroll horizontally */}
+        {isMultiWorker ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flex: 1 }}
+          >
+            <View style={{ flexDirection: 'column' }}>
+              {/* Worker headers */}
+              <View style={{ flexDirection: 'row', height: 40, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+                {activeWorkers.map((w) => (
+                  <View
+                    key={w.id}
+                    style={{
+                      width: workerColWidth,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      borderRightWidth: StyleSheet.hairlineWidth,
+                      borderRightColor: colors.border,
+                    }}
+                  >
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#30D158' }} />
+                    <Text style={{ color: colors.textPrimary, fontSize: 12, fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>
+                      {w.name.split(' ')[0]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Grid content */}
+              <View style={{ width: workerColWidth * activeWorkers.length, height: totalH, position: 'relative' }}>
+                {/* Horizontal grid lines across all columns */}
+                {rows.map((h) => (
+                  <View
+                    key={h}
+                    style={[
+                      styles.gridLine,
+                      { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, width: '100%' },
+                    ]}
+                  />
+                ))}
+
+                {/* Side by side worker columns */}
+                <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]}>
+                  {activeWorkers.map((w) => {
+                    const wAppts = appointments.filter((a) => a.worker_id === w.id || a.worker === w.name);
+                    return (
+                      <View
+                        key={w.id}
+                        style={{
+                          width: workerColWidth,
+                          height: totalH,
+                          borderRightWidth: StyleSheet.hairlineWidth,
+                          borderRightColor: colors.border,
+                        }}
+                      >
+                        {rows.map((h) => (
+                          <Pressable
+                            key={h}
+                            style={[styles.slotCell, { height: HOUR_HEIGHT }]}
+                            onLongPress={() => onSlotPress(day, h, w.id)}
+                          />
+                        ))}
+                        {wAppts.map((a) => (
+                          <EventBlock
+                            key={a.id}
+                            appointment={a}
+                            colWidth={workerColWidth}
+                            colors={colors}
+                            onPress={() => onEventPress(a)}
+                          />
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+                
+                {/* Now Line */}
+                <NowLine colors={colors} />
+              </View>
+            </View>
+          </ScrollView>
+        ) : (
+          /* Standard single-worker Day view */
+          <View 
+            style={{ flex: 1, height: totalH, position: 'relative' }}
+          >
+            {rows.map((h) => (
+              <Pressable
+                key={h}
+                style={[
+                  styles.gridLine,
+                  styles.slotCell,
+                  { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, height: HOUR_HEIGHT },
+                ]}
+                onLongPress={() => onSlotPress(day, h, selectedWorkerId ?? undefined)}
+              />
+            ))}
+            {appointments.map((a) => (
+              <EventBlock
+                key={a.id}
+                appointment={a}
+                colWidth={gridWidth}
+                colors={colors}
+                onPress={() => onEventPress(a)}
+              />
+            ))}
+            <NowLine colors={colors} />
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -696,8 +873,8 @@ export default function CalendarScreen() {
     });
   };
 
-  const openCreate = useCallback((date: Date, hour?: number) => {
-    modalRef.current?.open({ mode: 'create', date: toLocalISO(date), startHour: hour });
+  const openCreate = useCallback((date: Date, hour?: number, workerId?: string) => {
+    modalRef.current?.open({ mode: 'create', date: toLocalISO(date), startHour: hour, workerId });
   }, []);
 
   const openDetail = useCallback((a: Appointment) => {
@@ -762,21 +939,6 @@ export default function CalendarScreen() {
           </View>
         </View>
 
-        {/* ── Workers Bar ── */}
-        {role === 'company' && (
-          <WorkersBar
-            workers={workers}
-            selectedWorkerId={selectedWorker}
-            onSelectWorker={setSelectedWorker}
-          />
-        )}
-        {role === 'worker' && selfWorker && (
-          <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
-            <View style={[styles.selfDot, { backgroundColor: selfWorker.color }]} />
-            <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
-          </View>
-        )}
-
         {/* ── Client Tabs ── */}
         {role === 'client' && (
           <View style={[styles.clientTabs, { borderBottomColor: colors.border }]}>
@@ -799,6 +961,21 @@ export default function CalendarScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        )}
+
+        {/* ── Workers Bar ── */}
+        {((role === 'company') || (role === 'client' && clientTab === 'calendar')) && (
+          <WorkersBar
+            workers={workers}
+            selectedWorkerId={selectedWorker}
+            onSelectWorker={setSelectedWorker}
+          />
+        )}
+        {role === 'worker' && selfWorker && (
+          <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
+            <View style={[styles.selfDot, { backgroundColor: selfWorker.color }]} />
+            <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
           </View>
         )}
 
@@ -834,10 +1011,12 @@ export default function CalendarScreen() {
                 weekDays={weekDays}
                 appointments={appointments}
                 colors={colors}
-                onSlotPress={(d, h) => openCreate(d, h)}
+                onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
                 onEventPress={openDetail}
                 refreshing={loading}
                 onRefresh={refetch}
+                workers={workers}
+                selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
               />
             )}
             {viewMode === 'day' && (
@@ -845,10 +1024,12 @@ export default function CalendarScreen() {
                 day={anchor}
                 appointments={dayAppts}
                 colors={colors}
-                onSlotPress={(d, h) => openCreate(d, h)}
+                onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
                 onEventPress={openDetail}
                 refreshing={loading}
                 onRefresh={refetch}
+                workers={workers}
+                selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
               />
             )}
           </>

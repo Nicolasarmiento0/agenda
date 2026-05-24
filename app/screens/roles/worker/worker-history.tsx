@@ -1,16 +1,17 @@
 import { Feather } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import GlassCard from '../../../../components/GlassCard';
+import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
 import { useAlert } from '../../../../context/AlertContext';
 import { useAuth } from '../../../../context/AuthContext';
@@ -22,13 +23,14 @@ export default function WorkerHistoryScreen() {
   const { business, profile } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { showAlert } = useAlert();
+  const { range } = useLocalSearchParams<{ range?: 'day' | 'week' | 'month' }>();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | 'all'>('all');
-  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('day');
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>(range ?? 'day');
   const [isGym, setIsGym] = useState(false);
 
   const fetchHistory = useCallback(async () => {
@@ -131,15 +133,7 @@ export default function WorkerHistoryScreen() {
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={appStyles.wh_header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)}>
-          <Feather name="menu" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[appStyles.wh_headerTitle, { color: colors.textSecondary }]}>HISTORIAL</Text>
-        <TouchableOpacity onPress={toggleTheme}>
-          <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader leftIcon="arrow-left" onLeft={() => router.back()} title="HISTORIAL" />
 
       {/* Summary Card */}
       <GlassCard style={appStyles.wh_summaryCard}>

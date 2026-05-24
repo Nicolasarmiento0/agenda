@@ -43,7 +43,8 @@ export default function ClientDashboardScreen() {
           id,
           start_time,
           status,
-          business:businesses(name, address)
+          business:businesses(name, address),
+          workers(name)
         `)
         .eq('client_id', profile.id)
         .in('status', ['scheduled', 'pending'])
@@ -124,11 +125,21 @@ export default function ClientDashboardScreen() {
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Feather name="calendar" size={16} color={colors.textSecondary} />
-                <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
-                  {formatDateTime(nextAppointment.start_time)}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="calendar" size={16} color={colors.textSecondary} />
+                  <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                    {formatDateTime(nextAppointment.start_time)}
+                  </Text>
+                </View>
+                {nextAppointment.workers?.name && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Feather name="user" size={16} color={colors.textSecondary} />
+                    <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                      {nextAppointment.workers.name.split(' ')[0]}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity 

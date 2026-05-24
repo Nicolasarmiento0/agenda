@@ -2,7 +2,6 @@
 
 # Prompts para Agente IA — Sistema de Agenda / SaaS
 
-
 # 6. Ingresos company y worker
 
 ## Objetivo
@@ -19,47 +18,10 @@ Mostrar ingresos correctamente para company y worker.
 - Validar cálculos de citas completadas.
 - Optimizar queries.
 - Agregar loading states.
--Reiniciar conteo al iniciar un nuevo mes, guardar en el historial la información de ingresos de todos los meses.
+- Reiniciar conteo al iniciar un nuevo mes, guardar en el historial la información de ingresos de todos los meses.
 
 ## Resultado esperado
 - Los ingresos coinciden correctamente con servicios realizados.
-
----
-
-# 9. Mejorar vista día y semana del calendario
-
-## Objetivo
-Permitir visualizar correctamente citas simultáneas de múltiples trabajadores.
-
-## Tareas
-- Agregar más filas/columnas.
-- Implementar scroll horizontal si es necesario.
-- Evitar superposición.
-- Optimizar virtualización/render.
-- Mantener responsive.
-- Mejorar spacing visual.
-
-## Resultado esperado
-- Todas las citas se visualizan correctamente aunque existan múltiples workers.
-
----
-
-# 11. Lista de trabajadores en calendar rol client
-
-## Objetivo
-Agregar lista/filtro de trabajadores (workersavatars circulares) para client en vistas calendar.
-
-## Tareas
-- Mostrar workers disponibles.
-- Compatible con:
-  - vista día
-  - vista semana
-- Permitir filtrado.
-- Mantener diseño limpio.
-
-## Resultado esperado
-- El client puede visualizar citas por trabajador.
-
 ---
 
 # 12. Mini calendario al cambiar fecha
@@ -75,23 +37,6 @@ Permitir cambiar fecha desde crear cita usando mini calendario mensual.
 
 ## Resultado esperado
 - El usuario puede seleccionar fecha fácilmente.
-
----
-
-# 13. Mostrar trabajador en vista previa de cita
-
-## Objetivo
-Agregar nombre del trabajador en preview/modal de cita.
-
-## Tareas
-- Mostrar:
-  - worker name
-- Mantener diseño limpio.
-- Verificar carga correcta.
-
-## Resultado esperado
-- Todas las citas muestran trabajador asignado.
-
 ---
 
 # 14. Loading states globales
@@ -119,7 +64,7 @@ Agregar estados de carga visuales para todas las screens.
 # 15. Navegar desde Mis Citas al calendario
 
 ## Objetivo
-Permitir abrir cita directamente en calendar desde “Mis Citas”.
+Permitir abrir cita directamente en calendar desde “Mis Citas” opción valida para rol client.
 
 ## Tareas
 - Navegar hacia:
@@ -162,40 +107,6 @@ Corregir falta de fluidez al ingresar a “Mi negocio” desde sidebar.
 
 ## Resultado esperado
 - Navegación rápida y fluida.
-
----
-
-# 18. Habilitar Mis Citas en ingresos
-
-## Objetivo
-Permitir ver todas las citas relacionadas a ingresos totales para rol company y worker.
-
-## Tareas
-- Agregar navegación desde ingresos.
-- Mostrar lista:
-  - servicios
-  - fechas
-  - trabajadores
-  - montos
-
-
-## Resultado esperado
-- El usuario puede inspeccionar ingresos detalladamente y guarda en un historial todas sus citas ya pasadas.
-
----
-
-# 19. Habilitar acceso ingresos worker
-
-## Objetivo
-Permitir a worker ingresar al detalle de ingresos desde dashboard.
-
-## Tareas
-- Habilitar card clickeable.
-- Agregar navegación.
-- Mantener consistencia con company.
-
-## Resultado esperado
-- Worker puede acceder a ingresos igual que company pero obviamente solo a sus ingresos.
 
 ---
 
