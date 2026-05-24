@@ -23,6 +23,7 @@ import { SelectedBusiness, useBusiness } from '../../../../context/BusinessConte
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
+import BusinessReviewsListModal from '../../../../components/client/BusinessReviewsListModal';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ export default function ClientBusinessProfileScreen() {
   // Reviews State
   const [reviewsData, setReviewsData] = useState({ score: 0, total: 0 });
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewsListModal, setShowReviewsListModal] = useState(false);
   const [newScore, setNewScore] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -223,7 +225,7 @@ export default function ClientBusinessProfileScreen() {
           <Text style={[appStyles.clientProfileName, { color: colors.textPrimary }]}>{name}</Text>
 
           {/* Rating Section */}
-          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileRatingBadge}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewsListModal(true)} style={appStyles.clientProfileRatingBadge}>
             <Ionicons name="star" size={14} color="#F0A030" />
             <Text style={[appStyles.clientProfileRatingScore, { color: colors.textPrimary }]}>
               {reviewsData.total > 0 ? reviewsData.score : 'Nuevo'}
@@ -283,14 +285,14 @@ export default function ClientBusinessProfileScreen() {
             )}
 
             {!isPreviewMode && (
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewModal(true)} style={appStyles.clientProfileDetailRow}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowReviewsListModal(true)} style={appStyles.clientProfileDetailRow}>
                 <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Ionicons name="chatbubble-outline" size={16} color={appColors.primary} />
                 </View>
                 <View style={appStyles.clientProfileDetailTextContainer}>
                   <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Reputación</Text>
                   <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
-                    Escribir una opinión
+                    Ver opiniones de clientes
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={14} color={colors.textSecondary} />
@@ -397,6 +399,15 @@ export default function ClientBusinessProfileScreen() {
           </BlurView>
         </View>
       </Modal>
+
+      {/* DETALLE Y LISTADO DE OPINIONES */}
+      <BusinessReviewsListModal
+        visible={showReviewsListModal}
+        onClose={() => setShowReviewsListModal(false)}
+        businessId={fetchedBusiness.id}
+        businessName={name}
+        onWriteReview={() => setShowReviewModal(true)}
+      />
 
     </View>
   );

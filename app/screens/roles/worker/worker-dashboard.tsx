@@ -1,5 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -236,6 +237,24 @@ export default function WorkerDashboardScreen() {
             <Text style={[appStyles.wd_businessName, { color: colors.textPrimary }]}>{workerMe?.name || 'Trabajador'}</Text>
           </View>
 
+          {/* ACCESO DIRECTO AGENDA */}
+          <GlassCard style={appStyles.wd_card}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/screens/global/calendar' as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+            >
+              <View style={[appStyles.wd_publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
+                <Feather name="calendar" size={20} color={appColors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[appStyles.wd_publicBtnTitle, { color: colors.textPrimary }]}>Mi Agenda de Citas</Text>
+                <Text style={[appStyles.wd_publicBtnSub, { color: colors.textSecondary }]}>Ver tus turnos asignados y calendarización</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </GlassCard>
+
           {/* REVENUE CHART */}
           <GlassCard style={appStyles.wd_card}>
             <View style={appStyles.wd_chartHeaderRow}>
@@ -361,7 +380,7 @@ export default function WorkerDashboardScreen() {
                     ))}
                   </View>
                   {r.comment ? (
-                    <Text style={[appStyles.wd_reviewComment, { color: colors.textSecondary }]}>"{r.comment}"</Text>
+                    <Text style={[appStyles.wd_reviewComment, { color: colors.textSecondary }]}>{`"${r.comment}"`}</Text>
                   ) : (
                     <Text style={[appStyles.wd_reviewComment, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin comentario</Text>
                   )}

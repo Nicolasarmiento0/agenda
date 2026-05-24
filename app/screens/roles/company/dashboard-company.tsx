@@ -237,6 +237,24 @@ export default function DashboardCompanyScreen() {
             <Text style={[styles.businessName, { color: colors.textPrimary }]}>{business?.name || profile?.nickname || 'Empresa'}</Text>
           </View>
 
+          {/* ACCESO DIRECTO AGENDA */}
+          <GlassCard style={styles.publicBtn}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/screens/global/calendar' as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
+            >
+              <View style={[styles.publicBtnIcon, { backgroundColor: appColors.primary + '15' }]}>
+                <Feather name="calendar" size={20} color={appColors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.publicBtnTitle, { color: colors.textPrimary }]}>Agenda de Citas</Text>
+                <Text style={[styles.publicBtnSub, { color: colors.textSecondary }]}>Gestiona turnos, reservas y bloqueos</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </GlassCard>
+
           {!isGym && (
             <GlassCard style={styles.card}>
               <View style={styles.chartHeaderRow}>

@@ -2,54 +2,6 @@
 
 # Prompts para Agente IA — Sistema de Agenda / SaaS
 
----
-
-# 3. Seguridad de citas para rol client
-
-## Objetivo
-Evitar que usuarios client eliminen o modifiquen citas que no les pertenecen.
-
-## Tareas
-- Validar ownership de appointment.
-- Restringir:
-  - delete
-  - update
-  - cancel
-- Aplicar misma lógica a bloqueos de empresas.
-- Si la cita no pertenece al client:
-  - mostrar solo vista previa readonly.
-- Reforzar seguridad backend + frontend.
-- Revisar RLS policies.
-
-## Resultado esperado
-- El client solo puede modificar sus propias citas en el rango de tiempo estipulado (hasta 2horas de que comienze la cita).
-- Las citas ajenas solo se visualizan.
-
----
-
-# 4. Ver opiniones desde descubrir negocios
-
-## Objetivo
-Permitir visualizar opiniones/reviews al presionar un negocio desde descubrir negocios.
-
-## Tareas
-- Agregar navegación hacia reviews.
-- Mostrar:
-  - rating promedio
-  - comentarios
-  - cantidad de reviews
-  - fecha
-  - cliente
-- Optimizar carga.
-- Agregar skeleton/loading.
-- Manejar estados vacíos.
-
-## Resultado esperado
-- El usuario puede ver opiniones del negocio fácilmente.
-
----
-
----
 
 # 6. Ingresos company y worker
 

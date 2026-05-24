@@ -103,11 +103,14 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       const isPastOrFinished = appointment.status === 'completed' || appointment.status === 'cancelled' || appointment.status === 'no-show';
       if (isPastOrFinished) return false;
 
+      // Enforce ownership: clients can only edit or cancel their own appointments!
+      if (appointment.client_id !== profile?.id) return false;
+
       const apptDate = new Date(appointment.date ?? '');
       apptDate.setHours(Math.floor(appointment.startHour), Math.round((appointment.startHour % 1) * 60));
       const diff = apptDate.getTime() - Date.now();
       return diff >= 2 * 60 * 60 * 1000;
-    }, [appointment, role]);
+    }, [appointment, role, profile?.id]);
 
     // Create form state
     const [clientName, setClientName] = useState('');
@@ -405,6 +408,11 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const handleStatusChange = async (newStatus: AppointmentStatus) => {
       if (!appointment) return;
 
+      if (role === 'client' && appointment.client_id !== profile?.id) {
+        showToast({ type: 'error', message: 'No tienes permiso para modificar esta cita.' });
+        return;
+      }
+
       if (newStatus === 'cancelled' && role === 'client') {
         const apptDate = new Date(appointment.date ?? '');
         apptDate.setHours(Math.floor(appointment.startHour), Math.round((appointment.startHour % 1) * 60));
@@ -447,6 +455,11 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const handleDelete = async () => {
       if (!appointment) return;
 
+      if (role === 'client' && appointment.client_id !== profile?.id) {
+        showToast({ type: 'error', message: 'No tienes permiso para modificar esta cita.' });
+        return;
+      }
+
       const isBlocked = appointment.status === 'blocked';
 
       showAlert({
@@ -482,6 +495,12 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
     const executeUpdate = async (workerIdVal: string) => {
       if (!appointment) return;
+
+      if (role === 'client' && appointment.client_id !== profile?.id) {
+        showToast({ type: 'error', message: 'No tienes permiso para modificar esta cita.' });
+        return;
+      }
+
       setSaving(true);
       const { error } = await supabase
         .from('appointments')
@@ -813,156 +832,259 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
               </TouchableOpacity>
             </>
           ) : appointment ? (
-            <>
-              <View style={styles.detailHeader}>
-                <View style={{ flex: 1, marginRight: 16 }}>
-                  <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
-                  <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{appointment.service}</Text>
+            role === 'client' && appointment.client_id !== profile?.id ? (
+              <>
+                <View style={styles.detailHeader}>
+                  <View style={{ flex: 1, marginRight: 16 }}>
+                    <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
+                    <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>
+                      {appointment.status === 'blocked' ? 'Horario Bloqueado' : 'Reservado'}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                      },
+                    ]}
+                  >
+                    <Feather name="lock" size={12} color={colors.textSecondary} />
+                    <Text style={[styles.statusText, { color: colors.textSecondary, fontWeight: '700' }]}>
+                      {appointment.status === 'blocked' ? 'BLOQUEADO' : 'OCUPADO'}
+                    </Text>
+                  </View>
                 </View>
+
                 <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-                  ]}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)',
+                    borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 16,
+                    gap: 10,
+                  }}
                 >
-                  <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary, fontWeight: '700' }]}>
-                    {STATUS_CONFIG[appointment.status]?.label?.toUpperCase() ?? appointment.status?.toUpperCase()}
+                  <Feather name="info" size={16} color="#3B82F6" />
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 }}>
+                    Este espacio ya está reservado. Los detalles específicos del cliente y del servicio no están visibles por motivos de privacidad.
                   </Text>
                 </View>
-              </View>
 
-              <BlurView
-                intensity={isDarkMode ? 15 : 40}
-                tint={isDarkMode ? 'dark' : 'light'}
-                style={[
-                  styles.premiumCard,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                    overflow: 'hidden'
-                  }
-                ]}
-              >
-                {/* Date & Time Row */}
-                <View style={styles.premiumDetailRow}>
-                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                    <Feather name="calendar" size={18} color="#3B82F6" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
-                    <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                      {appointment.date}  •  {formatHour(appointment.startHour)} hs
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                {/* Duration Row */}
-                <View style={styles.premiumDetailRow}>
-                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
-                    <Feather name="clock" size={18} color="#F59E0B" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
-                    <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                      {appointment.durationHours * 60} minutos
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                {/* Client Row */}
-                <View style={styles.premiumDetailRow}>
-                  <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)' }]}>
-                    <Feather name="user" size={18} color="#A855F7" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Cliente</Text>
-                    <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
-                      {appointment.clientName}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                {/* Worker Row */}
-                <View style={styles.premiumDetailRow}>
-                  <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
-                    <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
-                        {appointment.worker}
+                <BlurView
+                  intensity={isDarkMode ? 15 : 40}
+                  tint={isDarkMode ? 'dark' : 'light'}
+                  style={[
+                    styles.premiumCard,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                      overflow: 'hidden',
+                    },
+                  ]}
+                >
+                  {/* Date & Time Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                      <Feather name="calendar" size={18} color="#3B82F6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                        {appointment.date}  •  {formatHour(appointment.startHour)} hs
                       </Text>
                     </View>
                   </View>
+
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                  {/* Worker Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
+                      <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
+                        <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                          {appointment.worker}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </BlurView>
+
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginTop: 24 }]}
+                  onPress={() => sheetRef.current?.close()}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.saveBtnText, { color: colors.textPrimary }]}>Cerrar</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.detailHeader}>
+                  <View style={{ flex: 1, marginRight: 16 }}>
+                    <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
+                    <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{appointment.service}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+                    ]}
+                  >
+                    <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary, fontWeight: '700' }]}>
+                      {STATUS_CONFIG[appointment.status]?.label?.toUpperCase() ?? appointment.status?.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
-              </BlurView>
 
-              <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
-                {/* 1. Primary Action (Confirmar or Completar) */}
-                {role !== 'client' && appointment.status !== 'blocked' && (
-                  <>
-                    {appointment.status === 'pending' && (
-                      <ActionBtn
-                        label="Confirmar"
-                        color="#2E7D45"
-                        onPress={() => handleStatusChange('confirmed')}
-                        saving={saving}
-                        style={{ flex: 1.4 }}
-                      />
-                    )}
-                    {appointment.status === 'confirmed' && (
-                      <ActionBtn
-                        label="Completar"
-                        color="#2563EB"
-                        onPress={() => handleStatusChange('completed')}
-                        saving={saving}
-                        style={{ flex: 1.4 }}
-                      />
-                    )}
-                  </>
-                )}
+                <BlurView
+                  intensity={isDarkMode ? 15 : 40}
+                  tint={isDarkMode ? 'dark' : 'light'}
+                  style={[
+                    styles.premiumCard,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                      overflow: 'hidden'
+                    }
+                  ]}
+                >
+                  {/* Date & Time Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                      <Feather name="calendar" size={18} color="#3B82F6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                        {appointment.date}  •  {formatHour(appointment.startHour)} hs
+                      </Text>
+                    </View>
+                  </View>
 
-                {/* 2. Secondary Actions (Editar, Eliminar) */}
-                {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                  <ActionBtn
-                    label="Editar"
-                    color="#fda428ff"
-                    onPress={() => {
-                      setMode('edit');
-                      setClientName(appointment.clientName);
-                      setService(appointment.service);
-                      setServiceSearch('');
-                      setDate(appointment.date ?? '');
-                      setStartHour(appointment.startHour);
-                      setDuration(appointment.durationHours);
-                      setSelectedWorkerId(appointment.worker_id);
-                      setIsBlockedSlot(appointment.status === 'blocked');
-                      setPrice(appointment.price || 0);
-                    }}
-                    saving={saving}
-                    style={{ flex: 1 }}
-                  />
-                )}
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-                {canEditOrCancel && (
-                  <ActionBtn
-                    label={appointment.status === 'blocked' ? 'Desbloquear' : 'Eliminar'}
-                    color="#DC2626"
-                    onPress={handleDelete}
-                    saving={saving}
-                    style={{ flex: 1 }}
-                  />
-                )}
-              </View>
-            </>
+                  {/* Duration Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                      <Feather name="clock" size={18} color="#F59E0B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                        {appointment.durationHours * 60} minutos
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                  {/* Client Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)' }]}>
+                      <Feather name="user" size={18} color="#A855F7" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Cliente</Text>
+                      <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                        {appointment.clientName}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                  {/* Worker Row */}
+                  <View style={styles.premiumDetailRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: appointment.workerColor + '25' }]}>
+                      <Feather name="users" size={18} color={appointment.workerColor || colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={[styles.smallDot, { backgroundColor: appointment.workerColor }]} />
+                        <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                          {appointment.worker}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </BlurView>
+
+                <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
+                  {/* 1. Primary Action (Confirmar or Completar) */}
+                  {role !== 'client' && appointment.status !== 'blocked' && (
+                    <>
+                      {appointment.status === 'pending' && (
+                        <ActionBtn
+                          label="Confirmar"
+                          color="#2E7D45"
+                          onPress={() => handleStatusChange('confirmed')}
+                          saving={saving}
+                          style={{ flex: 1.4 }}
+                        />
+                      )}
+                      {appointment.status === 'confirmed' && (
+                        <ActionBtn
+                          label="Completar"
+                          color="#2563EB"
+                          onPress={() => handleStatusChange('completed')}
+                          saving={saving}
+                          style={{ flex: 1.4 }}
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {/* 2. Secondary Actions (Editar, Eliminar) */}
+                  {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
+                    <ActionBtn
+                      label="Editar"
+                      color="#fda428ff"
+                      onPress={() => {
+                        setMode('edit');
+                        setClientName(appointment.clientName);
+                        setService(appointment.service);
+                        setServiceSearch('');
+                        setDate(appointment.date ?? '');
+                        setStartHour(appointment.startHour);
+                        setDuration(appointment.durationHours);
+                        setSelectedWorkerId(appointment.worker_id);
+                        setIsBlockedSlot(appointment.status === 'blocked');
+                        setPrice(appointment.price || 0);
+                      }}
+                      saving={saving}
+                      style={{ flex: 1 }}
+                    />
+                  )}
+
+                  {canEditOrCancel && (
+                    <ActionBtn
+                      label={appointment.status === 'blocked' ? 'Desbloquear' : 'Eliminar'}
+                      color="#DC2626"
+                      onPress={handleDelete}
+                      saving={saving}
+                      style={{ flex: 1 }}
+                    />
+                  )}
+                </View>
+              </>
+            )
           ) : null}
         </BottomSheetScrollView>
       </BottomSheet>
