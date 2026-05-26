@@ -8,7 +8,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -25,19 +25,28 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   const { showAlert } = useAlert();
 
-  // 🔍 DIAGNÓSTICO: loguea cada vez que cambia el estado de auth
+  // Latch: becomes true once the first cold-start load completes, never resets.
+  // This prevents GlobalGuard from unmounting <Stack> on subsequent auth events
+  // (TOKEN_REFRESHED, re-login, etc.), preserving navigation history.
+  const [hasBootstrapped, setHasBootstrapped] = useState(false);
+
+  useEffect(() => {
+    if (!loading && profileLoaded && !hasBootstrapped) {
+      setHasBootstrapped(true);
+    }
+  }, [loading, profileLoaded, hasBootstrapped]);
+
   useEffect(() => {
     console.log('🛡️  GLOBALGUARD STATE ─────────────────');
-    console.log('   loading       :', loading);
-    console.log('   profileLoaded :', profileLoaded);
-    console.log('   session       :', session ? `✅ ${session.user.id}` : '❌ null');
-    console.log('   profile       :', profile ? `✅ role=${profile.role}` : '❌ null');
-    if (loading) console.log('   ⏳ BLOQUEADO → esperando loading=false');
-    if (!loading && !profileLoaded) console.log('   ⏳ BLOQUEADO → esperando profileLoaded=true');
-    if (!loading && profileLoaded && session && !profile) console.log('   ⏳ BLOQUEADO → sesión sin perfil (error de red o BD)');
-    if (!loading && profileLoaded) console.log('   ✅ GUARD OK → renderizando hijos');
+    console.log('   loading         :', loading);
+    console.log('   profileLoaded   :', profileLoaded);
+    console.log('   hasBootstrapped :', hasBootstrapped);
+    console.log('   session         :', session ? `✅ ${session.user.id}` : '❌ null');
+    console.log('   profile         :', profile ? `✅ role=${profile.role}` : '❌ null');
+    if (!hasBootstrapped) console.log('   ⏳ BLOQUEADO → cold start inicial');
+    if (hasBootstrapped)  console.log('   ✅ GUARD OK → renderizando hijos');
     console.log('─────────────────────────────────────');
-  }, [loading, profileLoaded, session, profile]);
+  }, [loading, profileLoaded, session, profile, hasBootstrapped]);
 
   useEffect(() => {
     if (session && profileLoaded && !profile && !loading) {
@@ -61,15 +70,7 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
     }
   }, [session, profileLoaded, profile, loading]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.textPrimary} />
-      </View>
-    );
-  }
-
-  if (session && profileLoaded && !profile && !loading) {
+  if (!hasBootstrapped) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.textPrimary} />

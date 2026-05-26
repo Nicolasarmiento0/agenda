@@ -3,7 +3,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -257,6 +257,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
@@ -272,18 +283,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // TOKEN_REFRESHED: the profile hasn't changed — only update the JWT in memory.
+      // Setting loading=true here was the root cause of the navigation reset on app resume.
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(newSession);
+        return;
+      }
+
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         setSession(newSession);
 
         if (newSession?.user) {
           setLoading(true);
-          // ✅ setTimeout saca el fetch del hilo interno de Supabase,
-          // evitando que el await quede colgado en el bundle de producción.
+          // setTimeout moves the fetch off Supabase's internal event thread,
+          // preventing await from hanging in production bundles.
           setTimeout(() => {
             if (mounted) fetchProfile(newSession.user.id);
           }, 0);
         } else {
-          // Sin sesión activa (usuario no logueado)
           setProfileLoaded(true);
           setLoading(false);
         }
