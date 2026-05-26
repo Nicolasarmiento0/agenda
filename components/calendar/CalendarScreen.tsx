@@ -159,6 +159,8 @@ function MonthGrid({
   onDayPress: (date: Date) => void;
   onEventPress: (a: Appointment) => void;
 }) {
+  const { profile } = useAuth();
+  const role = profile?.role ?? 'client';
   const grid = useMemo(() => getDayMonthGrid(year, month), [year, month]);
 
   const apptByDate = useMemo(() => {
@@ -215,17 +217,23 @@ function MonthGrid({
                 </Text>
               </View>
               <View style={styles.monthEventPills}>
-                {events.slice(0, 2).map((e) => (
-                  <Pressable
-                    key={e.id}
-                    style={[styles.monthPill, { backgroundColor: e.workerColor + 'CC' }]}
-                    onPress={() => onEventPress(e)}
-                  >
-                    <Text style={styles.monthPillText} numberOfLines={1}>
-                      {e.service}
-                    </Text>
-                  </Pressable>
-                ))}
+                {events.slice(0, 2).map((e) => {
+                  const isOther = role === 'client' && e.client_id !== profile?.id;
+                  const displayText = isOther
+                    ? (e.status === 'blocked' ? 'BLOQUEADO' : 'RESERVADO')
+                    : e.service;
+                  return (
+                    <Pressable
+                      key={e.id}
+                      style={[styles.monthPill, { backgroundColor: e.workerColor + 'CC' }]}
+                      onPress={() => onEventPress(e)}
+                    >
+                      <Text style={styles.monthPillText} numberOfLines={1}>
+                        {displayText}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
                 {events.length > 2 && (
                   <Text style={[styles.monthMore, { color: colors.textSecondary }]}>
                     +{events.length - 2}
@@ -287,6 +295,9 @@ function EventBlock({
   onPress: () => void;
 }) {
   const { isDarkMode } = useTheme();
+  const { profile } = useAuth();
+  const role = profile?.role ?? 'client';
+
   const top = (appointment.startHour - DEFAULT_START_HOUR) * HOUR_HEIGHT;
   const height = Math.max(appointment.durationHours * HOUR_HEIGHT - 4, 24);
 
@@ -298,6 +309,7 @@ function EventBlock({
   const subSize = isUltraNarrow ? 7.5 : isNarrow ? 8.5 : 10;
 
   const isBlocked = appointment.status === 'blocked';
+  const isOtherClientAppt = role === 'client' && appointment.client_id !== profile?.id;
   const pastelColorsConfig = getPastelColors(appointment.id ?? appointment.clientName, isDarkMode);
 
   const borderLeftColor = isBlocked ? '#6B7280' : pastelColorsConfig.border;
@@ -305,6 +317,14 @@ function EventBlock({
     ? (isDarkMode ? 'rgba(75, 85, 99, 0.45)' : 'rgba(209, 213, 219, 0.65)')
     : pastelColorsConfig.bg;
   const textTitleColor = isBlocked ? colors.textPrimary : pastelColorsConfig.text;
+
+  const displayTitle = isOtherClientAppt
+    ? (isBlocked ? 'BLOQUEADO' : 'RESERVADO')
+    : appointment.service;
+
+  const displaySub = isOtherClientAppt
+    ? (isBlocked ? 'Horario bloqueado' : `Reservado • ${(appointment.worker || 'Barbero').split(' ')[0]}`)
+    : (isBlocked ? 'Horario bloqueado' : `${appointment.clientName} • ${(appointment.worker || 'Barbero').split(' ')[0]}`);
 
   return (
     <Pressable
@@ -332,12 +352,12 @@ function EventBlock({
           />
         )}
         <Text style={[styles.eventTitle, { color: textTitleColor, fontSize: titleSize, textDecorationLine: isBlocked ? 'line-through' : 'none', flex: 1, fontWeight: '600' }]} numberOfLines={1}>
-          {appointment.service}
+          {displayTitle}
         </Text>
       </View>
       {height > 32 && (
         <Text style={[styles.eventSub, { color: isBlocked ? colors.textSecondary : textTitleColor, fontSize: subSize, opacity: isBlocked ? 1 : 0.85 }]} numberOfLines={1}>
-          {isBlocked ? 'Horario bloqueado' : `${appointment.clientName} • ${(appointment.worker || 'Barbero').split(' ')[0]}`}
+          {displaySub}
         </Text>
       )}
     </Pressable>

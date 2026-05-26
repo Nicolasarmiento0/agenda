@@ -33,8 +33,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useIsGym } from '../../hooks/useIsGym';
 import { ToastOptions } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
-import TimeWheelPicker from '../TimeWheelPicker';
 import GlassModal from '../GlassModal';
+import TimeWheelPicker from '../TimeWheelPicker';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -104,13 +104,13 @@ function formatFriendlyDate(dateStr: string) {
   const month = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
   const d = new Date(year, month, day);
-  
+
   const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const MONTHS_ES_LONG = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
-  
+
   return `${DAYS_ES[d.getDay()]}, ${day} de ${MONTHS_ES_LONG[month]} de ${year}`;
 }
 
@@ -119,25 +119,25 @@ function getDayMonthGrid(year: number, month: number): Date[] {
   const first = new Date(year, month, 1);
   const firstDow = first.getDay();
   const offset = firstDow === 0 ? 6 : firstDow - 1;
-  
+
   for (let i = offset; i > 0; i--) {
     const d = new Date(year, month, 1 - i);
     grid.push(d);
   }
-  
+
   const last = new Date(year, month + 1, 0);
   const totalDays = last.getDate();
   for (let i = 1; i <= totalDays; i++) {
     const d = new Date(year, month, i);
     grid.push(d);
   }
-  
+
   const remaining = 42 - grid.length;
   for (let i = 1; i <= remaining; i++) {
     const d = new Date(year, month + 1, i);
     grid.push(d);
   }
-  
+
   return grid;
 }
 
@@ -670,751 +670,671 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       <>
         <BottomSheet
           ref={sheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
-        backgroundComponent={renderBackground}
-        backgroundStyle={{ backgroundColor: 'transparent' }}
-        handleIndicatorStyle={{
-          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
-          width: 44,
-          height: 5,
-          borderRadius: 2.5,
-        }}
-      >
-        <BottomSheetScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
-          showsVerticalScrollIndicator={false}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          backdropComponent={renderBackdrop}
+          backgroundComponent={renderBackground}
+          backgroundStyle={{ backgroundColor: 'transparent' }}
+          handleIndicatorStyle={{
+            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+            width: 44,
+            height: 5,
+            borderRadius: 2.5,
+          }}
         >
-          {mode === 'create' || mode === 'edit' ? (
-            <>
-              {mode === 'edit' ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
-                  <TouchableOpacity onPress={() => setMode('detail')} style={{ paddingRight: 4 }}>
-                    <Feather name="arrow-left" size={22} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                  <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 0 }]}>
-                    {isBlockedSlot ? 'Editar bloqueo' : 'Editar cita'}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 12 }]}>Nueva cita</Text>
-              )}
-
-              {role !== 'client' && (
-                <View style={[styles.tabs, { backgroundColor: colors.surface, marginBottom: 16 }]}>
-                  <TouchableOpacity
-                    style={[styles.tab, !isBlockedSlot && { backgroundColor: colors.accentDim }]}
-                    onPress={() => {
-                      setIsBlockedSlot(false);
-                      setClientName('');
-                      setService(isGym ? 'CLASE' : '');
-                    }}
-                  >
-                    <Text style={[styles.tabText, { color: !isBlockedSlot ? colors.accent : colors.textSecondary }]}>
-                      Agendar cita
+          <BottomSheetScrollView
+            contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {mode === 'create' || mode === 'edit' ? (
+              <>
+                {mode === 'edit' ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+                    <TouchableOpacity onPress={() => setMode('detail')} style={{ paddingRight: 4 }}>
+                      <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 0 }]}>
+                      {isBlockedSlot ? 'Editar bloqueo' : 'Editar cita'}
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.tab, isBlockedSlot && { backgroundColor: colors.accentDim }]}
-                    onPress={() => {
-                      setIsBlockedSlot(true);
-                      setClientName('Bloqueo de horario');
-                      setService('Bloqueo');
-                    }}
-                  >
-                    <Text style={[styles.tabText, { color: isBlockedSlot ? colors.accent : colors.textSecondary }]}>
-                      Bloquear horario
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                  </View>
+                ) : (
+                  <Text style={[styles.title, { color: colors.textPrimary, marginBottom: 12 }]}>Nueva cita</Text>
+                )}
 
-              {!isBlockedSlot && (
-                <>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Cliente</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border },
-                      role === 'client' && { opacity: 0.7, color: colors.textSecondary }
-                    ]}
-                    placeholderTextColor={colors.textSecondary}
-                    placeholder="Nombre del cliente"
-                    value={clientName}
-                    onChangeText={setClientName}
-                    editable={role !== 'client'}
-                  />
-                </>
-              )}
+                {role !== 'client' && (
+                  <View style={[styles.tabs, { backgroundColor: colors.surface, marginBottom: 16 }]}>
+                    <TouchableOpacity
+                      style={[styles.tab, !isBlockedSlot && { backgroundColor: colors.accentDim }]}
+                      onPress={() => {
+                        setIsBlockedSlot(false);
+                        setClientName('');
+                        setService(isGym ? 'CLASE' : '');
+                      }}
+                    >
+                      <Text style={[styles.tabText, { color: !isBlockedSlot ? colors.accent : colors.textSecondary }]}>
+                        Agendar cita
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.tab, isBlockedSlot && { backgroundColor: colors.accentDim }]}
+                      onPress={() => {
+                        setIsBlockedSlot(true);
+                        setClientName('Bloqueo de horario');
+                        setService('Bloqueo');
+                      }}
+                    >
+                      <Text style={[styles.tabText, { color: isBlockedSlot ? colors.accent : colors.textSecondary }]}>
+                        Bloquear horario
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-              {!isBlockedSlot && (
-                <>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Servicio</Text>
-                  {businessServices.length === 0 ? (
+                {!isBlockedSlot && (
+                  <>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Cliente</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border },
+                        role === 'client' && { opacity: 0.7, color: colors.textSecondary }
+                      ]}
+                      placeholderTextColor={colors.textSecondary}
+                      placeholder="Nombre del cliente"
+                      value={clientName}
+                      onChangeText={setClientName}
+                      editable={role !== 'client'}
+                    />
+                  </>
+                )}
+
+                {!isBlockedSlot && (
+                  <>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Servicio</Text>
+                    {businessServices.length === 0 ? (
+                      <TextInput
+                        style={[styles.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border }]}
+                        placeholderTextColor={colors.textSecondary}
+                        placeholder="Tipo de servicio"
+                        value={service}
+                        onChangeText={setService}
+                      />
+                    ) : (
+                      <>
+                        <View style={[styles.searchBox, { backgroundColor: inputBg, borderColor: colors.border }]}>
+                          <Feather name="search" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                          <TextInput
+                            style={[styles.searchTextInput, { color: colors.textPrimary }]}
+                            placeholder="Buscar servicio..."
+                            placeholderTextColor={colors.textSecondary}
+                            value={serviceSearch}
+                            onChangeText={setServiceSearch}
+                          />
+                          {serviceSearch.length > 0 && (
+                            <TouchableOpacity onPress={() => setServiceSearch('')}>
+                              <Feather name="x" size={16} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        <View style={{ position: 'relative', marginTop: 8, marginBottom: 12 }}>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 12, paddingBottom: 8, paddingRight: 36 }}
+                            snapToInterval={145 + 12} // card width + gap
+                            snapToAlignment="start"
+                            decelerationRate="fast"
+                          >
+                            {filteredServices.length === 0 ? (
+                              <Text style={[styles.noResults, { color: colors.textSecondary, width: SCREEN_W - 32, textAlign: 'center', paddingVertical: 20 }]}>
+                                No se encontraron servicios
+                              </Text>
+                            ) : (
+                              filteredServices.map((s) => {
+                                const isSelected = service === s.name;
+                                const cardBg = isSelected
+                                  ? colors.accentDim
+                                  : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)');
+                                const cardBorderColor = isSelected ? colors.accent : colors.border;
+
+                                return (
+                                  <TouchableOpacity
+                                    key={s.id}
+                                    style={{
+                                      backgroundColor: cardBg,
+                                      borderColor: cardBorderColor,
+                                      width: 145,
+                                      height: 86,
+                                      padding: 12,
+                                      borderRadius: 14,
+                                      borderWidth: 1.5,
+                                      justifyContent: 'space-between',
+                                    }}
+                                    onPress={() => {
+                                      setService(s.name);
+                                      if (s.duration_min) {
+                                        setDuration(s.duration_min / 60);
+                                      }
+                                      setPrice(s.price || 0);
+                                    }}
+                                    activeOpacity={0.8}
+                                  >
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                      <View style={{ flex: 1, marginRight: 4 }}>
+                                        <Text style={{ color: isSelected ? colors.accent : colors.textPrimary, fontSize: 12, fontFamily: 'Inter_600SemiBold', lineHeight: 15 }} numberOfLines={2}>
+                                          {s.name}
+                                        </Text>
+                                      </View>
+                                      {isSelected && (
+                                        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                                          <Feather name="check" size={10} color={colors.primaryText || '#fff'} />
+                                        </View>
+                                      )}
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                                      <View style={{
+                                        backgroundColor: isSelected
+                                          ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+                                          : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'),
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                        borderRadius: 6,
+                                      }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? colors.accent : colors.textSecondary, fontFamily: 'Inter_700Bold' }}>
+                                          ${Math.round(s.price)}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  </TouchableOpacity>
+                                );
+                              })
+                            )}
+                          </ScrollView>
+                          <View style={styles.fadeOverlay} pointerEvents="none">
+                            <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.05 }} />
+                            <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.15 }} />
+                            <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.25 }} />
+                            <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.50 }} />
+                            <View style={{ width: 12, height: '100%', backgroundColor: bg, opacity: 0.75 }} />
+                          </View>
+                        </View>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {isBlockedSlot && (
+                  <>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Motivo del bloqueo</Text>
                     <TextInput
                       style={[styles.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border }]}
                       placeholderTextColor={colors.textSecondary}
-                      placeholder="Tipo de servicio"
+                      placeholder="Almuerzo, descanso, reunión..."
                       value={service}
                       onChangeText={setService}
                     />
-                  ) : (
-                    <>
-                      <View style={[styles.searchBox, { backgroundColor: inputBg, borderColor: colors.border }]}>
-                        <Feather name="search" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
-                        <TextInput
-                          style={[styles.searchTextInput, { color: colors.textPrimary }]}
-                          placeholder="Buscar servicio..."
-                          placeholderTextColor={colors.textSecondary}
-                          value={serviceSearch}
-                          onChangeText={setServiceSearch}
-                        />
-                        {serviceSearch.length > 0 && (
-                          <TouchableOpacity onPress={() => setServiceSearch('')}>
-                            <Feather name="x" size={16} color={colors.textSecondary} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-
-                      <View style={{ position: 'relative', marginTop: 8, marginBottom: 12 }}>
-                        <ScrollView
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={{ gap: 12, paddingBottom: 8, paddingRight: 36 }}
-                          snapToInterval={145 + 12} // card width + gap
-                          snapToAlignment="start"
-                          decelerationRate="fast"
-                        >
-                          {filteredServices.length === 0 ? (
-                            <Text style={[styles.noResults, { color: colors.textSecondary, width: SCREEN_W - 32, textAlign: 'center', paddingVertical: 20 }]}>
-                              No se encontraron servicios
-                            </Text>
-                          ) : (
-                            filteredServices.map((s) => {
-                              const isSelected = service === s.name;
-                              const cardBg = isSelected
-                                ? colors.accentDim
-                                : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)');
-                              const cardBorderColor = isSelected ? colors.accent : colors.border;
-
-                              return (
-                                <TouchableOpacity
-                                  key={s.id}
-                                  style={{
-                                    backgroundColor: cardBg,
-                                    borderColor: cardBorderColor,
-                                    width: 145,
-                                    height: 86,
-                                    padding: 12,
-                                    borderRadius: 14,
-                                    borderWidth: 1.5,
-                                    justifyContent: 'space-between',
-                                  }}
-                                  onPress={() => {
-                                    setService(s.name);
-                                    if (s.duration_min) {
-                                      setDuration(s.duration_min / 60);
-                                    }
-                                    setPrice(s.price || 0);
-                                  }}
-                                  activeOpacity={0.8}
-                                >
-                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <View style={{ flex: 1, marginRight: 4 }}>
-                                      <Text style={{ color: isSelected ? colors.accent : colors.textPrimary, fontSize: 12, fontFamily: 'Inter_600SemiBold', lineHeight: 15 }} numberOfLines={2}>
-                                        {s.name}
-                                      </Text>
-                                    </View>
-                                    {isSelected && (
-                                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-                                        <Feather name="check" size={10} color={colors.primaryText || '#fff'} />
-                                      </View>
-                                    )}
-                                  </View>
-                                  <View style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
-                                    <View style={{
-                                      backgroundColor: isSelected
-                                        ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
-                                        : (isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'),
-                                      paddingHorizontal: 8,
-                                      paddingVertical: 3,
-                                      borderRadius: 6,
-                                    }}>
-                                      <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? colors.accent : colors.textSecondary, fontFamily: 'Inter_700Bold' }}>
-                                        ${Math.round(s.price)}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                </TouchableOpacity>
-                              );
-                            })
-                          )}
-                        </ScrollView>
-                        <View style={styles.fadeOverlay} pointerEvents="none">
-                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.05 }} />
-                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.15 }} />
-                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.25 }} />
-                          <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.50 }} />
-                          <View style={{ width: 12, height: '100%', backgroundColor: bg, opacity: 0.75 }} />
-                        </View>
-                      </View>
-                    </>
-                  )}
-                </>
-              )}
-
-              {isBlockedSlot && (
-                <>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Motivo del bloqueo</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border }]}
-                    placeholderTextColor={colors.textSecondary}
-                    placeholder="Almuerzo, descanso, reunión..."
-                    value={service}
-                    onChangeText={setService}
-                  />
-                </>
-              )}
-
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Fecha</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: inputBg,
-                        borderColor: colors.border,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      },
-                    ]}
-                    onPress={() => setShowCalendarModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ color: colors.textPrimary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>
-                      {formatFriendlyDate(date) || 'Selecciona una fecha'}
-                    </Text>
-                    <Feather name="calendar" size={18} color={colors.accent} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Hora</Text>
-              <TimeWheelPicker
-                openingHour={7}
-                closingHour={22}
-                selectedSlot={formatHour(startHour)}
-                onSlotSelect={(slot) => {
-                  const parts = slot.split(':');
-                  const h = parseInt(parts[0], 10);
-                  const m = parseInt(parts[1], 10);
-                  setStartHour(h + m / 60);
-                }}
-                busyIntervals={busyIntervals}
-                durationMinutes={duration * 60}
-                isDarkMode={isDarkMode}
-              />
-
-              {role !== 'worker' && workers.length > 0 && (
-                <>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Trabajador</Text>
-                  <View style={styles.pills}>
-                    {workers.map((w) => (
-                      <TouchableOpacity
-                        key={w.id}
-                        style={[
-                          styles.pill,
-                          {
-                            backgroundColor: selectedWorkerId === w.id ? colors.accentDim : inputBg,
-                            borderColor: selectedWorkerId === w.id ? colors.accent : colors.border,
-                          },
-                        ]}
-                        onPress={() => setSelectedWorkerId(w.id)}
-                      >
-                        <Feather
-                          name="user"
-                          size={14}
-                          color={selectedWorkerId === w.id ? colors.accent : colors.textSecondary}
-                          style={{ marginRight: 2 }}
-                        />
-                        <Text style={[styles.pillText, { color: selectedWorkerId === w.id ? colors.accent : colors.textPrimary }]}>{w.name.split(' ')[0]}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: colors.accent, opacity: saving ? 0.6 : 1 }]}
-                onPress={handleSave}
-                disabled={saving}
-                activeOpacity={0.8}
-              >
-                {saving ? (
-                  <ActivityIndicator color={colors.primaryText} />
-                ) : (
-                  <Text style={[styles.saveBtnText, { color: colors.primaryText }]}>
-                    {mode === 'edit' ? 'Guardar cambios' : 'Guardar cita'}
-                  </Text>
+                  </>
                 )}
-              </TouchableOpacity>
-            </>
-          ) : appointment ? (
-            role === 'client' && appointment.client_id !== profile?.id ? (
-              <>
-                <View style={styles.detailHeader}>
-                  <View style={{ flex: 1, marginRight: 16 }}>
-                    <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
-                    <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>
-                      {appointment.status === 'blocked' ? 'Horario Bloqueado' : 'Reservado'}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 12,
-                      },
-                    ]}
-                  >
-                    <Feather name="lock" size={12} color={colors.textSecondary} />
-                    <Text style={[styles.statusText, { color: colors.textSecondary, fontWeight: '700' }]}>
-                      {appointment.status === 'blocked' ? 'BLOQUEADO' : 'OCUPADO'}
-                    </Text>
+
+                <View style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Fecha</Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: inputBg,
+                          borderColor: colors.border,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        },
+                      ]}
+                      onPress={() => setShowCalendarModal(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ color: colors.textPrimary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>
+                        {formatFriendlyDate(date) || 'Selecciona una fecha'}
+                      </Text>
+                      <Feather name="calendar" size={18} color={colors.accent} />
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)',
-                    borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    padding: 12,
-                    marginBottom: 16,
-                    gap: 10,
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Hora</Text>
+                <TimeWheelPicker
+                  openingHour={7}
+                  closingHour={22}
+                  selectedSlot={formatHour(startHour)}
+                  onSlotSelect={(slot) => {
+                    const parts = slot.split(':');
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    setStartHour(h + m / 60);
                   }}
-                >
-                  <Feather name="info" size={16} color="#3B82F6" />
-                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 }}>
-                    Este espacio ya está reservado. Los detalles específicos del cliente y del servicio no están visibles por motivos de privacidad.
-                  </Text>
-                </View>
+                  busyIntervals={busyIntervals}
+                  durationMinutes={duration * 60}
+                  isDarkMode={isDarkMode}
+                />
 
-                <BlurView
-                  intensity={isDarkMode ? 15 : 40}
-                  tint={isDarkMode ? 'dark' : 'light'}
-                  style={[
-                    styles.premiumCard,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                      overflow: 'hidden',
-                    },
-                  ]}
-                >
-                  {/* Date & Time Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                      <Feather name="calendar" size={18} color="#3B82F6" />
+                {role !== 'worker' && workers.length > 0 && (
+                  <>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Trabajador</Text>
+                    <View style={styles.pills}>
+                      {workers.map((w) => (
+                        <TouchableOpacity
+                          key={w.id}
+                          style={[
+                            styles.pill,
+                            {
+                              backgroundColor: selectedWorkerId === w.id ? colors.accentDim : inputBg,
+                              borderColor: selectedWorkerId === w.id ? colors.accent : colors.border,
+                            },
+                          ]}
+                          onPress={() => setSelectedWorkerId(w.id)}
+                        >
+                          <Feather
+                            name="user"
+                            size={14}
+                            color={selectedWorkerId === w.id ? colors.accent : colors.textSecondary}
+                            style={{ marginRight: 2 }}
+                          />
+                          <Text style={[styles.pillText, { color: selectedWorkerId === w.id ? colors.accent : colors.textPrimary }]}>{w.name.split(' ')[0]}</Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                        {appointment.date}  •  {formatHour(appointment.startHour)} hs
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Duration Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
-                      <Feather name="clock" size={18} color="#F59E0B" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                        {appointment.durationHours >= 1
-                          ? `${appointment.durationHours} ${appointment.durationHours === 1 ? 'hora' : 'horas'}`
-                          : `${appointment.durationHours * 60} minutos`}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Worker Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(48, 209, 88, 0.15)' : 'rgba(48, 209, 88, 0.1)' }]}>
-                      <Feather name="users" size={18} color="#30D158" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={[styles.smallDot, { backgroundColor: '#30D158' }]} />
-                        <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
-                          {appointment.worker}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </BlurView>
+                  </>
+                )}
 
                 <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginTop: 24 }]}
-                  onPress={() => sheetRef.current?.close()}
+                  style={[styles.saveBtn, { backgroundColor: colors.accent, opacity: saving ? 0.6 : 1 }]}
+                  onPress={handleSave}
+                  disabled={saving}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.saveBtnText, { color: colors.textPrimary }]}>Cerrar</Text>
+                  {saving ? (
+                    <ActivityIndicator color={colors.primaryText} />
+                  ) : (
+                    <Text style={[styles.saveBtnText, { color: colors.primaryText }]}>
+                      {mode === 'edit' ? 'Guardar cambios' : 'Guardar cita'}
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </>
-            ) : (
-              <>
-                <View style={styles.detailHeader}>
-                  <View style={{ flex: 1, marginRight: 16 }}>
-                    <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
-                    <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{appointment.service}</Text>
+            ) : appointment ? (
+              role === 'client' && appointment.client_id !== profile?.id ? (
+                <>
+                  <View style={styles.detailHeader}>
+                    <View style={{ flex: 1, marginRight: 16 }}>
+                      <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
+                      <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>
+                        {appointment.status === 'blocked' ? 'BLOQUEADO' : 'RESERVADO'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 12,
+                        },
+                      ]}
+                    >
+                      <Feather name="lock" size={12} color={colors.textSecondary} />
+                      <Text style={[styles.statusText, { color: colors.textSecondary, fontWeight: '700' }]}>
+                        {appointment.status === 'blocked' ? 'BLOQUEADO' : 'OCUPADO'}
+                      </Text>
+                    </View>
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-                    ]}
+
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginTop: 24 }]}
+                    onPress={() => sheetRef.current?.close()}
+                    activeOpacity={0.8}
                   >
-                    <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary, fontWeight: '700' }]}>
-                      {STATUS_CONFIG[appointment.status]?.label?.toUpperCase() ?? appointment.status?.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-
-                <BlurView
-                  intensity={isDarkMode ? 15 : 40}
-                  tint={isDarkMode ? 'dark' : 'light'}
-                  style={[
-                    styles.premiumCard,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                      overflow: 'hidden'
-                    }
-                  ]}
-                >
-                  {/* Date & Time Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                      <Feather name="calendar" size={18} color="#3B82F6" />
+                    <Text style={[styles.saveBtnText, { color: colors.textPrimary }]}>Cerrar</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={styles.detailHeader}>
+                    <View style={{ flex: 1, marginRight: 16 }}>
+                      <Text style={[styles.detailServiceLabel, { color: colors.textSecondary }]}>SERVICIO</Text>
+                      <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>{appointment.service}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                        {appointment.date}  •  {formatHour(appointment.startHour)} hs
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: STATUS_CONFIG[appointment.status]?.bg ?? colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+                      ]}
+                    >
+                      <Text style={[styles.statusText, { color: STATUS_CONFIG[appointment.status]?.text ?? colors.textPrimary, fontWeight: '700' }]}>
+                        {STATUS_CONFIG[appointment.status]?.label?.toUpperCase() ?? appointment.status?.toUpperCase()}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Duration Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
-                      <Feather name="clock" size={18} color="#F59E0B" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
-                        {appointment.durationHours >= 1
-                          ? `${appointment.durationHours} ${appointment.durationHours === 1 ? 'hora' : 'horas'}`
-                          : `${appointment.durationHours * 60} minutos`}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Client Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)' }]}>
-                      <Feather name="user" size={18} color="#A855F7" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Cliente</Text>
-                      <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
-                        {appointment.clientName}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Worker Row */}
-                  <View style={styles.premiumDetailRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(48, 209, 88, 0.15)' : 'rgba(48, 209, 88, 0.1)' }]}>
-                      <Feather name="users" size={18} color="#30D158" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={[styles.smallDot, { backgroundColor: '#30D158' }]} />
-                        <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
-                          {appointment.worker}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </BlurView>
-
-                <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
-                  {/* 1. Primary Action (Confirmar or Completar) */}
-                  {role !== 'client' && appointment.status !== 'blocked' && (
-                    <>
-                      {appointment.status === 'pending' && (
-                        <ActionBtn
-                          label="Confirmar"
-                          color="#2E7D45"
-                          onPress={() => handleStatusChange('confirmed')}
-                          saving={saving}
-                          style={{ flex: 1.4 }}
-                        />
-                      )}
-                      {appointment.status === 'confirmed' && (
-                        <ActionBtn
-                          label="Completar"
-                          color="#2563EB"
-                          onPress={() => handleStatusChange('completed')}
-                          saving={saving}
-                          style={{ flex: 1.4 }}
-                        />
-                      )}
-                    </>
-                  )}
-
-                  {/* 2. Secondary Actions (Editar, Eliminar) */}
-                  {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                    <ActionBtn
-                      label="Editar"
-                      color="#fda428ff"
-                      onPress={() => {
-                        setMode('edit');
-                        setClientName(appointment.clientName);
-                        setService(appointment.service);
-                        setServiceSearch('');
-                        setDate(appointment.date ?? '');
-                        if (appointment.date) {
-                          const parsed = parseDateString(appointment.date);
-                          setCalendarYear(parsed.getFullYear());
-                          setCalendarMonth(parsed.getMonth());
-                        }
-                        setStartHour(appointment.startHour);
-                        setDuration(appointment.durationHours);
-                        setSelectedWorkerId(appointment.worker_id);
-                        setIsBlockedSlot(appointment.status === 'blocked');
-                        setPrice(appointment.price || 0);
-                        sheetRef.current?.snapToIndex(1);
-                      }}
-                      saving={saving}
-                      style={{ flex: 1 }}
-                    />
-                  )}
-
-                  {canEditOrCancel && (
-                    <ActionBtn
-                      label={appointment.status === 'blocked' ? 'Desbloquear' : 'Eliminar'}
-                      color="#DC2626"
-                      onPress={handleDelete}
-                      saving={saving}
-                      style={{ flex: 1 }}
-                    />
-                  )}
-                </View>
-              </>
-            )
-          ) : null}
-        </BottomSheetScrollView>
-      </BottomSheet>
-
-      <GlassModal visible={showCalendarModal} onClose={() => setShowCalendarModal(false)}>
-        <View style={{ width: '100%', gap: 16 }}>
-          {/* Header: Month and Chevrons */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-            <TouchableOpacity
-              onPress={() => {
-                setCalendarMonth((prev) => {
-                  if (prev === 0) {
-                    setCalendarYear((y) => y - 1);
-                    return 11;
-                  }
-                  return prev - 1;
-                });
-              }}
-              style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
-            >
-              <Feather name="chevron-left" size={18} color={colors.textPrimary} />
-            </TouchableOpacity>
-            
-            <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.textPrimary, textTransform: 'capitalize' }}>
-              {new Date(calendarYear, calendarMonth).toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
-            </Text>
-            
-            <TouchableOpacity
-              onPress={() => {
-                setCalendarMonth((prev) => {
-                  if (prev === 11) {
-                    setCalendarYear((y) => y + 1);
-                    return 0;
-                  }
-                  return prev + 1;
-                });
-              }}
-              style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
-            >
-              <Feather name="chevron-right" size={18} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Weekdays Row */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, index) => (
-              <View key={index} style={{ width: `${100 / 7}%`, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: colors.textSecondary, opacity: 0.7 }}>
-                  {d}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Days Grid */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
-            {getDayMonthGrid(calendarYear, calendarMonth).map((d, index) => {
-              const dStr = toLocalISO(d);
-              const isSelected = date === dStr;
-              const isCurrentMonth = d.getMonth() === calendarMonth;
-              
-              const today = new Date();
-              today.setHours(0,0,0,0);
-              const isPast = d < today;
-              const isTodayDate = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
-              const isDisabled = role === 'client' && isPast;
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  disabled={isDisabled}
-                  style={{
-                    width: `${100 / 7}%`,
-                    aspectRatio: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onPress={() => {
-                    setDate(dStr);
-                    if (onDateChange) {
-                      onDateChange(dStr);
-                    }
-                    setShowCalendarModal(false);
-                  }}
-                >
-                  <View
+                  <BlurView
+                    intensity={isDarkMode ? 15 : 40}
+                    tint={isDarkMode ? 'dark' : 'light'}
                     style={[
+                      styles.premiumCard,
                       {
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                      },
-                      isSelected && {
-                        backgroundColor: colors.accent,
-                      },
-                      isTodayDate && !isSelected && {
-                        borderWidth: 1,
-                        borderColor: colors.accent,
+                        borderColor: colors.border,
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                        overflow: 'hidden'
                       }
                     ]}
                   >
-                    <Text
+                    {/* Date & Time Row */}
+                    <View style={styles.premiumDetailRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                        <Feather name="calendar" size={18} color="#3B82F6" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Fecha y Hora</Text>
+                        <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                          {appointment.date}  •  {formatHour(appointment.startHour)} hs
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    {/* Duration Row */}
+                    <View style={styles.premiumDetailRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                        <Feather name="clock" size={18} color="#F59E0B" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Duración</Text>
+                        <Text style={[styles.premiumValue, { color: colors.textPrimary }]}>
+                          {appointment.durationHours >= 1
+                            ? `${appointment.durationHours} ${appointment.durationHours === 1 ? 'hora' : 'horas'}`
+                            : `${appointment.durationHours * 60} minutos`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    {/* Client Row */}
+                    <View style={styles.premiumDetailRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)' }]}>
+                        <Feather name="user" size={18} color="#A855F7" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Cliente</Text>
+                        <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                          {appointment.clientName}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    {/* Worker Row */}
+                    <View style={styles.premiumDetailRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(48, 209, 88, 0.15)' : 'rgba(48, 209, 88, 0.1)' }]}>
+                        <Feather name="users" size={18} color="#30D158" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.premiumLabel, { color: colors.textSecondary }]}>Profesional asignado</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={[styles.smallDot, { backgroundColor: '#30D158' }]} />
+                          <Text style={[styles.premiumValue, { color: colors.textPrimary, fontWeight: '600' }]}>
+                            {appointment.worker}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </BlurView>
+
+                  <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
+                    {/* 1. Primary Action (Confirmar or Completar) */}
+                    {role !== 'client' && appointment.status !== 'blocked' && (
+                      <>
+                        {appointment.status === 'pending' && (
+                          <ActionBtn
+                            label="Confirmar"
+                            color="#2E7D45"
+                            onPress={() => handleStatusChange('confirmed')}
+                            saving={saving}
+                            style={{ flex: 1.4 }}
+                          />
+                        )}
+                        {appointment.status === 'confirmed' && (
+                          <ActionBtn
+                            label="Completar"
+                            color="#2563EB"
+                            onPress={() => handleStatusChange('completed')}
+                            saving={saving}
+                            style={{ flex: 1.4 }}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* 2. Secondary Actions (Editar, Eliminar) */}
+                    {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
+                      <ActionBtn
+                        label="Editar"
+                        color="#fda428ff"
+                        onPress={() => {
+                          setMode('edit');
+                          setClientName(appointment.clientName);
+                          setService(appointment.service);
+                          setServiceSearch('');
+                          setDate(appointment.date ?? '');
+                          if (appointment.date) {
+                            const parsed = parseDateString(appointment.date);
+                            setCalendarYear(parsed.getFullYear());
+                            setCalendarMonth(parsed.getMonth());
+                          }
+                          setStartHour(appointment.startHour);
+                          setDuration(appointment.durationHours);
+                          setSelectedWorkerId(appointment.worker_id);
+                          setIsBlockedSlot(appointment.status === 'blocked');
+                          setPrice(appointment.price || 0);
+                          sheetRef.current?.snapToIndex(1);
+                        }}
+                        saving={saving}
+                        style={{ flex: 1 }}
+                      />
+                    )}
+
+                    {canEditOrCancel && (
+                      <ActionBtn
+                        label={appointment.status === 'blocked' ? 'Desbloquear' : 'Eliminar'}
+                        color="#DC2626"
+                        onPress={handleDelete}
+                        saving={saving}
+                        style={{ flex: 1 }}
+                      />
+                    )}
+                  </View>
+                </>
+              )
+            ) : null}
+          </BottomSheetScrollView>
+        </BottomSheet>
+
+        <GlassModal visible={showCalendarModal} onClose={() => setShowCalendarModal(false)}>
+          <View style={{ width: '100%', gap: 16 }}>
+            {/* Header: Month and Chevrons */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setCalendarMonth((prev) => {
+                    if (prev === 0) {
+                      setCalendarYear((y) => y - 1);
+                      return 11;
+                    }
+                    return prev - 1;
+                  });
+                }}
+                style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+              >
+                <Feather name="chevron-left" size={18} color={colors.textPrimary} />
+              </TouchableOpacity>
+
+              <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.textPrimary, textTransform: 'capitalize' }}>
+                {new Date(calendarYear, calendarMonth).toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setCalendarMonth((prev) => {
+                    if (prev === 11) {
+                      setCalendarYear((y) => y + 1);
+                      return 0;
+                    }
+                    return prev + 1;
+                  });
+                }}
+                style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+              >
+                <Feather name="chevron-right" size={18} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Weekdays Row */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+              {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, index) => (
+                <View key={index} style={{ width: `${100 / 7}%`, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: colors.textSecondary, opacity: 0.7 }}>
+                    {d}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Days Grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+              {getDayMonthGrid(calendarYear, calendarMonth).map((d, index) => {
+                const dStr = toLocalISO(d);
+                const isSelected = date === dStr;
+                const isCurrentMonth = d.getMonth() === calendarMonth;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const isPast = d < today;
+                const isTodayDate = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+                const isDisabled = role === 'client' && isPast;
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    disabled={isDisabled}
+                    style={{
+                      width: `${100 / 7}%`,
+                      aspectRatio: 1,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={() => {
+                      setDate(dStr);
+                      if (onDateChange) {
+                        onDateChange(dStr);
+                      }
+                      setShowCalendarModal(false);
+                    }}
+                  >
+                    <View
                       style={[
                         {
-                          fontSize: 13,
-                          fontFamily: isSelected ? 'Inter_700Bold' : 'Inter_500Medium',
-                          color: isSelected
-                            ? (colors.primaryText || '#fff')
-                            : isCurrentMonth
-                              ? colors.textPrimary
-                              : colors.textSecondary,
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
                         },
-                        !isCurrentMonth && !isSelected && {
-                          opacity: 0.35,
+                        isSelected && {
+                          backgroundColor: colors.accent,
                         },
-                        isDisabled && {
-                          color: colors.textSecondary,
-                          opacity: 0.25,
-                          textDecorationLine: 'line-through',
+                        isTodayDate && !isSelected && {
+                          borderWidth: 1,
+                          borderColor: colors.accent,
                         }
                       ]}
                     >
-                      {d.getDate()}
-                    </Text>
-                    
-                    {isTodayDate && isSelected && (
-                      <View style={{
-                        position: 'absolute',
-                        bottom: 3,
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: colors.primaryText || '#fff'
-                      }} />
-                    )}
-                    
-                    {isTodayDate && !isSelected && (
-                      <View style={{
-                        position: 'absolute',
-                        bottom: 3,
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
-                        backgroundColor: colors.accent
-                      }} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                      <Text
+                        style={[
+                          {
+                            fontSize: 13,
+                            fontFamily: isSelected ? 'Inter_700Bold' : 'Inter_500Medium',
+                            color: isSelected
+                              ? (colors.primaryText || '#fff')
+                              : isCurrentMonth
+                                ? colors.textPrimary
+                                : colors.textSecondary,
+                          },
+                          !isCurrentMonth && !isSelected && {
+                            opacity: 0.35,
+                          },
+                          isDisabled && {
+                            color: colors.textSecondary,
+                            opacity: 0.25,
+                            textDecorationLine: 'line-through',
+                          }
+                        ]}
+                      >
+                        {d.getDate()}
+                      </Text>
 
-          {/* Modal Actions */}
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 12 }}>
-            <TouchableOpacity
-              onPress={() => setShowCalendarModal(false)}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                borderRadius: 10,
-                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              }}
-            >
-              <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.textPrimary }}>
-                Cancelar
-              </Text>
-            </TouchableOpacity>
+                      {isTodayDate && isSelected && (
+                        <View style={{
+                          position: 'absolute',
+                          bottom: 3,
+                          width: 4,
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor: colors.primaryText || '#fff'
+                        }} />
+                      )}
+
+                      {isTodayDate && !isSelected && (
+                        <View style={{
+                          position: 'absolute',
+                          bottom: 3,
+                          width: 4,
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor: colors.accent
+                        }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Modal Actions */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => setShowCalendarModal(false)}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 10,
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.textPrimary }}>
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </GlassModal>
+        </GlassModal>
       </>
     );
   },
