@@ -1053,6 +1053,15 @@ export default function CalendarScreen() {
           businessId={businessId ?? ''}
           onSaved={refetch}
           showToast={showToast}
+          onDateChange={(dateStr) => {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+              const y = parseInt(parts[0], 10);
+              const m = parseInt(parts[1], 10) - 1;
+              const d = parseInt(parts[2], 10);
+              setAnchor(new Date(y, m, d));
+            }
+          }}
         />
 
         <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />

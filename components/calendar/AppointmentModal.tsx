@@ -34,6 +34,7 @@ import { useIsGym } from '../../hooks/useIsGym';
 import { ToastOptions } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
 import TimeWheelPicker from '../TimeWheelPicker';
+import GlassModal from '../GlassModal';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -75,9 +76,70 @@ type Props = {
   businessId: string;
   onSaved: () => void;
   showToast: (opts: ToastOptions) => void;
+  onDateChange?: (dateStr: string) => void;
 };
 
+function toLocalISO(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
+function parseDateString(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return new Date();
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  return new Date(year, month, day);
+}
+
+function formatFriendlyDate(dateStr: string) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const d = new Date(year, month, day);
+  
+  const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const MONTHS_ES_LONG = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  
+  return `${DAYS_ES[d.getDay()]}, ${day} de ${MONTHS_ES_LONG[month]} de ${year}`;
+}
+
+function getDayMonthGrid(year: number, month: number): Date[] {
+  const grid: Date[] = [];
+  const first = new Date(year, month, 1);
+  const firstDow = first.getDay();
+  const offset = firstDow === 0 ? 6 : firstDow - 1;
+  
+  for (let i = offset; i > 0; i--) {
+    const d = new Date(year, month, 1 - i);
+    grid.push(d);
+  }
+  
+  const last = new Date(year, month + 1, 0);
+  const totalDays = last.getDate();
+  for (let i = 1; i <= totalDays; i++) {
+    const d = new Date(year, month, i);
+    grid.push(d);
+  }
+  
+  const remaining = 42 - grid.length;
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(year, month + 1, i);
+    grid.push(d);
+  }
+  
+  return grid;
+}
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -90,7 +152,7 @@ function formatHour(h: number) {
 }
 
 const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
-  ({ workers, businessId, onSaved, showToast }, ref) => {
+  ({ workers, businessId, onSaved, showToast, onDateChange }, ref) => {
     const sheetRef = useRef<BottomSheet>(null);
     const { colors, isDarkMode } = useTheme();
     const { profile } = useAuth();
@@ -130,6 +192,10 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
+    const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+    const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+
     const [isBlockedSlot, setIsBlockedSlot] = useState(false);
     const [busyIntervals, setBusyIntervals] = useState<{ start: number; end: number }[]>([]);
     const [businessServices, setBusinessServices] = useState<{ id: string; name: string; price: number; duration_min: number }[]>([]);
@@ -154,38 +220,46 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     }, [businessId]);
 
     useEffect(() => {
-      if (!date || !businessId || mode !== 'create') return;
+      if (!date || !businessId || (mode !== 'create' && mode !== 'edit')) return;
       const workerForQuery = role === 'worker'
         ? (workers.find(w => w.user_id === profile?.id)?.id ?? workers[0]?.id)
         : (selectedWorkerId ?? workers[0]?.id);
 
       if (!workerForQuery) return;
 
-      supabase
+      let query = supabase
         .from('appointments')
-        .select('start_hour, duration_hours')
+        .select('id, start_hour, duration_hours')
         .eq('date', date)
         .eq('worker_id', workerForQuery)
-        .neq('status', 'cancelled')
-        .then(({ data, error }) => {
-          if (!error && data) {
-            setBusyIntervals(
-              data.map((a: any) => ({
-                start: Number(a.start_hour),
-                end: Number(a.start_hour) + Number(a.duration_hours),
-              }))
-            );
-          } else {
-            setBusyIntervals([]);
-          }
-        });
-    }, [date, selectedWorkerId, workers, businessId, role, profile?.id, mode]);
+        .neq('status', 'cancelled');
+
+      if (mode === 'edit' && appointment) {
+        query = query.neq('id', appointment.id);
+      }
+
+      query.then(({ data, error }) => {
+        if (!error && data) {
+          setBusyIntervals(
+            data.map((a: any) => ({
+              start: Number(a.start_hour),
+              end: Number(a.start_hour) + Number(a.duration_hours),
+            }))
+          );
+        } else {
+          setBusyIntervals([]);
+        }
+      });
+    }, [date, selectedWorkerId, workers, businessId, role, profile?.id, mode, appointment?.id]);
 
     useImperativeHandle(ref, () => ({
       open(payload) {
         if (payload.mode === 'create') {
           setMode('create');
           setDate(payload.date);
+          const parsed = parseDateString(payload.date);
+          setCalendarYear(parsed.getFullYear());
+          setCalendarMonth(parsed.getMonth());
           setStartHour(payload.startHour ?? 9);
           setIsBlockedSlot(false);
           setClientName(role === 'client' ? (profile?.nickname ?? '') : '');
@@ -199,11 +273,17 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
             setSelectedWorkerId(payload.workerId ?? workers[0]?.id ?? null);
           }
           setAppointment(null);
+          sheetRef.current?.snapToIndex(1);
         } else {
           setMode('detail');
           setAppointment(payload.appointment);
+          if (payload.appointment.date) {
+            const parsed = parseDateString(payload.appointment.date);
+            setCalendarYear(parsed.getFullYear());
+            setCalendarMonth(parsed.getMonth());
+          }
+          sheetRef.current?.snapToIndex(0);
         }
-        sheetRef.current?.snapToIndex(0);
       },
       close() {
         sheetRef.current?.close();
@@ -587,8 +667,9 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     }, [businessServices, serviceSearch]);
 
     return (
-      <BottomSheet
-        ref={sheetRef}
+      <>
+        <BottomSheet
+          ref={sheetRef}
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
@@ -799,22 +880,26 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    {mode === 'edit' ? 'Fecha (AAAA-MM-DD)' : 'Fecha'}
-                  </Text>
-                  {mode === 'edit' ? (
-                    <TextInput
-                      style={[styles.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: colors.border }]}
-                      placeholderTextColor={colors.textSecondary}
-                      placeholder="AAAA-MM-DD"
-                      value={date}
-                      onChangeText={setDate}
-                    />
-                  ) : (
-                    <View style={[styles.input, styles.readOnly, { backgroundColor: inputBg, borderColor: colors.border }]}>
-                      <Text style={{ color: colors.textPrimary }}>{date}</Text>
-                    </View>
-                  )}
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Fecha</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: inputBg,
+                        borderColor: colors.border,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      },
+                    ]}
+                    onPress={() => setShowCalendarModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontSize: 15, fontFamily: 'Inter_500Medium' }}>
+                      {formatFriendlyDate(date) || 'Selecciona una fecha'}
+                    </Text>
+                    <Feather name="calendar" size={18} color={colors.accent} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -833,45 +918,6 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 durationMinutes={duration * 60}
                 isDarkMode={isDarkMode}
               />
-              <Text style={[styles.label, { color: colors.textSecondary, marginTop: 12 }]}>Duración</Text>
-              <View style={{ position: 'relative', marginTop: 4, marginBottom: 12 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 36, paddingBottom: 4 }}
-                >
-                  {DURATION_OPTIONS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={[
-                        styles.pill,
-                        {
-                          backgroundColor: duration === opt.value ? colors.accent : inputBg,
-                          borderColor: duration === opt.value ? colors.accent : colors.border,
-                          marginRight: 8,
-                        },
-                      ]}
-                      onPress={() => setDuration(opt.value)}
-                    >
-                      <Text
-                        style={[
-                          styles.pillText,
-                          { color: duration === opt.value ? colors.primaryText : colors.textSecondary },
-                        ]}
-                      >
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <View style={styles.fadeOverlay} pointerEvents="none">
-                  <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.05 }} />
-                  <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.15 }} />
-                  <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.25 }} />
-                  <View style={{ width: 8, height: '100%', backgroundColor: bg, opacity: 0.50 }} />
-                  <View style={{ width: 12, height: '100%', backgroundColor: bg, opacity: 0.75 }} />
-                </View>
-              </View>
 
               {role !== 'worker' && workers.length > 0 && (
                 <>
@@ -1167,11 +1213,17 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         setService(appointment.service);
                         setServiceSearch('');
                         setDate(appointment.date ?? '');
+                        if (appointment.date) {
+                          const parsed = parseDateString(appointment.date);
+                          setCalendarYear(parsed.getFullYear());
+                          setCalendarMonth(parsed.getMonth());
+                        }
                         setStartHour(appointment.startHour);
                         setDuration(appointment.durationHours);
                         setSelectedWorkerId(appointment.worker_id);
                         setIsBlockedSlot(appointment.status === 'blocked');
                         setPrice(appointment.price || 0);
+                        sheetRef.current?.snapToIndex(1);
                       }}
                       saving={saving}
                       style={{ flex: 1 }}
@@ -1193,6 +1245,177 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           ) : null}
         </BottomSheetScrollView>
       </BottomSheet>
+
+      <GlassModal visible={showCalendarModal} onClose={() => setShowCalendarModal(false)}>
+        <View style={{ width: '100%', gap: 16 }}>
+          {/* Header: Month and Chevrons */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setCalendarMonth((prev) => {
+                  if (prev === 0) {
+                    setCalendarYear((y) => y - 1);
+                    return 11;
+                  }
+                  return prev - 1;
+                });
+              }}
+              style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+            >
+              <Feather name="chevron-left" size={18} color={colors.textPrimary} />
+            </TouchableOpacity>
+            
+            <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.textPrimary, textTransform: 'capitalize' }}>
+              {new Date(calendarYear, calendarMonth).toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+            </Text>
+            
+            <TouchableOpacity
+              onPress={() => {
+                setCalendarMonth((prev) => {
+                  if (prev === 11) {
+                    setCalendarYear((y) => y + 1);
+                    return 0;
+                  }
+                  return prev + 1;
+                });
+              }}
+              style={{ padding: 8, borderRadius: 8, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}
+            >
+              <Feather name="chevron-right" size={18} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Weekdays Row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, index) => (
+              <View key={index} style={{ width: `${100 / 7}%`, alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: colors.textSecondary, opacity: 0.7 }}>
+                  {d}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Days Grid */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+            {getDayMonthGrid(calendarYear, calendarMonth).map((d, index) => {
+              const dStr = toLocalISO(d);
+              const isSelected = date === dStr;
+              const isCurrentMonth = d.getMonth() === calendarMonth;
+              
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              const isPast = d < today;
+              const isTodayDate = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+              const isDisabled = role === 'client' && isPast;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  disabled={isDisabled}
+                  style={{
+                    width: `${100 / 7}%`,
+                    aspectRatio: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    setDate(dStr);
+                    if (onDateChange) {
+                      onDateChange(dStr);
+                    }
+                    setShowCalendarModal(false);
+                  }}
+                >
+                  <View
+                    style={[
+                      {
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                      },
+                      isSelected && {
+                        backgroundColor: colors.accent,
+                      },
+                      isTodayDate && !isSelected && {
+                        borderWidth: 1,
+                        borderColor: colors.accent,
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        {
+                          fontSize: 13,
+                          fontFamily: isSelected ? 'Inter_700Bold' : 'Inter_500Medium',
+                          color: isSelected
+                            ? (colors.primaryText || '#fff')
+                            : isCurrentMonth
+                              ? colors.textPrimary
+                              : colors.textSecondary,
+                        },
+                        !isCurrentMonth && !isSelected && {
+                          opacity: 0.35,
+                        },
+                        isDisabled && {
+                          color: colors.textSecondary,
+                          opacity: 0.25,
+                          textDecorationLine: 'line-through',
+                        }
+                      ]}
+                    >
+                      {d.getDate()}
+                    </Text>
+                    
+                    {isTodayDate && isSelected && (
+                      <View style={{
+                        position: 'absolute',
+                        bottom: 3,
+                        width: 4,
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: colors.primaryText || '#fff'
+                      }} />
+                    )}
+                    
+                    {isTodayDate && !isSelected && (
+                      <View style={{
+                        position: 'absolute',
+                        bottom: 3,
+                        width: 4,
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: colors.accent
+                      }} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Modal Actions */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => setShowCalendarModal(false)}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              }}
+            >
+              <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.textPrimary }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </GlassModal>
+      </>
     );
   },
 );

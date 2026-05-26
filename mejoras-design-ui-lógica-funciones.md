@@ -1,1 +1,0 @@
-“La UI está quedando debajo de la Dynamic Island en iPhone 17 Pro Max. Implementa correctamente Safe Area usando react-native-safe-area-context y aplica top inset dinámico en todos los headers/layouts.” 

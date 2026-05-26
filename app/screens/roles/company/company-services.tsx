@@ -35,6 +35,7 @@ export default function CompanyServicesScreen() {
   const [editingService, setEditingService] = useState<any>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [editDuration, setEditDuration] = useState('30');
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchServices = React.useCallback(async () => {
@@ -105,12 +106,14 @@ export default function CompanyServicesScreen() {
     setEditingService({ id: 'new' });
     setEditName('');
     setEditPrice('');
+    setEditDuration('30');
   };
 
   const handleEditPress = (service: any) => {
     setEditingService(service);
     setEditName(service.name || '');
     setEditPrice(String(service.price || ''));
+    setEditDuration(String(service.duration_min || '30'));
   };
 
   const handleSaveEdit = async () => {
@@ -140,7 +143,7 @@ export default function CompanyServicesScreen() {
             business_id: business.id,
             name: finalName,
             price: parseFloat(editPrice) || 0,
-            duration_min: 30,
+            duration_min: parseInt(editDuration, 10) || 30,
             is_active: true
           });
         if (error) throw error;
@@ -154,7 +157,8 @@ export default function CompanyServicesScreen() {
           .from('business_services')
           .update({ 
             name: finalName, 
-            price: parseFloat(editPrice) || 0 
+            price: parseFloat(editPrice) || 0,
+            duration_min: parseInt(editDuration, 10) || 30
           })
           .eq('id', editingService.id);
         if (error) throw error;
@@ -287,7 +291,7 @@ export default function CompanyServicesScreen() {
                         {item.name || 'Servicio sin nombre'}
                       </Text>
                       <Text style={[localStyles.servicePrice, { color: appColors.primary }]}>
-                        ${Number(item.price || 0).toLocaleString('es-CL')}
+                        ${Number(item.price || 0).toLocaleString('es-CL')} • {item.duration_min || 30} min
                       </Text>
                     </View>
                     <View style={[localStyles.editBadge, { backgroundColor: colors.background }]}>
@@ -363,6 +367,15 @@ export default function CompanyServicesScreen() {
               keyboardType="numeric"
               placeholder="Ej: 15000"
               label="PRECIO ($)"
+              style={{ marginTop: 16 }}
+            />
+
+            <GlassInput
+              value={editDuration}
+              onChangeText={setEditDuration}
+              keyboardType="numeric"
+              placeholder="Ej: 30"
+              label="DURACIÓN (MINUTOS)"
               style={{ marginTop: 16 }}
             />
 
