@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -18,6 +19,75 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
+
+// --- Local Date Helpers ---
+const toLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getStartOfWeek = (date: Date): Date => {
+  const result = new Date(date);
+  const day = result.getDay();
+  const diff = result.getDate() - day + (day === 0 ? -6 : 1);
+  result.setDate(diff);
+  return result;
+};
+
+const getEndOfWeek = (startDate: Date): Date => {
+  const result = new Date(startDate);
+  result.setDate(startDate.getDate() + 6);
+  return result;
+};
+
+const getStartOfMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+const getEndOfMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+};
+
+const monthsSpanish = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const monthsShortSpanish = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+];
+
+const daysSpanish = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+];
+
+const formatDateFriendly = (date: Date): string => {
+  return `${daysSpanish[date.getDay()]}, ${date.getDate()} de ${monthsSpanish[date.getMonth()]} de ${date.getFullYear()}`;
+};
+
+const formatWeekFriendly = (start: Date, end: Date): string => {
+  const startDay = start.getDate();
+  const startMonth = monthsShortSpanish[start.getMonth()];
+  const endDay = end.getDate();
+  const endMonth = monthsShortSpanish[end.getMonth()];
+  const startYear = start.getFullYear();
+  const endYear = end.getFullYear();
+  
+  if (startYear !== endYear) {
+    return `${startDay} ${startMonth} ${startYear} - ${endDay} ${endMonth} ${endYear}`;
+  }
+  if (start.getMonth() !== end.getMonth()) {
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth}, ${startYear}`;
+  }
+  return `${startDay} - ${endDay} de ${monthsSpanish[start.getMonth()]}, ${startYear}`;
+};
+
+const formatMonthFriendly = (date: Date): string => {
+  return `${monthsSpanish[date.getMonth()]} ${date.getFullYear()}`;
+};
 
 export default function WorkerHistoryScreen() {
   const { business, profile } = useAuth();
@@ -32,6 +102,9 @@ export default function WorkerHistoryScreen() {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | 'all'>('all');
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>(range ?? 'day');
   const [isGym, setIsGym] = useState(false);
+  
+  // Navigation
+  const [anchorDate, setAnchorDate] = useState<Date>(new Date());
 
   const fetchHistory = useCallback(async () => {
     if (!profile?.id) return;
@@ -59,27 +132,37 @@ export default function WorkerHistoryScreen() {
         }
       }
 
-      // 3. Definir rango de fechas
-      const now = new Date();
-      let startDate = new Date();
+      // 3. Definir rango de fechas locales
+      let startDateStr = '';
+      let endDateStr = '';
+
       if (timeRange === 'day') {
-        startDate.setHours(0, 0, 0, 0);
+        startDateStr = toLocalDateString(anchorDate);
+        endDateStr = startDateStr;
       } else if (timeRange === 'week') {
-        const day = now.getDay() || 7;
-        startDate.setDate(now.getDate() - day + 1);
-        startDate.setHours(0, 0, 0, 0);
+        const start = getStartOfWeek(anchorDate);
+        const end = getEndOfWeek(start);
+        startDateStr = toLocalDateString(start);
+        endDateStr = toLocalDateString(end);
       } else {
-        startDate.setDate(1);
-        startDate.setHours(0, 0, 0, 0);
+        const start = getStartOfMonth(anchorDate);
+        const end = getEndOfMonth(anchorDate);
+        startDateStr = toLocalDateString(start);
+        endDateStr = toLocalDateString(end);
       }
 
       // 4. Consultar citas completadas del trabajador
-      const query = supabase
+      let query = supabase
         .from('appointments')
         .select('*, workers(name)')
         .eq('worker_id', meData.id)
-        .eq('status', 'completed')
-        .gte('date', startDate.toISOString().split('T')[0]);
+        .eq('status', 'completed');
+
+      if (timeRange === 'day') {
+        query = query.eq('date', startDateStr);
+      } else {
+        query = query.gte('date', startDateStr).lte('date', endDateStr);
+      }
 
       const { data, error } = await query.order('date', { ascending: false }).order('start_hour', { ascending: false });
 
@@ -92,11 +175,41 @@ export default function WorkerHistoryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [profile?.id, timeRange]);
+  }, [profile?.id, timeRange, anchorDate]);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
+
+  const changeTimeRange = (range: 'day' | 'week' | 'month') => {
+    setTimeRange(range);
+    setAnchorDate(new Date());
+  };
+
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    const amount = direction === 'prev' ? -1 : 1;
+    const newAnchor = new Date(anchorDate);
+    if (timeRange === 'day') {
+      newAnchor.setDate(anchorDate.getDate() + amount);
+    } else if (timeRange === 'week') {
+      newAnchor.setDate(anchorDate.getDate() + amount * 7);
+    } else if (timeRange === 'month') {
+      newAnchor.setMonth(anchorDate.getMonth() + amount);
+    }
+    setAnchorDate(newAnchor);
+  };
+
+  const getPeriodLabel = () => {
+    if (timeRange === 'day') {
+      return formatDateFriendly(anchorDate);
+    } else if (timeRange === 'week') {
+      const start = getStartOfWeek(anchorDate);
+      const end = getEndOfWeek(start);
+      return formatWeekFriendly(start, end);
+    } else {
+      return formatMonthFriendly(anchorDate);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -138,7 +251,7 @@ export default function WorkerHistoryScreen() {
       {/* Summary Card */}
       <GlassCard style={appStyles.wh_summaryCard}>
         <Text style={[appStyles.wh_summaryLabel, { color: colors.textSecondary }]}>
-          INGRESOS TOTALES ({timeRange === 'day' ? 'HOY' : timeRange === 'week' ? 'ESTA SEMANA' : 'ESTE MES'})
+          INGRESOS DEL PERIODO · {timeRange === 'day' ? 'DIARIO' : timeRange === 'week' ? 'SEMANAL' : 'MENSUAL'}
         </Text>
         <Text style={[appStyles.wh_summaryValue, { color: colors.textPrimary }]}>
           ${totalEarnings.toLocaleString('es-CL')}
@@ -148,23 +261,44 @@ export default function WorkerHistoryScreen() {
         </Text>
       </GlassCard>
 
+      {/* Period Navigator */}
+      <View style={[styles.navigatorContainer, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+        <TouchableOpacity 
+          onPress={() => navigatePeriod('prev')} 
+          style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
+        >
+          <Feather name="chevron-left" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+        
+        <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
+          {getPeriodLabel().toUpperCase()}
+        </Text>
+        
+        <TouchableOpacity 
+          onPress={() => navigatePeriod('next')} 
+          style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
+        >
+          <Feather name="chevron-right" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
       {/* Filters */}
       <View style={appStyles.wh_filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={appStyles.wh_filterScroll}>
           <TouchableOpacity 
-            onPress={() => setTimeRange('day')}
+            onPress={() => changeTimeRange('day')}
             style={[appStyles.wh_filterChip, timeRange === 'day' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
             <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'day' ? '#111827' : colors.textSecondary }]}>HOY</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            onPress={() => setTimeRange('week')}
+            onPress={() => changeTimeRange('week')}
             style={[appStyles.wh_filterChip, timeRange === 'week' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
             <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'week' ? '#111827' : colors.textSecondary }]}>SEMANA</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            onPress={() => setTimeRange('month')}
+            onPress={() => changeTimeRange('month')}
             style={[appStyles.wh_filterChip, timeRange === 'month' && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
           >
             <Text style={[appStyles.wh_filterChipText, { color: timeRange === 'month' ? '#111827' : colors.textSecondary }]}>MES</Text>
@@ -197,5 +331,34 @@ export default function WorkerHistoryScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  navigatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  navButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  periodLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1,
+    flex: 1,
+    textAlign: 'center',
+  },
+});
 
 

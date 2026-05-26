@@ -189,6 +189,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [date, setDate] = useState('');
     const [startHour, setStartHour] = useState(9);
     const [duration, setDuration] = useState(1);
+    const [endHour, setEndHour] = useState(10);
     const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
@@ -260,7 +261,9 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           const parsed = parseDateString(payload.date);
           setCalendarYear(parsed.getFullYear());
           setCalendarMonth(parsed.getMonth());
-          setStartHour(payload.startHour ?? 9);
+          const initialStartHour = payload.startHour ?? 9;
+          setStartHour(initialStartHour);
+          setEndHour(initialStartHour + 1);
           setIsBlockedSlot(false);
           setClientName(role === 'client' ? (profile?.nickname ?? '') : '');
           setService(isGym ? 'CLASE' : '');
@@ -326,14 +329,22 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         return;
       }
 
+      if (isBlockedSlot && endHour <= startHour) {
+        showAlert({
+          title: 'Horario inválido',
+          message: 'La hora de término (Hasta) debe ser posterior a la hora de inicio (Desde).',
+        });
+        return;
+      }
+
       const hrs = Math.floor(startHour);
       const mins = Math.round((startHour - hrs) * 60);
       const apptDate = new Date(date + 'T' + pad(hrs) + ':' + pad(mins) + ':00');
       const now = new Date();
 
       if (!isBlockedSlot) {
-        // 1. Past dates check for clients and workers
-        if (role !== 'company' && apptDate.getTime() < now.getTime()) {
+        // 1. Past time slot check — applies to all roles
+        if (apptDate.getTime() < now.getTime()) {
           showAlert({
             title: 'Fecha inválida',
             message: 'No puedes agendar una cita en el pasado.',
@@ -722,6 +733,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         setIsBlockedSlot(true);
                         setClientName('Bloqueo de horario');
                         setService('Bloqueo');
+                        setEndHour(startHour + 1);
+                        setDuration(1);
                       }}
                     >
                       <Text style={[styles.tabText, { color: isBlockedSlot ? colors.accent : colors.textSecondary }]}>
@@ -903,21 +916,69 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                   </View>
                 </View>
 
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Hora</Text>
-                <TimeWheelPicker
-                  openingHour={7}
-                  closingHour={22}
-                  selectedSlot={formatHour(startHour)}
-                  onSlotSelect={(slot) => {
-                    const parts = slot.split(':');
-                    const h = parseInt(parts[0], 10);
-                    const m = parseInt(parts[1], 10);
-                    setStartHour(h + m / 60);
-                  }}
-                  busyIntervals={busyIntervals}
-                  durationMinutes={duration * 60}
-                  isDarkMode={isDarkMode}
-                />
+                {isBlockedSlot ? (
+                  <View style={{ gap: 4 }}>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Desde (Hora de inicio)</Text>
+                    <TimeWheelPicker
+                      openingHour={7}
+                      closingHour={22}
+                      selectedSlot={formatHour(startHour)}
+                      onSlotSelect={(slot) => {
+                        const parts = slot.split(':');
+                        const h = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10);
+                        const newStart = h + m / 60;
+                        setStartHour(newStart);
+                        if (endHour <= newStart) {
+                          const newEnd = Math.min(22, newStart + 1);
+                          setEndHour(newEnd);
+                          setDuration(newEnd - newStart);
+                        } else {
+                          setDuration(endHour - newStart);
+                        }
+                      }}
+                      busyIntervals={busyIntervals}
+                      durationMinutes={10}
+                      isDarkMode={isDarkMode}
+                    />
+
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Hasta (Hora de término)</Text>
+                    <TimeWheelPicker
+                      openingHour={7}
+                      closingHour={22}
+                      selectedSlot={formatHour(endHour)}
+                      onSlotSelect={(slot) => {
+                        const parts = slot.split(':');
+                        const h = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10);
+                        const newEnd = h + m / 60;
+                        setEndHour(newEnd);
+                        setDuration(newEnd - startHour);
+                      }}
+                      busyIntervals={[]}
+                      durationMinutes={10}
+                      isDarkMode={isDarkMode}
+                    />
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Hora</Text>
+                    <TimeWheelPicker
+                      openingHour={7}
+                      closingHour={22}
+                      selectedSlot={formatHour(startHour)}
+                      onSlotSelect={(slot) => {
+                        const parts = slot.split(':');
+                        const h = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10);
+                        setStartHour(h + m / 60);
+                      }}
+                      busyIntervals={busyIntervals}
+                      durationMinutes={duration * 60}
+                      isDarkMode={isDarkMode}
+                    />
+                  </>
+                )}
 
                 {role !== 'worker' && workers.length > 0 && (
                   <>
@@ -1140,6 +1201,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                           }
                           setStartHour(appointment.startHour);
                           setDuration(appointment.durationHours);
+                          setEndHour(appointment.startHour + appointment.durationHours);
                           setSelectedWorkerId(appointment.worker_id);
                           setIsBlockedSlot(appointment.status === 'blocked');
                           setPrice(appointment.price || 0);
@@ -1227,7 +1289,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                 today.setHours(0, 0, 0, 0);
                 const isPast = d < today;
                 const isTodayDate = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
-                const isDisabled = role === 'client' && isPast;
+                const isDisabled = isPast;
 
                 return (
                   <TouchableOpacity

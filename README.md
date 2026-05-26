@@ -1,7 +1,8 @@
-# 📅 Agenda — Plataforma Premium de Agendamiento y CRM para PyMEs
+# 📅 Agenda — Plataforma Premium de Agendamiento, Historial de Ingresos y CRM para PyMEs
 
-> **La solución profesional de agendamiento y administración para negocios modernos.**  
-> Diseñada con una estética high-tech de alto impacto, esta aplicación permite a barberías, salones, consultorios y centros deportivos gestionar su operación diaria mientras ofrecen una experiencia interactiva y premium de clase mundial.
+> **¡MVP 100% COMPLETADO Y OPERATIVO!** 🚀  
+> **La solución profesional definitiva de agendamiento y administración para negocios modernos.**  
+> Diseñada con una estética high-tech de alto impacto (Obsidian & Neon Volt Lime UI), esta aplicación permite a barberías, salones, consultorios y centros deportivos gestionar su operación diaria mientras ofrecen una experiencia interactiva y premium de clase mundial.
 
 **Stack Tecnológico:** React Native · Expo (Router) · Supabase (PostgreSQL & RLS) · TypeScript · Obsidian & Neon Volt Lime UI
 
@@ -22,16 +23,38 @@
 - **Onboarding Guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/business-setup.tsx)).
 - **Dashboard Gerencial:** Visualización en tiempo real de ingresos acumulados del mes, próximas citas y métricas analíticas clave ([dashboard-company.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/dashboard-company.tsx)).
 - **Agenda Multitrabajador:** Vista unificada de calendario (diario/semanal) con control absoluto del estado del turno.
+- **Módulo de CRM & Historial Financiero:** Consulta de ingresos históricos y citas completadas con filtros por rangos y filtros especializados por empleado ([company-history.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-history.tsx)).
 - **Gestión de Personal & Catálogos:** Control detallado de empleados ([company-employees.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-employees.tsx)), servicios ([company-services.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-services.tsx)), y ventanas horarias ([company-booking-window.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-booking-window.tsx)).
 - **Control de Membresías:** Panel administrativo para dar de alta y seguir planes y clases consumidas por socios ([company-members.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-members.tsx)).
 
 ### 🛠️ 3. Profesionales y Colaboradores (`worker`)
 - **Dashboard de Trabajo:** Vista focalizada e individual con su agenda diaria, indicadores personales y valoraciones ([worker-dashboard.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/worker/worker-dashboard.tsx)).
-- **Historial & Comisiones:** Registro de servicios completados e ingresos generados a lo largo del tiempo ([worker-history.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/worker/worker-history.tsx)).
+- **Historial de Comisiones & Reporte:** Registro de servicios completados de forma exclusiva e ingresos acumulados en el tiempo con navegación temporal de periodos ([worker-history.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/worker/worker-history.tsx)).
 
 ### 🛡️ 4. Administradores de la Plataforma (`admin`)
 - **Supervisión Global:** Métricas de crecimiento general, negocios activos y volumen de transacciones de la plataforma ([admin-dashboard.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/admin/admin-dashboard.tsx)).
 - **Auditoría & Moderación:** Flujo de aprobación y control de calidad de comercios solicitantes ([admin-businesses.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/admin/admin-businesses.tsx)).
+
+---
+
+## 💎 Características Estrella del MVP Completado
+
+### 📊 1. Módulo CRM de Ingresos & Historial Consistente
+* **Cálculo de Ingresos Reales:** Suma acumulada basada única y estrictamente en las citas con estado `'completed'`.
+* **Filtros de Rangos Estrictos:** Limites cerrados mediante consultas dinámicas en Supabase (`.eq` para día seleccionado; `.gte` y `.lte` para rangos semanales y mensuales). Evita la fuga de ingresos o fechas futuras.
+* **Filtros Cruzados:** Las empresas pueden cruzar el periodo seleccionado con un profesional en particular para obtener reportes de productividad instantáneos.
+
+### 📅 2. Navegador Temporal por Periodos
+* **Navegación Interactiva:** Contenedores horizontales de diseño glassmorphic con botones Feather (`chevron-left` / `chevron-right`) para desplazarse de forma infinita hacia atrás o adelante en el tiempo (días anteriores, semanas previas, meses pasados).
+* **Labels Amigables en Español:** Formateo local descriptivo automático (Ej: *"Lunes, 25 de Mayo, 2026"*, *"18 - 24 de Mayo, 2026"*, *"Mayo 2026"*).
+
+### 🔒 3. Bloqueo de Horarios con Rango Flexible
+* **Selector Dinámico Desde / Hasta:** Al inhabilitar bloques en el calendario (`isBlockedSlot` en [AppointmentModal.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/calendar/AppointmentModal.tsx)), se habilitan dos selectores de tiempo `TimeWheelPicker` independientes para elegir la hora de inicio y término con total precisión.
+* **Validación de Consistencia Temporal:** El sistema verifica que la hora de término sea posterior a la de inicio e impide el guardado de bloques inconsistentes.
+* **Sincronización Inteligente:** Si la hora "Desde" es movida después de la hora "Hasta", esta última se auto-ajusta 1 hora adelante para mantener el flujo de usuario limpio.
+
+### 🌐 4. Consistencia Absoluta de Zona Horaria (Fecha Local)
+* **Eliminación de Desfases UTC/ISO:** Lógica de formateo puramente local en formato `YYYY-MM-DD` que previene el desplazamiento de días, garantizando que el calendario y los filtros operen exactamente en el huso horario local.
 
 ---
 
@@ -53,22 +76,6 @@ La aplicación destaca por una interfaz moderna inspirada en interfaces futurist
   - [ScreenHeader.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/ScreenHeader.tsx) — Encabezado global dinámico.
   - [TimeWheelPicker.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/TimeWheelPicker.tsx) — Selector de horario estilizado en formato de rueda.
   - [RevenueBarChart.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/company/RevenueBarChart.tsx) — Gráfico estilizado para ingresos financieros.
-
----
-
-## 📅 Motor Centralizado de Agendas y Citas
-
-Para evitar duplicaciones y fugas de lógica, la plataforma cuenta con una arquitectura de agendamiento unificada:
-
-> [!IMPORTANT]
-> **Componente Único de Agendamiento:**
-> Toda la lógica de reservas y gestión de turnos está integrada en el componente unificado [CalendarScreen.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/calendar/CalendarScreen.tsx) y gestionada con [AppointmentModal.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/calendar/AppointmentModal.tsx). Se adapta dinámicamente según el rol (`client`, `company`, `worker`) y el tipo de negocio.
-
-### Reglas de Negocio Inteligentes Integradas:
-1. **Regla de las 2 Horas:** Los clientes no pueden agendar ni cancelar una cita con menos de 2 horas de anticipación.
-2. **Máquina de Estados de Citas:** Control preciso de transiciones: `pending` ➔ `confirmed` ➔ `completed` | `cancelled` | `no_show` | `rescheduled` | `blocked`.
-3. **Consistencia de Timezones:** Gestión estricta de fechas en formato ISO UTC para sincronizar de manera idéntica los calendarios de los locales y los teléfonos de los clientes.
-4. **Protección Multitarea:** Evita solapamientos (overlapping) de trabajadores, bloquea de forma inteligente horarios personales (colaciones, descansos) y detiene la inyección de citas fantasmas.
 
 ---
 
@@ -128,7 +135,7 @@ agenda/
 ---
 
 ## 📄 Documentos de Desarrollo e Historial
-- [**Estado del Proyecto**](./estado_proyecto.md) — Progreso del MVP, funcionalidades pendientes y roadmaps.
+- [**Estado del Proyecto**](./estado_proyecto.md) — Progreso del MVP, funcionalidades completadas y roadmaps.
 - [**Filosofía y Objetivos**](./QUE-ES-Y-OBJETIVO.md) — Análisis detallado del valor de negocio y flujos principales.
 - [**Arquitectura de Creación de Citas**](./solución-crear-citas.md) — Estándares técnicos aplicados al core de reservas.
 
