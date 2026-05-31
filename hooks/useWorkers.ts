@@ -16,7 +16,8 @@ export function useWorkers(businessId: string | undefined): {
     const { data, error } = await supabase
       .from('workers')
       .select('*, profiles(avatar_url)')
-      .eq('business_id', businessId);
+      .eq('business_id', businessId)
+      .eq('active', true);
 
     if (!error && data) {
       setWorkers(

@@ -31,9 +31,9 @@ const darkColors = {
 };
 
 const lightColors = {
-  white: '#ffffffd5',
+  white: '#ffffffb7',
   black: '#000000',
-  background: '#f4f5f7db',
+  background: '#f4f5f7b8',
   surface: 'rgba(255,255,255,0.80)',
   border: 'rgba(0,0,0,0.08)',
   primary: '#B4F736',

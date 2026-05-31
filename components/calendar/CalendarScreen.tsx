@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { useAgendaAppointments } from '../../hooks/useAgendaAppointments';
 import { useWorkers } from '../../hooks/useWorkers';
+import { supabase } from '../../lib/supabase';
 import Sidebar from '../Sidebar';
 import AppointmentModal, { AppointmentModalHandle } from './AppointmentModal';
 import WorkersBar from './WorkersBar';
@@ -94,6 +95,28 @@ function isToday(d: Date) {
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate()
   );
+}
+
+function isHourWorking(day: Date, hour: number, businessSchedule: any): boolean {
+  if (!businessSchedule) return true; // default to open if not loaded yet
+  
+  const dayOfWeek = day.getDay();
+  const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+  
+  const dayBlocks = businessSchedule[dayKey];
+  if (!Array.isArray(dayBlocks) || dayBlocks.length === 0) {
+    return false; // Closed today
+  }
+  
+  return dayBlocks.some((block: any) => {
+    const [startH, startM] = block.start.split(':').map(Number);
+    const [endH, endM] = block.end.split(':').map(Number);
+    const blockStart = startH + (startM / 60);
+    const blockEnd = endH + (endM / 60);
+    
+    // Check if there is overlap between [hour, hour + 1] and [blockStart, blockEnd]
+    return blockStart < hour + 1 && blockEnd > hour;
+  });
 }
 
 // ─────────────────────────── My-Appointments list (client tab) ───────────────
@@ -249,10 +272,10 @@ const TIME_COL_W = 44;
 const WEEK_COL_W = 72;   // fixed width per day column (enables horizontal scroll)
 const WEEK_HEADER_H = 52; // height of the day-names header row
 
-function TimeColumn({ colors }: { colors: any }) {
+function TimeColumn({ colors, startHour, endHour }: { colors: any; startHour: number; endHour: number }) {
   const hours = Array.from(
-    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
-    (_, i) => DEFAULT_START_HOUR + i,
+    { length: endHour - startHour + 1 },
+    (_, i) => startHour + i,
   );
   return (
     <View style={[styles.timeCol, { width: TIME_COL_W }]}>
@@ -265,9 +288,9 @@ function TimeColumn({ colors }: { colors: any }) {
   );
 }
 
-function NowLine({ colors }: { colors: any }) {
+function NowLine({ colors, startHour }: { colors: any; startHour: number }) {
   const now = new Date();
-  const frac = (now.getHours() - DEFAULT_START_HOUR + now.getMinutes() / 60) * HOUR_HEIGHT;
+  const frac = (now.getHours() - startHour + now.getMinutes() / 60) * HOUR_HEIGHT;
   if (frac < 0) return null;
   return (
     <View style={[styles.nowLine, { top: frac }]}>
@@ -282,17 +305,19 @@ function EventBlock({
   colWidth,
   colors,
   onPress,
+  startHour,
 }: {
   appointment: Appointment;
   colWidth: number;
   colors: any;
   onPress: () => void;
+  startHour: number;
 }) {
   const { isDarkMode } = useTheme();
   const { profile } = useAuth();
   const role = profile?.role ?? 'client';
 
-  const top = (appointment.startHour - DEFAULT_START_HOUR) * HOUR_HEIGHT;
+  const top = (appointment.startHour - startHour) * HOUR_HEIGHT;
   const height = Math.max(appointment.durationHours * HOUR_HEIGHT - 4, 24);
 
   const isNarrow = colWidth < 60;
@@ -339,7 +364,7 @@ function EventBlock({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: isUltraNarrow ? 2 : 4, width: '100%' }}>
         {isBlocked && (
           <Feather
-            name="slash"
+            name="lock"
             size={titleSize - 1}
             color={colors.textSecondary}
             style={{ marginRight: 1 }}
@@ -368,6 +393,9 @@ function WeekGrid({
   onRefresh,
   workers,
   selectedWorkerId,
+  businessSchedule,
+  startHour,
+  endHour,
 }: {
   weekDays: Date[];
   appointments: Appointment[];
@@ -378,7 +406,12 @@ function WeekGrid({
   onRefresh?: () => void;
   workers: WorkerRow[];
   selectedWorkerId: string | null;
+  businessSchedule: any;
+  startHour: number;
+  endHour: number;
 }) {
+  const { isDarkMode } = useTheme();
+  const { showToast } = useToast();
   const [containerWidth, setContainerWidth] = useState(SCREEN_W);
 
   const handleLayout = useCallback((event: any) => {
@@ -388,7 +421,7 @@ function WeekGrid({
     }
   }, []);
 
-  const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
+  const totalH = (endHour - startHour + 1) * HOUR_HEIGHT;
   const availableWidth = containerWidth - TIME_COL_W;
 
   const activeWorkers = workers;
@@ -410,8 +443,8 @@ function WeekGrid({
   }, [appointments]);
 
   const rows = Array.from(
-    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
-    (_, i) => DEFAULT_START_HOUR + i,
+    { length: endHour - startHour + 1 },
+    (_, i) => startHour + i,
   );
 
   return (
@@ -434,7 +467,7 @@ function WeekGrid({
         <View style={{ width: TIME_COL_W, flexShrink: 0 }}>
           {/* Spacer that matches day-header height */}
           <View style={{ height: headerHeight, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
-          <TimeColumn colors={colors} />
+          <TimeColumn colors={colors} startHour={startHour} endHour={endHour} />
         </View>
 
         {/* Day columns — scroll horizontally */}
@@ -514,7 +547,7 @@ function WeekGrid({
                   key={h}
                   style={[
                     styles.gridLine,
-                    { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border },
+                    { top: (h - startHour) * HOUR_HEIGHT, borderColor: colors.border },
                   ]}
                 />
               ))}
@@ -550,13 +583,27 @@ function WeekGrid({
                                 borderRightColor: colors.border,
                               }}
                             >
-                              {rows.map((h) => (
-                                <Pressable
-                                  key={h}
-                                  style={[styles.slotCell, { height: HOUR_HEIGHT }]}
-                                  onLongPress={() => onSlotPress(day, h, w.id)}
-                                />
-                              ))}
+                              {rows.map((h) => {
+                                const isWorking = isHourWorking(day, h, businessSchedule);
+                                return (
+                                  <Pressable
+                                    key={h}
+                                    style={[
+                                      styles.slotCell,
+                                      { height: HOUR_HEIGHT },
+                                      !isWorking && { backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.4)' : 'rgba(243, 244, 246, 0.65)' }
+                                    ]}
+                                    onLongPress={isWorking ? () => onSlotPress(day, h, w.id) : undefined}
+                                    onPress={!isWorking ? () => showToast({ type: 'error', message: 'Horario de descanso / Cerrado' }) : undefined}
+                                  >
+                                    {!isWorking && (
+                                      <View style={styles.closedSlotOverlay}>
+                                        <Feather name="lock" size={10} color={colors.textSecondary} opacity={0.6} />
+                                      </View>
+                                    )}
+                                  </Pressable>
+                                );
+                              })}
                               {wAppts.map((a) => (
                                 <EventBlock
                                   key={a.id}
@@ -564,6 +611,7 @@ function WeekGrid({
                                   colWidth={workerColWidth}
                                   colors={colors}
                                   onPress={() => onEventPress(a)}
+                                  startHour={startHour}
                                 />
                               ))}
                             </View>
@@ -571,13 +619,28 @@ function WeekGrid({
                         })
                       ) : (
                         <View style={{ flex: 1 }}>
-                          {rows.map((h) => (
-                            <Pressable
-                              key={h}
-                              style={[styles.slotCell, { height: HOUR_HEIGHT }]}
-                              onLongPress={() => onSlotPress(day, h)}
-                            />
-                          ))}
+                          {rows.map((h) => {
+                            const isWorking = isHourWorking(day, h, businessSchedule);
+                            return (
+                              <Pressable
+                                key={h}
+                                style={[
+                                  styles.slotCell,
+                                  { height: HOUR_HEIGHT },
+                                  !isWorking && { backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.4)' : 'rgba(243, 244, 246, 0.65)' }
+                                ]}
+                                onLongPress={isWorking ? () => onSlotPress(day, h) : undefined}
+                                onPress={!isWorking ? () => showToast({ type: 'error', message: 'Horario de descanso / Cerrado' }) : undefined}
+                              >
+                                {!isWorking && (
+                                  <View style={styles.closedSlotOverlay}>
+                                    <Feather name="lock" size={12} color={colors.textSecondary} opacity={0.6} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.closedText, { color: colors.textSecondary }]}>Cerrado</Text>
+                                  </View>
+                                )}
+                              </Pressable>
+                            );
+                          })}
                           {dayAppts.map((a) => (
                             <EventBlock
                               key={a.id}
@@ -585,6 +648,7 @@ function WeekGrid({
                               colWidth={dayColWidth}
                               colors={colors}
                               onPress={() => onEventPress(a)}
+                              startHour={startHour}
                             />
                           ))}
                         </View>
@@ -594,7 +658,7 @@ function WeekGrid({
                 })}
               </View>
 
-              <NowLine colors={colors} />
+              <NowLine colors={colors} startHour={startHour} />
             </View>
           </View>
         </ScrollView>
@@ -613,6 +677,9 @@ function DayGrid({
   onRefresh,
   workers,
   selectedWorkerId,
+  businessSchedule,
+  startHour,
+  endHour,
 }: {
   day: Date;
   appointments: Appointment[];
@@ -623,12 +690,17 @@ function DayGrid({
   onRefresh?: () => void;
   workers: WorkerRow[];
   selectedWorkerId: string | null;
+  businessSchedule: any;
+  startHour: number;
+  endHour: number;
 }) {
+  const { isDarkMode } = useTheme();
+  const { showToast } = useToast();
   const [gridWidth, setGridWidth] = useState(SCREEN_W - TIME_COL_W - 32);
-  const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
+  const totalH = (endHour - startHour + 1) * HOUR_HEIGHT;
   const rows = Array.from(
-    { length: DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1 },
-    (_, i) => DEFAULT_START_HOUR + i,
+    { length: endHour - startHour + 1 },
+    (_, i) => startHour + i,
   );
 
   const handleLayout = useCallback((event: any) => {
@@ -664,7 +736,7 @@ function DayGrid({
           {isMultiWorker && (
             <View style={{ height: 40, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }} />
           )}
-          <TimeColumn colors={colors} />
+          <TimeColumn colors={colors} startHour={startHour} endHour={endHour} />
         </View>
 
         {/* Worker columns — scroll horizontally */}
@@ -706,7 +778,7 @@ function DayGrid({
                     key={h}
                     style={[
                       styles.gridLine,
-                      { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, width: '100%' },
+                      { top: (h - startHour) * HOUR_HEIGHT, borderColor: colors.border, width: '100%' },
                     ]}
                   />
                 ))}
@@ -725,13 +797,28 @@ function DayGrid({
                           borderRightColor: colors.border,
                         }}
                       >
-                        {rows.map((h) => (
-                          <Pressable
-                            key={h}
-                            style={[styles.slotCell, { height: HOUR_HEIGHT }]}
-                            onLongPress={() => onSlotPress(day, h, w.id)}
-                          />
-                        ))}
+                        {rows.map((h) => {
+                          const isWorking = isHourWorking(day, h, businessSchedule);
+                          return (
+                            <Pressable
+                              key={h}
+                              style={[
+                                styles.slotCell,
+                                { height: HOUR_HEIGHT },
+                                !isWorking && { backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.4)' : 'rgba(243, 244, 246, 0.65)' }
+                              ]}
+                              onLongPress={isWorking ? () => onSlotPress(day, h, w.id) : undefined}
+                              onPress={!isWorking ? () => showToast({ type: 'error', message: 'Horario de descanso / Cerrado' }) : undefined}
+                            >
+                              {!isWorking && (
+                                <View style={styles.closedSlotOverlay}>
+                                  <Feather name="lock" size={12} color={colors.textSecondary} opacity={0.6} style={{ marginRight: 4 }} />
+                                  <Text style={[styles.closedText, { color: colors.textSecondary }]}>Cerrado</Text>
+                                </View>
+                              )}
+                            </Pressable>
+                          );
+                        })}
                         {wAppts.map((a) => (
                           <EventBlock
                             key={a.id}
@@ -739,6 +826,7 @@ function DayGrid({
                             colWidth={workerColWidth}
                             colors={colors}
                             onPress={() => onEventPress(a)}
+                            startHour={startHour}
                           />
                         ))}
                       </View>
@@ -747,7 +835,7 @@ function DayGrid({
                 </View>
 
                 {/* Now Line */}
-                <NowLine colors={colors} />
+                <NowLine colors={colors} startHour={startHour} />
               </View>
             </View>
           </ScrollView>
@@ -756,17 +844,33 @@ function DayGrid({
           <View
             style={{ flex: 1, height: totalH, position: 'relative' }}
           >
-            {rows.map((h) => (
-              <Pressable
-                key={h}
-                style={[
-                  styles.gridLine,
-                  styles.slotCell,
-                  { top: (h - DEFAULT_START_HOUR) * HOUR_HEIGHT, borderColor: colors.border, height: HOUR_HEIGHT },
-                ]}
-                onLongPress={() => onSlotPress(day, h, selectedWorkerId ?? undefined)}
-              />
-            ))}
+            {rows.map((h) => {
+              const isWorking = isHourWorking(day, h, businessSchedule);
+              return (
+                <Pressable
+                  key={h}
+                  style={[
+                    styles.gridLine,
+                    styles.slotCell,
+                    {
+                      top: (h - startHour) * HOUR_HEIGHT,
+                      borderColor: colors.border,
+                      height: HOUR_HEIGHT,
+                      backgroundColor: !isWorking ? (isDarkMode ? 'rgba(31, 41, 55, 0.4)' : 'rgba(243, 244, 246, 0.65)') : undefined
+                    }
+                  ]}
+                  onLongPress={isWorking ? () => onSlotPress(day, h, selectedWorkerId ?? undefined) : undefined}
+                  onPress={!isWorking ? () => showToast({ type: 'error', message: 'Horario de descanso / Cerrado' }) : undefined}
+                >
+                  {!isWorking && (
+                    <View style={styles.closedSlotOverlay}>
+                      <Feather name="lock" size={12} color={colors.textSecondary} opacity={0.6} style={{ marginRight: 4 }} />
+                      <Text style={[styles.closedText, { color: colors.textSecondary }]}>Cerrado</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
             {appointments.map((a) => (
               <EventBlock
                 key={a.id}
@@ -774,9 +878,10 @@ function DayGrid({
                 colWidth={gridWidth}
                 colors={colors}
                 onPress={() => onEventPress(a)}
+                startHour={startHour}
               />
             ))}
-            <NowLine colors={colors} />
+            <NowLine colors={colors} startHour={startHour} />
           </View>
         )}
       </View>
@@ -823,6 +928,32 @@ export default function CalendarScreen() {
 
   const { showToast } = useToast();
   const modalRef = useRef<AppointmentModalHandle>(null);
+
+  const [businessSchedule, setBusinessSchedule] = useState<any>(null);
+  const [calendarStartHour, setCalendarStartHour] = useState<number>(DEFAULT_START_HOUR);
+  const [calendarEndHour, setCalendarEndHour] = useState<number>(DEFAULT_END_HOUR);
+
+  useEffect(() => {
+    if (!businessId) return;
+    supabase
+      .from('businesses')
+      .select('schedule, opening_time, closing_time')
+      .eq('id', businessId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setBusinessSchedule(data.schedule);
+          if (data.opening_time) {
+            const startHour = parseInt(data.opening_time.split(':')[0], 10);
+            setCalendarStartHour(Math.max(0, startHour));
+          }
+          if (data.closing_time) {
+            const endHour = parseInt(data.closing_time.split(':')[0], 10);
+            setCalendarEndHour(Math.min(23, endHour));
+          }
+        }
+      });
+  }, [businessId]);
 
   // Compute date range for the hook
   const dateRange = useMemo(() => {
@@ -1031,6 +1162,9 @@ export default function CalendarScreen() {
               onRefresh={refetch}
               workers={workers}
               selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
+              businessSchedule={businessSchedule}
+              startHour={calendarStartHour}
+              endHour={calendarEndHour}
             />
           )}
           {viewMode === 'day' && (
@@ -1044,6 +1178,9 @@ export default function CalendarScreen() {
               onRefresh={refetch}
               workers={workers}
               selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
+              businessSchedule={businessSchedule}
+              startHour={calendarStartHour}
+              endHour={calendarEndHour}
             />
           )}
         </>
@@ -1369,5 +1506,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
+  },
+  closedSlotOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    opacity: 0.8,
+  },
+  closedText: {
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    fontFamily: 'Inter_600SemiBold',
+    textTransform: 'uppercase',
   },
 });

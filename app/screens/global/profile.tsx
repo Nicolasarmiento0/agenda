@@ -5,6 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,42 @@ import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import { appColors, appStyles } from '../../../styles/appStyles';
 
+const cropImageWeb = (uri: string, zoom: number, x: number, y: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('Not on Web platform'));
+      return;
+    }
+    const img = new window.Image();
+    img.src = uri;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas context not available'));
+        return;
+      }
+      
+      canvas.width = 300;
+      canvas.height = 300;
+      
+      const frameVisualSize = 200;
+      const sourceToVisualRatio = Math.min(img.width, img.height) / frameVisualSize;
+      const sSize = Math.min(img.width, img.height) / zoom;
+      
+      const sourceOffsetX = x * sourceToVisualRatio;
+      const sourceOffsetY = y * sourceToVisualRatio;
+      
+      const sx = (img.width - sSize) / 2 - sourceOffsetX;
+      const sy = (img.height - sSize) / 2 - sourceOffsetY;
+      
+      ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, 300, 300);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+  });
+};
+
 export default function ProfileScreen() {
   const { profile, user, signOut, refreshProfile, updateProfileState } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
@@ -32,6 +69,13 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // States for dynamic image cropping
+  const [cropModalVisible, setCropModalVisible] = useState(false);
+  const [tempImageUri, setTempImageUri] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
 
   const [stats, setStats] = useState({ completed: 0, upcoming: 0, reviews: 0 });
   const [myReviews, setMyReviews] = useState<any[]>([]);
@@ -101,49 +145,26 @@ export default function ProfileScreen() {
   };
 
   // ─── LÓGICA DE SUBIDA DE AVATAR (CORREGIDA) ───
-  const uploadAvatar = async () => {
-    console.log('Iniciando subida de avatar...');
+  const proceedWithUpload = async (imageUri: string) => {
+    setUploadingAvatar(true);
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        showAlert({ title: 'Permiso necesario', message: 'Necesitamos acceso a tu galería.' });
-        return;
-      }
-
-      // IMPORTANTE: En iOS se necesita un pequeño delay después de que se cierra un Alert/Modal
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      console.log('Resultado de ImagePicker:', result.canceled ? 'cancelado' : 'imagen seleccionada');
-
-      if (result.canceled || !result.assets[0].uri) return;
-
-      setUploadingAvatar(true);
-      const image = result.assets[0];
-      const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpeg';
+      const fileExt = imageUri.startsWith('data:') ? 'jpeg' : (imageUri.split('.').pop()?.toLowerCase() ?? 'jpeg');
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
       let body: any;
-      let contentType: string | undefined = image.mimeType || `image/${fileExt}`;
+      let contentType: string | undefined = `image/${fileExt}`;
 
       if (Platform.OS === 'web') {
-        const response = await fetch(image.uri);
+        const response = await fetch(imageUri);
         body = await response.blob();
       } else {
         const formData = new FormData();
         formData.append('file', {
-          uri: image.uri,
+          uri: imageUri,
           name: fileName.split('/')[1],
           type: contentType,
         } as any);
         body = formData;
-        // En nativo con FormData no pasamos contentType manualmente para evitar errores de boundary
         contentType = undefined;
       }
 
@@ -172,6 +193,59 @@ export default function ProfileScreen() {
     } catch (error: any) {
       showAlert({ title: 'Error de subida', message: error.message });
     } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const uploadAvatar = async () => {
+    console.log('Iniciando subida de avatar...');
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert({ title: 'Permiso necesario', message: 'Necesitamos acceso a tu galería.' });
+        return;
+      }
+
+      // IMPORTANTE: En iOS se necesita un pequeño delay después de que se cierra un Alert/Modal
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      console.log('Resultado de ImagePicker:', result.canceled ? 'cancelado' : 'imagen seleccionada');
+
+      if (result.canceled || !result.assets[0].uri) return;
+
+      const image = result.assets[0];
+      if (Platform.OS === 'web') {
+        // En Web, abrimos nuestro propio modal interactivo de recorte/D-Pad
+        setTempImageUri(image.uri);
+        setCropZoom(1);
+        setCropX(0);
+        setCropY(0);
+        setCropModalVisible(true);
+      } else {
+        // En nativo, subimos el resultado recortado directamente por el cropper del sistema
+        await proceedWithUpload(image.uri);
+      }
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: 'No se pudo seleccionar la foto: ' + error.message });
+    }
+  };
+
+  const handleCropSave = async () => {
+    if (!tempImageUri) return;
+    setCropModalVisible(false);
+    setUploadingAvatar(true);
+    try {
+      const croppedUri = await cropImageWeb(tempImageUri, cropZoom, cropX, cropY);
+      await proceedWithUpload(croppedUri);
+    } catch (e: any) {
+      showAlert({ title: 'Error al recortar', message: e.message });
       setUploadingAvatar(false);
     }
   };
@@ -448,6 +522,145 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Web Image Cropping Modal */}
+      <Modal
+        visible={cropModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCropModalVisible(false)}
+      >
+        <View style={localStyles.modalOverlay}>
+          <View style={[localStyles.modalCard, { backgroundColor: isDarkMode ? 'rgba(20, 20, 25, 0.95)' : 'rgba(255, 255, 255, 0.98)', borderColor: colors.border }]}>
+            <Text style={[localStyles.modalTitle, { color: colors.textPrimary }]}>AJUSTAR FOTO DE PERFIL</Text>
+            <Text style={[localStyles.modalSubtitle, { color: colors.textSecondary }]}>
+              Usa los controles para encuadrar y acercar tu foto perfectamente.
+            </Text>
+
+            {/* Area de Previsualizacion */}
+            <View style={[localStyles.cropFrameContainer, { borderColor: colors.border, backgroundColor: isDarkMode ? '#000' : '#f0f0f0' }]}>
+              <View style={localStyles.cropCircleMask}>
+                {tempImageUri && (
+                  <ExpoImage
+                    source={{ uri: tempImageUri }}
+                    style={[
+                      localStyles.cropPreviewImage,
+                      {
+                        transform: [
+                          { scale: cropZoom },
+                          { translateX: cropX },
+                          { translateY: cropY },
+                        ],
+                      },
+                    ]}
+                    contentFit="contain"
+                  />
+                )}
+              </View>
+              {/* Lineas de cuadrícula */}
+              <View style={[localStyles.cropGridLineH, { top: '33.3%' }]} />
+              <View style={[localStyles.cropGridLineH, { top: '66.6%' }]} />
+              <View style={[localStyles.cropGridLineV, { left: '33.3%' }]} />
+              <View style={[localStyles.cropGridLineV, { left: '66.6%' }]} />
+            </View>
+
+            {/* Controles de Ajuste */}
+            <View style={localStyles.controlsContainer}>
+              {/* Zoom Slider / Botones */}
+              <View style={localStyles.controlSection}>
+                <Text style={[localStyles.controlLabel, { color: colors.textSecondary }]}>ZOOM: {Math.round(cropZoom * 100)}%</Text>
+                <View style={localStyles.zoomRow}>
+                  <TouchableOpacity
+                    style={[localStyles.zoomBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => setCropZoom(z => Math.max(1, z - 0.1))}
+                  >
+                    <Feather name="minus" size={16} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                  
+                  <View style={[localStyles.sliderTrack, { backgroundColor: colors.border }]}>
+                    <View style={[localStyles.sliderFill, { width: `${Math.min(100, Math.max(0, (cropZoom - 1) / 3 * 100))}%`, backgroundColor: colors.primary }]} />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[localStyles.zoomBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => setCropZoom(z => Math.min(4, z + 0.1))}
+                  >
+                    <Feather name="plus" size={16} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* D-Pad Cockpit para mover la foto */}
+              <View style={localStyles.controlSection}>
+                <Text style={[localStyles.controlLabel, { color: colors.textSecondary, marginBottom: 8 }]}>POSICIÓN</Text>
+                <View style={localStyles.dpadContainer}>
+                  {/* Fila Superior: Arriba */}
+                  <View style={localStyles.dpadRow}>
+                    <TouchableOpacity
+                      style={[localStyles.dpadBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => setCropY(y => y - 5)}
+                    >
+                      <Feather name="chevron-up" size={20} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                  {/* Fila Media: Izquierda, Reset, Derecha */}
+                  <View style={localStyles.dpadRowMid}>
+                    <TouchableOpacity
+                      style={[localStyles.dpadBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => setCropX(x => x - 5)}
+                    >
+                      <Feather name="chevron-left" size={20} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[localStyles.dpadCenterBtn, { backgroundColor: colors.primary }]}
+                      onPress={() => {
+                        setCropX(0);
+                        setCropY(0);
+                        setCropZoom(1);
+                      }}
+                    >
+                      <Text style={localStyles.dpadCenterText}>Reset</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[localStyles.dpadBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => setCropX(x => x + 5)}
+                    >
+                      <Feather name="chevron-right" size={20} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                  {/* Fila Inferior: Abajo */}
+                  <View style={localStyles.dpadRow}>
+                    <TouchableOpacity
+                      style={[localStyles.dpadBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => setCropY(y => y + 5)}
+                    >
+                      <Feather name="chevron-down" size={20} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Acciones del Modal */}
+            <View style={localStyles.modalActions}>
+              <TouchableOpacity
+                style={[localStyles.modalBtnCancel, { borderColor: colors.border }]}
+                onPress={() => setCropModalVisible(false)}
+              >
+                <Text style={[localStyles.modalBtnCancelText, { color: colors.textSecondary }]}>CANCELAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[localStyles.modalBtnSave, { backgroundColor: colors.primary }]}
+                onPress={handleCropSave}
+              >
+                <Text style={localStyles.modalBtnSaveText}>APLICAR</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -517,4 +730,197 @@ const localStyles = StyleSheet.create({
   reviewDate: { fontSize: 10, letterSpacing: 0.3, opacity: 0.6 },
   showAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14, marginTop: 14 },
   showAllText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+
+  // Estilos del Cropper Modal Premium (Web)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      android: { elevation: 8 },
+      web: { boxShadow: '0px 10px 30px rgba(0,0,0,0.5)' },
+    }),
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 8,
+  },
+  cropFrameContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    overflow: 'hidden',
+    borderWidth: 2,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  cropCircleMask: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 100,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cropPreviewImage: {
+    width: 200,
+    height: 200,
+  },
+  cropGridLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  cropGridLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  controlsContainer: {
+    width: '100%',
+    gap: 16,
+    marginVertical: 10,
+  },
+  controlSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  controlLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    fontFamily: 'Inter_700Bold',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  zoomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  zoomBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sliderTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  dpadContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 140,
+    height: 140,
+    position: 'relative',
+  },
+  dpadRow: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dpadRowMid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  dpadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dpadCenterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dpadCenterText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    fontFamily: 'Inter_700Bold',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginTop: 8,
+  },
+  modalBtnCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnCancelText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontFamily: 'Inter_700Bold',
+  },
+  modalBtnSave: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnSaveText: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontFamily: 'Inter_700Bold',
+  },
 });

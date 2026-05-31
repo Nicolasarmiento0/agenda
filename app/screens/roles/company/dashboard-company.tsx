@@ -1,5 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -210,8 +210,13 @@ export default function DashboardCompanyScreen() {
     setRefreshing(false);
   }, [refreshProfile, fetchDashboardData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [fetchDashboardData])
+  );
+
   useEffect(() => {
-    fetchDashboardData();
     Animated.sequence([
       Animated.delay(100),
       Animated.parallel([
@@ -219,7 +224,7 @@ export default function DashboardCompanyScreen() {
         Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
       ]),
     ]).start();
-  }, [fetchDashboardData]);
+  }, []);
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
@@ -383,7 +388,7 @@ export default function DashboardCompanyScreen() {
                   ))}
                 </View>
                 <Text style={[styles.subText, { color: colors.textSecondary, marginTop: 12 }]}>
-                  Cierre a las {business?.closing_time?.slice(0, 5) || '20:00'}
+                  Horario: {business?.opening_time?.slice(0, 5) || '10:00'} - {business?.closing_time?.slice(0, 5) || '20:00'}
                 </Text>
               </GlassCard>
             </TouchableOpacity>

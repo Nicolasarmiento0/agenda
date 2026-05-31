@@ -3,15 +3,15 @@ import { BlurView } from 'expo-blur';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  ActivityIndicator,
 } from 'react-native';
 import GlassCard from '../../../../components/GlassCard';
 import GlassInput from '../../../../components/GlassInput';
@@ -59,7 +59,7 @@ export default function CompanyServicesScreen() {
         if (existingPlans.length < 3) {
           const defaultPrices: Record<string, number> = { 'Plan Básico': 15000, 'Plan Premium': 25000, 'Plan VIP': 35000 };
           const plansToCreate = planNames.filter(name => !existingPlans.some(p => p.name === name));
-          
+
           if (plansToCreate.length > 0) {
             const inserts = plansToCreate.map(name => ({
               business_id: business.id,
@@ -72,7 +72,7 @@ export default function CompanyServicesScreen() {
               .from('business_services')
               .insert(inserts)
               .select('*');
-              
+
             if (!insertError && newPlans) {
               setServices([...(data || []), ...newPlans].sort((a, b) => a.name.localeCompare(b.name)));
               return;
@@ -155,8 +155,8 @@ export default function CompanyServicesScreen() {
 
         const { error } = await supabase
           .from('business_services')
-          .update({ 
-            name: finalName, 
+          .update({
+            name: finalName,
             price: parseFloat(editPrice) || 0,
             duration_min: parseInt(editDuration, 10) || 30
           })
@@ -170,11 +170,11 @@ export default function CompanyServicesScreen() {
             .update({ service: finalName })
             .eq('business_id', business.id)
             .eq('service', editingService.name);
-          
+
           if (apptError) console.error('Error updating appointments service name:', apptError);
         }
       }
-      
+
       setEditingService(null);
       await fetchServices();
     } catch (err: any) {
@@ -205,8 +205,8 @@ export default function CompanyServicesScreen() {
         title: 'Eliminar Servicio',
         message: '¿Estás seguro de que quieres eliminar este servicio?',
         buttons: [
-          { 
-            text: 'CANCELAR', 
+          {
+            text: 'CANCELAR',
             style: 'cancel',
             onPress: () => {
               // Si cancela, podemos volver a abrir el modal si fuera necesario, 
@@ -214,9 +214,9 @@ export default function CompanyServicesScreen() {
               setEditingService(serviceToDelete);
             }
           },
-          { 
-            text: 'ELIMINAR', 
-            style: 'destructive', 
+          {
+            text: 'ELIMINAR',
+            style: 'destructive',
             onPress: async () => {
               setIsSaving(true);
               try {
@@ -322,82 +322,82 @@ export default function CompanyServicesScreen() {
         <View style={localStyles.modalOverlay}>
           <BlurView intensity={20} tint="dark" style={localStyles.blurCard}>
             <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
-            <View style={localStyles.modalHeader}>
-              <Text style={[localStyles.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
-                {editingService?.id === 'new' ? 'Nuevo Servicio' : 'Editar Servicio'}
-              </Text>
-              {editingService?.id !== 'new' && (
-                <TouchableOpacity onPress={handleDeleteService} disabled={isSaving}>
-                  <Feather name="trash-2" size={20} color="#E24B4A" />
-                </TouchableOpacity>
+              <View style={localStyles.modalHeader}>
+                <Text style={[localStyles.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+                  {editingService?.id === 'new' ? 'Nuevo Servicio' : 'Editar Servicio'}
+                </Text>
+                {editingService?.id !== 'new' && (
+                  <TouchableOpacity onPress={handleDeleteService} disabled={isSaving}>
+                    <Feather name="trash-2" size={20} color="#E24B4A" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 20 }]}>NOMBRE DEL SERVICIO</Text>
+              {isGym && editingService?.id !== 'new' && ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService?.name) ? (
+                <Text style={[localStyles.readonlyField, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background }]}>
+                  {editName}
+                </Text>
+              ) : isGym && editingService?.id === 'new' ? (
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    onPress={() => setEditName('Taller Extraprogramático')}
+                    style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Taller Extraprogramático' ? appColors.primary : colors.border }]}
+                  >
+                    <Text style={{ fontSize: 12, color: editName === 'Taller Extraprogramático' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Taller Extraprogramático</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setEditName('Evaluación')}
+                    style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Evaluación' ? appColors.primary : colors.border }]}
+                  >
+                    <Text style={{ fontSize: 12, color: editName === 'Evaluación' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Evaluación</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <GlassInput
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Ej: Corte y Barba"
+                />
               )}
-            </View>
-            
-            <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 20 }]}>NOMBRE DEL SERVICIO</Text>
-            {isGym && editingService?.id !== 'new' && ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService?.name) ? (
-              <Text style={[localStyles.readonlyField, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background }]}>
-                {editName}
-              </Text>
-            ) : isGym && editingService?.id === 'new' ? (
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity 
-                  onPress={() => setEditName('Taller Extraprogramático')}
-                  style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Taller Extraprogramático' ? appColors.primary : colors.border }]}
+
+              <GlassInput
+                value={editPrice}
+                onChangeText={setEditPrice}
+                keyboardType="numeric"
+                placeholder="Ej: 15000"
+                label="PRECIO ($)"
+                style={{ marginTop: 16 }}
+              />
+
+              <GlassInput
+                value={editDuration}
+                onChangeText={setEditDuration}
+                keyboardType="numeric"
+                placeholder="Ej: 30"
+                label="DURACIÓN (MINUTOS)"
+                style={{ marginTop: 16 }}
+              />
+
+              <View style={localStyles.modalActions}>
+                <TouchableOpacity
+                  style={[localStyles.modalBtn, { borderColor: colors.border }]}
+                  onPress={() => setEditingService(null)}
                 >
-                  <Text style={{ fontSize: 12, color: editName === 'Taller Extraprogramático' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Taller Extraprogramático</Text>
+                  <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setEditName('Evaluación')}
-                  style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Evaluación' ? appColors.primary : colors.border }]}
+                <TouchableOpacity
+                  style={[localStyles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+                  onPress={handleSaveEdit}
+                  disabled={isSaving}
                 >
-                  <Text style={{ fontSize: 12, color: editName === 'Evaluación' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Evaluación</Text>
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color="#111827" />
+                  ) : (
+                    <Text style={{ color: '#111827', fontWeight: 'bold', fontFamily: 'Inter_700Bold' }}>Guardar</Text>
+                  )}
                 </TouchableOpacity>
               </View>
-            ) : (
-              <GlassInput
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Ej: Corte y Barba"
-              />
-            )}
-
-            <GlassInput
-              value={editPrice}
-              onChangeText={setEditPrice}
-              keyboardType="numeric"
-              placeholder="Ej: 15000"
-              label="PRECIO ($)"
-              style={{ marginTop: 16 }}
-            />
-
-            <GlassInput
-              value={editDuration}
-              onChangeText={setEditDuration}
-              keyboardType="numeric"
-              placeholder="Ej: 30"
-              label="DURACIÓN (MINUTOS)"
-              style={{ marginTop: 16 }}
-            />
-
-            <View style={localStyles.modalActions}>
-              <TouchableOpacity 
-                style={[localStyles.modalBtn, { borderColor: colors.border }]} 
-                onPress={() => setEditingService(null)}
-              >
-                <Text style={{ color: colors.textSecondary }}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[localStyles.modalBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]} 
-                onPress={handleSaveEdit}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#111827" />
-                ) : (
-                  <Text style={{ color: '#111827', fontWeight: 'bold', fontFamily: 'Inter_700Bold' }}>Guardar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
             </View>
           </BlurView>
         </View>
@@ -441,7 +441,7 @@ const localStyles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
   },
-  serviceName: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5, marginBottom: 4 },
+  serviceName: { fontSize: 15, fontWeight: '700', fontFamily: 'Varien', letterSpacing: 0.5, marginBottom: 4 },
   servicePrice: { fontSize: 13, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   editBadge: {
     width: 32,
@@ -487,7 +487,7 @@ const localStyles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 8,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Varien',
   },
   readonlyField: {
     borderWidth: 1,
@@ -495,7 +495,7 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Varien',
     opacity: 0.6,
   },
   modalActions: {
