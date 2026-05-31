@@ -27,7 +27,7 @@ export default function ClientDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Data
-  const [nextAppointment, setNextAppointment] = useState<any>(null);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
 
   // Animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -36,31 +36,75 @@ export default function ClientDashboardScreen() {
   const fetchDashboardData = async () => {
     if (!profile?.id) return;
     try {
-      const now = new Date().toISOString();
+      const todayStr = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('appointments')
         .select(`
           id,
-          start_time,
+          date,
+          start_hour,
           status,
+          service,
+          price,
           business:businesses(name, address),
           workers(name)
         `)
         .eq('client_id', profile.id)
-        .in('status', ['scheduled', 'pending'])
-        .gte('start_time', now)
-        .order('start_time', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .in('status', ['confirmed', 'pending', 'rescheduled'])
+        .gte('date', todayStr)
+        .order('date', { ascending: true })
+        .order('start_hour', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching client dashboard data:', error.message);
+        setUpcomingAppointments([]);
+        return;
+      }
 
       if (data) {
-        setNextAppointment(data);
+        // Procesar y reconstruir start_time en memoria
+        const processed = data.map((appt: any) => {
+          const hours = Math.floor(appt.start_hour);
+          const minutes = Math.round((appt.start_hour % 1) * 60);
+          const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+          const apptDate = new Date(`${appt.date}T${timeStr}`);
+          
+          return {
+            ...appt,
+            start_time: apptDate.toISOString()
+          };
+        });
+
+        // Filtrar las que son verdaderamente futuras (descartar horas pasadas de hoy)
+        const now = new Date();
+        const upcoming = processed.filter(
+          (appt) => new Date(appt.start_time).getTime() >= now.getTime()
+        );
+
+        setUpcomingAppointments(upcoming.slice(0, 5));
       } else {
-        setNextAppointment(null);
+        setUpcomingAppointments([]);
       }
     } catch (err) {
       console.error('Error fetching client dashboard data:', err);
     }
+  };
+
+  const getRelativeGroup = (isoString: string) => {
+    const now = new Date();
+    const apptDate = new Date(isoString);
+    
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
+    
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return { label: 'HOY', color: '#FF4B4B', bg: '#FF4B4B15' };
+    if (diffDays === 1) return { label: 'MAÑANA', color: '#FF7A00', bg: '#FF7A0015' };
+    if (diffDays > 1 && diffDays <= 7) return { label: 'ESTA SEMANA', color: '#B4F736', bg: '#B4F73620' };
+    if (diffDays > 7 && diffDays <= 14) return { label: 'PRÓXIMA SEMANA', color: '#00D8F6', bg: '#00D8F615' };
+    return { label: 'MÁS ADELANTE', color: '#9CA3AF', bg: '#9CA3AF15' };
   };
 
   const onRefresh = async () => {
@@ -105,51 +149,73 @@ export default function ClientDashboardScreen() {
             <Text style={[appStyles.wd_businessName, { color: colors.textPrimary }]}>{profile?.nickname || 'Cliente'}</Text>
           </View>
 
-          {/* PRÓXIMA CITA */}
-          <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary, marginTop: 8 }]}>Próxima Cita</Text>
-          {nextAppointment ? (
-            <GlassCard style={[appStyles.wd_card, { padding: 20 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 4, fontFamily: 'Inter_700Bold' }}>
-                    {(nextAppointment.business as any)?.name || 'Negocio'}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }}>
-                    {(nextAppointment.business as any)?.address || 'Dirección no disponible'}
-                  </Text>
-                </View>
-                <View style={{ backgroundColor: nextAppointment.status === 'scheduled' ? appColors.primary + '20' : '#EAB30820', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: nextAppointment.status === 'scheduled' ? appColors.primary : '#EAB308' }}>
-                    {nextAppointment.status === 'scheduled' ? 'CONFIRMADA' : 'PENDIENTE'}
-                  </Text>
-                </View>
+          {/* PRÓXIMAS CITAS */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary }]}>Citas Próximas</Text>
+            {upcomingAppointments.length > 0 && (
+              <View style={{ backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>{upcomingAppointments.length}</Text>
               </View>
+            )}
+          </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24, marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Feather name="calendar" size={16} color={colors.textSecondary} />
-                  <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
-                    {formatDateTime(nextAppointment.start_time)}
-                  </Text>
-                </View>
-                {nextAppointment.workers?.name && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Feather name="user" size={16} color={colors.textSecondary} />
-                    <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
-                      {nextAppointment.workers.name.split(' ')[0]}
-                    </Text>
-                  </View>
-                )}
-              </View>
+          {upcomingAppointments.length > 0 ? (
+            upcomingAppointments.map((appt) => {
+              const group = getRelativeGroup(appt.start_time);
+              return (
+                <TouchableOpacity
+                  key={appt.id}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/screens/global/my-appointments')}
+                >
+                  <GlassCard style={[appStyles.wd_card, { padding: 18, borderLeftWidth: 4, borderLeftColor: group.color }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 2, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>
+                          {(appt.business as any)?.name || 'Negocio'}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                          {(appt.business as any)?.address || 'Dirección no disponible'}
+                        </Text>
+                      </View>
+                      
+                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        {/* Grupo Temporal */}
+                        <View style={{ backgroundColor: group.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: group.color, letterSpacing: 0.5 }}>
+                            {group.label}
+                          </Text>
+                        </View>
+                        {/* Estado */}
+                        <View style={{ backgroundColor: appt.status === 'confirmed' ? appColors.primary + '15' : '#EAB30815', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: appt.status === 'confirmed' ? appColors.primary : '#EAB308', letterSpacing: 0.5 }}>
+                            {appt.status === 'confirmed' ? 'CONFIRMADA' : 'PENDIENTE'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
 
-              <TouchableOpacity 
-                activeOpacity={0.8}
-                onPress={() => router.push('/screens/global/my-appointments')}
-                style={{ backgroundColor: colors.surface, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textPrimary, letterSpacing: 1 }}>VER DETALLES</Text>
-              </TouchableOpacity>
-            </GlassCard>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="calendar" size={14} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 13, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                          {formatDateTime(appt.start_time)}
+                        </Text>
+                      </View>
+                      
+                      {appt.workers?.name && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Feather name="user" size={14} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 13, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                            {appt.workers.name.split(' ')[0]}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <GlassCard style={[appStyles.wd_card, { padding: 24, alignItems: 'center' }]}>
               <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1, borderColor: colors.border }}>
