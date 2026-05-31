@@ -12,23 +12,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Appointment, DEFAULT_END_HOUR, DEFAULT_START_HOUR, HOUR_HEIGHT, WorkerRow, getPastelColors } from '../../constants/appointments';
 import { useAuth } from '../../context/AuthContext';
+import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { useAgendaAppointments } from '../../hooks/useAgendaAppointments';
 import { useWorkers } from '../../hooks/useWorkers';
-import { useToast } from '../../context/ToastContext';
 import Sidebar from '../Sidebar';
 import AppointmentModal, { AppointmentModalHandle } from './AppointmentModal';
 import WorkersBar from './WorkersBar';
-import { useBusiness } from '../../context/BusinessContext';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -396,15 +390,15 @@ function WeekGrid({
 
   const totalH = (DEFAULT_END_HOUR - DEFAULT_START_HOUR + 1) * HOUR_HEIGHT;
   const availableWidth = containerWidth - TIME_COL_W;
-  
+
   const activeWorkers = workers;
   const isMultiWorker = selectedWorkerId === null && activeWorkers.length > 0;
-  
+
   const weekColWidth = availableWidth / 7;
   const workerColWidth = isMultiWorker ? Math.max(100, availableWidth / (7 * Math.min(activeWorkers.length, 3))) : weekColWidth;
   const dayColWidth = isMultiWorker ? workerColWidth * activeWorkers.length : weekColWidth;
   const totalW = 7 * dayColWidth;
-  
+
   const headerHeight = isMultiWorker ? 78 : WEEK_HEADER_H;
 
   const apptByDay = useMemo(() => {
@@ -483,7 +477,7 @@ function WeekGrid({
                         </Text>
                       </View>
                     </View>
-                    
+
                     {isMultiWorker && (
                       <View style={{ flexDirection: 'row', width: '100%', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, height: 32 }}>
                         {activeWorkers.map((w) => (
@@ -751,7 +745,7 @@ function DayGrid({
                     );
                   })}
                 </View>
-                
+
                 {/* Now Line */}
                 <NowLine colors={colors} />
               </View>
@@ -759,7 +753,7 @@ function DayGrid({
           </ScrollView>
         ) : (
           /* Standard single-worker Day view */
-          <View 
+          <View
             style={{ flex: 1, height: totalH, position: 'relative' }}
           >
             {rows.map((h) => (
@@ -912,180 +906,180 @@ export default function CalendarScreen() {
   }, [appointments, anchor]);
 
   return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
-        {/* ── Header ── */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
-              <Feather name="menu" size={22} color={colors.textPrimary} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundPrimary }]}>
+      {/* ── Header ── */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+            <Feather name="menu" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <TouchableOpacity onPress={() => navigate(-1)}>
+              <Feather name="chevron-left" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <TouchableOpacity onPress={() => navigate(-1)}>
-                <Feather name="chevron-left" size={22} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>{periodLabel}</Text>
-              <TouchableOpacity onPress={() => navigate(1)}>
-                <Feather name="chevron-right" size={22} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <TouchableOpacity onPress={toggleTheme} style={styles.themeToggleBtn} activeOpacity={0.7}>
-                <Feather name={isDarkMode ? "sun" : "moon"} size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>{periodLabel}</Text>
+            <TouchableOpacity onPress={() => navigate(1)}>
+              <Feather name="chevron-right" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
           </View>
-
-          {/* View mode tabs */}
-          <View style={[styles.tabs, { backgroundColor: colors.surface }]}>
-            {(['month', 'week', 'day'] as ViewMode[]).map((m) => (
-              <TouchableOpacity
-                key={m}
-                style={[
-                  styles.tab,
-                  viewMode === m && { backgroundColor: colors.accentDim },
-                ]}
-                onPress={() => setViewMode(m)}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: viewMode === m ? colors.accent : colors.textSecondary },
-                  ]}
-                >
-                  {m === 'month' ? 'Mes' : m === 'week' ? 'Semana' : 'Día'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggleBtn} activeOpacity={0.7}>
+              <Feather name={isDarkMode ? "sun" : "moon"} size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Client Tabs ── */}
-        {role === 'client' && (
-          <View style={[styles.clientTabs, { borderBottomColor: colors.border }]}>
-            {(['calendar', 'list'] as const).map((t) => (
-              <TouchableOpacity
-                key={t}
+        {/* View mode tabs */}
+        <View style={[styles.tabs, { backgroundColor: colors.surface }]}>
+          {(['month', 'week', 'day'] as ViewMode[]).map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={[
+                styles.tab,
+                viewMode === m && { backgroundColor: colors.accentDim },
+              ]}
+              onPress={() => setViewMode(m)}
+            >
+              <Text
                 style={[
-                  styles.clientTab,
-                  clientTab === t && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
+                  styles.tabText,
+                  { color: viewMode === m ? colors.accent : colors.textSecondary },
                 ]}
-                onPress={() => setClientTab(t)}
               >
-                <Text
-                  style={[
-                    styles.clientTabText,
-                    { color: clientTab === t ? colors.accent : colors.textSecondary },
-                  ]}
-                >
-                  {t === 'calendar' ? 'Calendario' : 'Mis Citas'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                {m === 'month' ? 'Mes' : m === 'week' ? 'Semana' : 'Día'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
-        {/* ── Workers Bar ── */}
-        {((role === 'company') || (role === 'client' && clientTab === 'calendar')) && (
-          <WorkersBar
-            workers={workers}
-            selectedWorkerId={selectedWorker}
-            onSelectWorker={setSelectedWorker}
-          />
-        )}
-        {role === 'worker' && selfWorker && (
-          <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
-            <View style={[styles.selfDot, { backgroundColor: '#30D158' }]} />
-            <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
-          </View>
-        )}
-
-        {/* ── Calendar Views ── */}
-        {(role !== 'client' || clientTab === 'calendar') && (
-          <>
-            {viewMode === 'month' && (
-              <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{ flexGrow: 1 }}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={loading}
-                    onRefresh={refetch}
-                    tintColor={colors.accent}
-                    colors={[colors.accent]}
-                  />
-                }
+      {/* ── Client Tabs ── */}
+      {role === 'client' && (
+        <View style={[styles.clientTabs, { borderBottomColor: colors.border }]}>
+          {(['calendar', 'list'] as const).map((t) => (
+            <TouchableOpacity
+              key={t}
+              style={[
+                styles.clientTab,
+                clientTab === t && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
+              ]}
+              onPress={() => setClientTab(t)}
+            >
+              <Text
+                style={[
+                  styles.clientTabText,
+                  { color: clientTab === t ? colors.accent : colors.textSecondary },
+                ]}
               >
-                <MonthGrid
-                  year={anchor.getFullYear()}
-                  month={anchor.getMonth()}
-                  appointments={appointments}
-                  colors={colors}
-                  onDayPress={(d) => openCreate(d)}
-                  onEventPress={openDetail}
+                {t === 'calendar' ? 'Calendario' : 'Mis Citas'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* ── Workers Bar ── */}
+      {((role === 'company') || (role === 'client' && clientTab === 'calendar')) && (
+        <WorkersBar
+          workers={workers}
+          selectedWorkerId={selectedWorker}
+          onSelectWorker={setSelectedWorker}
+        />
+      )}
+      {role === 'worker' && selfWorker && (
+        <View style={[styles.selfBar, { borderBottomColor: colors.border }]}>
+          <View style={[styles.selfDot, { backgroundColor: '#30D158' }]} />
+          <Text style={[styles.selfName, { color: colors.textPrimary }]}>{selfWorker.name}</Text>
+        </View>
+      )}
+
+      {/* ── Calendar Views ── */}
+      {(role !== 'client' || clientTab === 'calendar') && (
+        <>
+          {viewMode === 'month' && (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={loading}
+                  onRefresh={refetch}
+                  tintColor={colors.accent}
+                  colors={[colors.accent]}
                 />
-              </ScrollView>
-            )}
-            {viewMode === 'week' && (
-              <WeekGrid
-                weekDays={weekDays}
+              }
+            >
+              <MonthGrid
+                year={anchor.getFullYear()}
+                month={anchor.getMonth()}
                 appointments={appointments}
                 colors={colors}
-                onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
+                onDayPress={(d) => openCreate(d)}
                 onEventPress={openDetail}
-                refreshing={loading}
-                onRefresh={refetch}
-                workers={workers}
-                selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
               />
-            )}
-            {viewMode === 'day' && (
-              <DayGrid
-                day={anchor}
-                appointments={dayAppts}
-                colors={colors}
-                onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
-                onEventPress={openDetail}
-                refreshing={loading}
-                onRefresh={refetch}
-                workers={workers}
-                selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
-              />
-            )}
-          </>
-        )}
+            </ScrollView>
+          )}
+          {viewMode === 'week' && (
+            <WeekGrid
+              weekDays={weekDays}
+              appointments={appointments}
+              colors={colors}
+              onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
+              onEventPress={openDetail}
+              refreshing={loading}
+              onRefresh={refetch}
+              workers={workers}
+              selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
+            />
+          )}
+          {viewMode === 'day' && (
+            <DayGrid
+              day={anchor}
+              appointments={dayAppts}
+              colors={colors}
+              onSlotPress={(d, h, wId) => openCreate(d, h, wId)}
+              onEventPress={openDetail}
+              refreshing={loading}
+              onRefresh={refetch}
+              workers={workers}
+              selectedWorkerId={role === 'worker' ? (selfWorkerId ?? 'worker_self') : selectedWorker}
+            />
+          )}
+        </>
+      )}
 
-        {/* ── Client: List tab ── */}
-        {role === 'client' && clientTab === 'list' && (
-          <MyAppointmentsList appointments={appointments} colors={colors} />
-        )}
+      {/* ── Client: List tab ── */}
+      {role === 'client' && clientTab === 'list' && (
+        <MyAppointmentsList appointments={appointments} colors={colors} />
+      )}
 
-        {/* ── FAB ── */}
-        <FAB 
-          onNewAppointment={handleFABNew} 
-          colors={colors} 
-        />
+      {/* ── FAB ── */}
+      <FAB
+        onNewAppointment={handleFABNew}
+        colors={colors}
+      />
 
-        {/* ── Appointment Modal ── */}
-        <AppointmentModal
-          ref={modalRef}
-          workers={workers}
-          businessId={businessId ?? ''}
-          onSaved={refetch}
-          showToast={showToast}
-          onDateChange={(dateStr) => {
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-              const y = parseInt(parts[0], 10);
-              const m = parseInt(parts[1], 10) - 1;
-              const d = parseInt(parts[2], 10);
-              setAnchor(new Date(y, m, d));
-            }
-          }}
-        />
+      {/* ── Appointment Modal ── */}
+      <AppointmentModal
+        ref={modalRef}
+        workers={workers}
+        businessId={businessId ?? ''}
+        onSaved={refetch}
+        showToast={showToast}
+        onDateChange={(dateStr) => {
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            setAnchor(new Date(y, m, d));
+          }
+        }}
+      />
 
-        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      </SafeAreaView>
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    </SafeAreaView>
   );
 }
 
@@ -1149,7 +1143,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Varien',
   },
   selfBar: {
     flexDirection: 'row',
@@ -1166,7 +1160,7 @@ const styles = StyleSheet.create({
   },
   selfName: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Varien',
   },
   clientTabs: {
     flexDirection: 'row',
@@ -1232,7 +1226,7 @@ const styles = StyleSheet.create({
   monthPillText: {
     fontSize: 9,
     color: '#fff',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Varien',
   },
   monthMore: {
     fontSize: 9,
@@ -1244,7 +1238,7 @@ const styles = StyleSheet.create({
   },
   weekDayName: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Varien',
   },
   weekDayCircle: {
     width: 26,
@@ -1305,7 +1299,7 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     fontSize: 11,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Varien',
   },
   eventSub: {
     fontSize: 10,

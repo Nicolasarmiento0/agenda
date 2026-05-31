@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Varien',
     letterSpacing: 1,
   },
   roleBadge: {
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 2,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Varien',
     flex: 1,
   },
   badge: {
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 9,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Varien',
   },
   badgePill: {
     paddingHorizontal: 7,

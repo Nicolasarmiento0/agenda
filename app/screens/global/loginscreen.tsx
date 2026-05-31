@@ -1,4 +1,5 @@
 import { AntDesign } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -205,7 +206,11 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color={colors.textPrimary} />
               ) : (
                 <>
-                  <AntDesign name="google" size={18} color="#4285F4" />
+                  <ExpoImage 
+                    source={require('../../../assets/images/google-logo.svg')} 
+                    style={{ width: 18, height: 18 }} 
+                    contentFit="contain"
+                  />
                   <Text style={[loginStyles.googleText, { color: colors.textPrimary }]}>
                     Continuar con Google (Proximamente)
                   </Text>

@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Varien',
   },
 
   subChip: {
@@ -659,6 +659,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
     lineHeight: 20,
+    fontFamily: 'Varien',
   },
 
   catPill: {

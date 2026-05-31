@@ -1,30 +1,13 @@
-import { appStyles } from '@/styles/appStyles';
-import { Feather } from '@expo/vector-icons';
+import React from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../../../context/ThemeContext';
+import OnboardingScreen from '../../../OnboardingScreen';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { isDarkMode, toggleTheme, colors } = useTheme();
 
-  return (
-    <View style={[appStyles.screenCentered, { backgroundColor: colors.background }]}>
-      <TouchableOpacity
-        style={{ position: 'absolute', top: 60, right: 24, zIndex: 10 }}
-        onPress={toggleTheme}
-        activeOpacity={0.7}
-      >
-        <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
+  const handleFinish = () => {
+    router.replace('/screens/global/loginscreen' as any);
+  };
 
-      <Text style={[appStyles.title, { color: colors.textPrimary }]}>Agenda</Text>
-      <Text style={[appStyles.subtitle, { color: colors.textSecondary }]}>Bienvenidos</Text>
-      <Text style={[appStyles.subtitle2, { color: colors.textSecondary }]}>(App en desarrollo)</Text>
-      <Pressable style={appStyles.primaryButton} onPress={() => router.push('/screens/global/loginscreen')}>
-        <Text style={appStyles.primaryButtonText}>Iniciar</Text>
-
-      </Pressable>
-    </View>
-  );
+  return <OnboardingScreen onFinish={handleFinish} />;
 }

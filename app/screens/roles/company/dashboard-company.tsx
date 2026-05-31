@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import GlassCard from '../../../../components/GlassCard';
 import ReviewsModal from '../../../../components/company/ReviewsModal';
+import GlassCard from '../../../../components/GlassCard';
 import ScreenHeader from '../../../../components/ScreenHeader';
 import Sidebar from '../../../../components/Sidebar';
 import WorkerAvatar from '../../../../components/WorkerAvatar';
@@ -59,14 +59,14 @@ export default function DashboardCompanyScreen() {
       { id: '1', day: 'L' }, { id: '2', day: 'M' }, { id: '3', day: 'X' },
       { id: '4', day: 'J' }, { id: '5', day: 'V' }, { id: '6', day: 'S' }, { id: '7', day: 'D' }
     ];
-    
+
     if ((business as any)?.schedule) {
       return days.map(d => ({
         day: d.day,
         active: Array.isArray(((business as any).schedule)[d.id]) && ((business as any).schedule)[d.id].length > 0
       }));
     }
-    
+
     // Fallback if no schedule
     return days.map(d => ({ day: d.day, active: d.day !== 'D' }));
   }, [(business as any)?.schedule]);
@@ -183,8 +183,8 @@ export default function DashboardCompanyScreen() {
         }
         appointments.forEach(a => {
           if (a.price && a.status === 'completed') {
-            const r = newRevData.find(r => r.key === a.date); 
-            if (r) r.value += a.price; 
+            const r = newRevData.find(r => r.key === a.date);
+            if (r) r.value += a.price;
           }
         });
       } else {
@@ -260,7 +260,7 @@ export default function DashboardCompanyScreen() {
               <View style={styles.chartHeaderRow}>
                 <View>
                   <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 4 }]}>Ingresos Totales</Text>
-                  <Text 
+                  <Text
                     style={[styles.scoreText, { color: colors.textPrimary }]}
                     adjustsFontSizeToFit
                     numberOfLines={1}
@@ -308,7 +308,7 @@ export default function DashboardCompanyScreen() {
                   <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>MEMBRESÍAS MENSUALES</Text>
                   <Feather name="chevron-right" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
                 </View>
-                <Text 
+                <Text
                   style={[styles.scoreText, { color: colors.textPrimary }]}
                   adjustsFontSizeToFit
                   numberOfLines={1}
@@ -359,8 +359,8 @@ export default function DashboardCompanyScreen() {
               </TouchableOpacity>
             </GlassCard>
 
-            <TouchableOpacity 
-              activeOpacity={0.8} 
+            <TouchableOpacity
+              activeOpacity={0.8}
               style={[styles.card, styles.flexCard]}
               onPress={() => router.push('/screens/roles/company/edit-schedule' as any)}
             >
@@ -446,19 +446,19 @@ export default function DashboardCompanyScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  welcomeText: { fontSize: 14, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
-  businessName: { fontSize: 28, fontWeight: '800', fontFamily: 'Inter_800ExtraBold', letterSpacing: 1, marginTop: 4 },
+  welcomeText: { fontSize: 14, letterSpacing: 0.5, fontFamily: 'Varien', },
+  businessName: { fontSize: 28, fontWeight: '800', fontFamily: 'Varien', letterSpacing: 1, marginTop: 4 },
   card: { borderRadius: 20, padding: 16 },
   rowGrid: { flexDirection: 'row', gap: 12 },
   flexCard: { flex: 1 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  cardTitle: { fontSize: 10, letterSpacing: 2, fontWeight: '700', fontFamily: 'Inter_700Bold' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  cardTitle: { fontSize: 10, letterSpacing: 2, fontWeight: '700', fontFamily: 'Varien', },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Varien', letterSpacing: 0.5 },
   chartHeaderRow: { flexDirection: 'column', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
   filterContainer: { flexDirection: 'row', borderRadius: 20, padding: 4 },
   filterBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   filterText: { fontSize: 9, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-  scoreText: { fontSize: 32, fontWeight: '800', fontFamily: 'Inter_800ExtraBold' },
+  scoreText: { fontSize: 32, fontWeight: '800', fontFamily: 'Varien', },
   subText: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   dateText: { fontSize: 10, marginTop: 8, fontStyle: 'italic', fontFamily: 'Inter_400Regular' },
   scheduleRow: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'space-between', alignItems: 'center' },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   dayText: { fontSize: 9, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   workerRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
   workerInfo: { flex: 1 },
-  workerName: { fontSize: 15, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+  workerName: { fontSize: 15, fontWeight: '600', fontFamily: 'Varien', },
   workerRole: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   workerStats: { alignItems: 'flex-end' },
   workerServices: { fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },

@@ -1472,7 +1472,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Varien',
     marginBottom: 20,
   },
   label: {
@@ -1597,7 +1597,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Varien',
     letterSpacing: 0.5,
   },
   detailHeader: {

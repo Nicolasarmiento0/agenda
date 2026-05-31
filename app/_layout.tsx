@@ -120,12 +120,19 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
+    'Varien': require('../assets/fonts/Varien.ttf'),
   });
 
-  if (fontsLoaded) {
-    (Text as any).defaultProps = (Text as any).defaultProps ?? {};
-    (Text as any).defaultProps.style = { fontFamily: 'Inter_400Regular' };
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#070806' }}>
+        <ActivityIndicator size="large" color="#B4F736" />
+      </View>
+    );
   }
+
+  (Text as any).defaultProps = (Text as any).defaultProps ?? {};
+  (Text as any).defaultProps.style = { fontFamily: 'Inter_400Regular' };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

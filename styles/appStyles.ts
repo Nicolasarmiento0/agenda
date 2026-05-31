@@ -1,6 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
+
 // ─── Glass color tokens ───────────────────────────────────────────────────────
 // Fuente única de verdad para todos los rgba() de glassmorphism.
 // Usar estos en lugar de strings literales en StyleSheet.create().
@@ -113,7 +114,7 @@ export const appStyles = StyleSheet.create({
     textTransform: 'uppercase',
     padding: 10,
     paddingVertical: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Varien',
   },
   title2: {
     fontSize: 25,
@@ -123,7 +124,7 @@ export const appStyles = StyleSheet.create({
     textTransform: 'uppercase',
     padding: 10,
     paddingVertical: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Varien',
   },
   subtitle: {
     fontSize: 14,
