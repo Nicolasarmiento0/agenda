@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -5,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,7 +14,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
-import { useAppStyles } from '../../../styles/appStyles'; // ajusta el path
+import { appColors, useAppStyles } from '../../../styles/appStyles';
 
 export default function SignupScreen() {
   const { colors } = useTheme();
@@ -29,6 +31,9 @@ export default function SignupScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsError, setTermsError] = useState('');
 
   const validate = () => {
     let valid = true;
@@ -68,6 +73,13 @@ export default function SignupScreen() {
       valid = false;
     } else {
       setConfirmPasswordError('');
+    }
+
+    if (!termsAccepted || !privacyAccepted) {
+      setTermsError('Debes aceptar los Términos y la Política de Privacidad.');
+      valid = false;
+    } else {
+      setTermsError('');
     }
 
     return valid;
@@ -215,11 +227,56 @@ export default function SignupScreen() {
               ) : null}
             </View>
 
+            {/* Checkboxes legales */}
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                style={signupStyles.checkRow}
+                onPress={() => { setTermsAccepted(v => !v); setTermsError(''); }}
+                activeOpacity={0.7}
+              >
+                <View style={[signupStyles.checkbox, { borderColor: termsError ? colors.error : colors.border }, termsAccepted && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
+                  {termsAccepted && <Feather name="check" size={12} color="#111827" />}
+                </View>
+                <Text style={[signupStyles.checkLabel, { color: colors.textSecondary }]}>
+                  Acepto los{' '}
+                  <Text
+                    style={{ color: appColors.primary, textDecorationLine: 'underline' }}
+                    onPress={() => router.push('/screens/global/terms' as any)}
+                  >
+                    Términos y Condiciones
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={signupStyles.checkRow}
+                onPress={() => { setPrivacyAccepted(v => !v); setTermsError(''); }}
+                activeOpacity={0.7}
+              >
+                <View style={[signupStyles.checkbox, { borderColor: termsError ? colors.error : colors.border }, privacyAccepted && { backgroundColor: appColors.primary, borderColor: appColors.primary }]}>
+                  {privacyAccepted && <Feather name="check" size={12} color="#111827" />}
+                </View>
+                <Text style={[signupStyles.checkLabel, { color: colors.textSecondary }]}>
+                  Acepto la{' '}
+                  <Text
+                    style={{ color: appColors.primary, textDecorationLine: 'underline' }}
+                    onPress={() => router.push('/screens/global/privacy-policy' as any)}
+                  >
+                    Política de Privacidad
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+
+              {termsError ? (
+                <Text style={appStyles.errorText}>{termsError}</Text>
+              ) : null}
+            </View>
+
             {/* Botón primario */}
             <TouchableOpacity
-              style={[appStyles.primaryButton, loading ? { opacity: 0.7 } : null]}
+              style={[appStyles.primaryButton, (loading || !termsAccepted || !privacyAccepted) ? { opacity: 0.5 } : null]}
               onPress={handleSignup}
-              disabled={loading}
+              disabled={loading || !termsAccepted || !privacyAccepted}
               activeOpacity={0.8}
             >
               {loading ? (
@@ -251,3 +308,26 @@ export default function SignupScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const signupStyles = StyleSheet.create({
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  checkLabel: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
+  },
+});

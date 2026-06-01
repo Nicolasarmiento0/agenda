@@ -509,6 +509,43 @@ export default function ProfileScreen() {
               <Feather name="chevron-right" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
 
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/global/support' as any)}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="headphones" size={18} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: colors.textPrimary }]}>Soporte</Text>
+                  <Text style={[localStyles.menuItemSubtitle, { color: colors.textSecondary }]}>Contacto y ayuda</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/global/terms' as any)}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="file-text" size={18} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: colors.textPrimary }]}>Términos y Condiciones</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/screens/global/privacy-policy' as any)}>
+              <View style={localStyles.menuItemLeft}>
+                <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>
+                  <Feather name="shield" size={18} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={[localStyles.menuItemTitle, { color: colors.textPrimary }]}>Política de Privacidad</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={[localStyles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={async () => { await signOut(); router.replace('/screens/global/home'); }}>
               <View style={localStyles.menuItemLeft}>
                 <View style={[localStyles.menuIconBox, { backgroundColor: colors.background }]}>

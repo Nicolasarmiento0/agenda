@@ -156,6 +156,9 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/roles/company/dashboard-company" />
                 <Stack.Screen name="screens/global/profile" />
                 <Stack.Screen name="screens/global/privacy" />
+                <Stack.Screen name="screens/global/privacy-policy" />
+                <Stack.Screen name="screens/global/terms" />
+                <Stack.Screen name="screens/global/support" />
                 <Stack.Screen name="screens/roles/admin/admin-dashboard" />
                 <Stack.Screen name="screens/roles/admin/admin-businesses" />
                 <Stack.Screen name="screens/roles/admin/admin-business-detail" />
