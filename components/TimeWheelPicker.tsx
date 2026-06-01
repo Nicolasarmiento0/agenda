@@ -205,8 +205,23 @@ export default function TimeWheelPicker({
   const minutes = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 
   const defaultHour = String(openingHour).padStart(2, '0');
-  const selectedHourStr = selectedSlot ? selectedSlot.split(':')[0] : defaultHour;
-  const selectedMinuteStr = selectedSlot ? selectedSlot.split(':')[1] : '00';
+  let selectedHourStr = defaultHour;
+  let selectedMinuteStr = '00';
+
+  if (selectedSlot) {
+    const parts = selectedSlot.split(':');
+    if (parts[0]) {
+      selectedHourStr = String(parseInt(parts[0], 10)).padStart(2, '0');
+    }
+    if (parts[1]) {
+      const parsedMin = parseInt(parts[1], 10);
+      if (!isNaN(parsedMin)) {
+        const roundedMin = Math.round(parsedMin / 5) * 5;
+        const targetMin = roundedMin >= 60 ? 55 : roundedMin;
+        selectedMinuteStr = String(targetMin).padStart(2, '0');
+      }
+    }
+  }
 
   const hourRef = useRef(selectedHourStr);
   const minuteRef = useRef(selectedMinuteStr);

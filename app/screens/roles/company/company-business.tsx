@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -144,7 +145,8 @@ export default function CompanyBusinessScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
+        quality: 0.4,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0].uri) {
@@ -156,7 +158,7 @@ export default function CompanyBusinessScreen() {
           setCropModalVisible(true);
           // El modal de edición se re-abre tras completar/cancelar el recorte
         } else {
-          await uploadImage(result.assets[0].uri);
+          await uploadImage(result.assets[0].uri, result.assets[0].base64 || undefined);
           setEditModalVisible(true);
         }
       } else {
@@ -222,7 +224,7 @@ export default function CompanyBusinessScreen() {
     }
   };
 
-  const uploadImage = async (imageUri: string) => {
+  const uploadImage = async (imageUri: string, base64Str?: string) => {
     if (!profile?.id) return;
     setIsUploading(true);
     try {
@@ -236,15 +238,13 @@ export default function CompanyBusinessScreen() {
         const response = await fetch(imageUri);
         body = await response.blob();
         contentType = `image/${ext}`;
+      } else if (base64Str) {
+        body = decode(base64Str);
+        contentType = `image/${ext}`;
       } else {
-        const formData = new FormData();
-        formData.append('file', {
-          uri: imageUri,
-          name: filePath.split('/')[1],
-          type: `image/${ext}`,
-        } as any);
-        body = formData;
-        contentType = undefined;
+        const response = await fetch(imageUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
       }
 
       const { error: uploadError } = await supabase.storage

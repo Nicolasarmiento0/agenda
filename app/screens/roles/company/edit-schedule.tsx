@@ -124,7 +124,16 @@ export default function EditScheduleScreen() {
       showAlert({ 
         title: '¡Éxito!', 
         message: 'Horario general guardado correctamente.', 
-        buttons: [{ text: 'OK', onPress: () => router.back() }] 
+        buttons: [{
+          text: 'OK',
+          onPress: () => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/screens/roles/company/dashboard-company' as any);
+            }
+          }
+        }] 
       });
     } catch (e: any) {
       showAlert({ title: 'Error al guardar', message: e.message });
@@ -176,7 +185,13 @@ export default function EditScheduleScreen() {
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
-      <ScreenHeader title="HORARIO SEMANAL" onLeft={() => router.back()} />
+      <ScreenHeader title="HORARIO SEMANAL" onLeft={() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/screens/roles/company/dashboard-company' as any);
+        }
+      }} />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 24, lineHeight: 20 }}>

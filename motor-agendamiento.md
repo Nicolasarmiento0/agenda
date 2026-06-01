@@ -10,6 +10,7 @@ La prioridad es:
 * Simplificar la administración para el negocio.
 * Mantener una única base de código.
 * Activar módulos especializados según la categoría del negocio.
+* Mantener lo que ya sirve, solo agregar las nuevas funcionalidades por tipo de categorias.
 
 ---
 
@@ -23,8 +24,7 @@ Todos los negocios comparten:
 * Agenda
 * Servicios
 * Bloqueos
-* Notificaciones
-* Pagos
+* Notificaciones en bandeja de entrada de la app
 * Historial
 
 Pero cada categoría puede activar módulos específicos.
@@ -147,7 +147,7 @@ Se gestionan:
 
 Ejemplos:
 
-Que sean modificable spor negocios.
+Que sean modificables ya que cada gimnasio ofrece sistintos planes o talleres.
 
 * Libre mensual
 * Acceso ilimitado
@@ -181,6 +181,7 @@ Ejemplos:
 * Crossfit 07:00
 * Yoga 18:00
 * Funcional 20:00
+* Clase de plan 
 
 ### Entidad
 
@@ -202,14 +203,11 @@ Campos:
 
 Pensado para:
 
-* Escuelas deportivas
-* Academias
-* Artes marciales
 * Gimnasios
 
 ### Comportamiento
 
-El alumno posee horarios permanentes.
+El alumno posee horarios permanentes que se repiten todas las semanas los cuales elige al ingresar al negocio tipo gym.
 
 Ejemplo:
 
@@ -269,11 +267,11 @@ StudentClassReservation
 
 # Flujo Alumno Dinámico
 
-1. Abrir clases.
-2. Filtrar por categoría.
-3. Ver cupos disponibles.
-4. Reservar.
-5. Confirmación inmediata.
+1. Abrir calendario y en esta vista ver clases mensuales que le quedan disponibles.
+2. Rol company puede habilitar o deshabilitar el alumno (dependiendo si pago o no su mensualidad)
+2. Ver cupos disponibles.
+3. Reservar.
+4. Confirmación inmediata.
 
 ---
 
@@ -288,6 +286,8 @@ Mostrar:
 * Cupos restantes.
 
 ---
+
+# Tambien en deportes, hay una categoria de canchas deportivas que funciona igual a la de los barberias, solo que se puede reservar una cancha por hora. En vez de servicios y trabajdores se debe ajustar para que funcione con canchas.
 
 # 4. Educación y Consultoría
 
@@ -426,7 +426,7 @@ Valores:
 
 # Dashboard Universal para Dueños
 
-La pantalla principal siempre debe priorizar la agenda.
+La pantalla principal siempre sera el dshboard-company.
 
 Mostrar:
 
@@ -441,7 +441,7 @@ Mostrar:
 * Reservas del día
 * Cancelaciones
 * Nuevos clientes
-* Ingresos estimados
+* Ingresos estimados (ya incluido en dashboard actual)
 
 ## Acciones rápidas
 
@@ -518,3 +518,5 @@ La agenda siempre debe ser el centro de la experiencia.
 Todos los módulos deben compartir una única base de datos y un único sistema de autenticación, pero permitir reglas de negocio específicas según la categoría.
 
 Las funcionalidades que ya estén implementadas en el código actual (backend, frontend, base de datos, etc.) y que se usen por los módulos actuales, no se deben tocar.
+
+Todas las funciones que se agreguen para cada tipo de negocio deben poder modificarse desde el setup business o cuando deseen, recuerda que el onboarding de creación de negocio debe ser con la menor cantidad de clicks para que el usuario pueda comenzar a utilizar la plataforma rápidamente. Por favor, antes de realizar cualquier cambio, analizar el código actual y las funcionalidades existentes para no afectar el correcto funcionamiento del sistema. 

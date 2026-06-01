@@ -66,7 +66,13 @@ export default function PrivacyScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Header con botón back */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/screens/global/profile' as any);
+          }
+        }}>
           <Feather name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Privacidad y Seguridad</Text>

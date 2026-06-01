@@ -13,7 +13,13 @@ export default function PrivacyPolicyScreen() {
   return (
     <View style={[s.screen, { backgroundColor: colors.background }]}>
       <View style={[s.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={s.backBtn} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/screens/global/profile' as any);
+          }
+        }}>
           <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: colors.textPrimary }]}>Política de Privacidad</Text>
