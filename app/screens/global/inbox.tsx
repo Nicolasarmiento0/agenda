@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import Sidebar from '../../../components/Sidebar';
-import { useAlert } from '../../../context/AlertContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
@@ -97,7 +96,6 @@ function InboxCard({
 export default function InboxScreen() {
   const { profile } = useAuth();
   const { colors, isDarkMode } = useTheme();
-  const { showAlert } = useAlert();
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -105,12 +103,17 @@ export default function InboxScreen() {
   const [items, setItems] = useState<InboxItem[]>([]);
 
   const fetchInbox = useCallback(async () => {
-    if (!profile?.id || !profile?.role) return;
+    if (!profile?.id || !profile?.role) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     const role = profile.role;
     const newItems: InboxItem[] = [];
 
-    // ── ADMIN: negocios pendientes de aprobación ──────────────────
+    // ── ADMIN: actividades globales + negocios pendientes ──────────
     if (role === 'admin') {
+      // 1. Negocios pendientes
       const { data: bizPending } = await supabase
         .from('businesses')
         .select('id, name, created_at')
@@ -128,11 +131,46 @@ export default function InboxScreen() {
           onAction: () => router.push('/screens/roles/admin/admin-businesses' as any),
         });
       });
+
+      // 2. Actividades globales de citas
+      const { data: apptGlob } = await supabase
+        .from('appointments')
+        .select('id, client_name, service, date, status, created_at, businesses(name)')
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      (apptGlob ?? []).forEach((a: any) => {
+        const bizName = a.businesses?.name ?? 'Negocio';
+        const STATUS_LABEL: Record<string, string> = {
+          pending: '📅 Cita Creada (Pendiente)',
+          confirmed: '✓ Cita Confirmada',
+          rescheduled: '↩ Cita Reprogramada',
+          cancelled: '✕ Cita Cancelada',
+          completed: '✓ Cita Completada',
+          'no-show': '✕ Cliente No Asistió',
+        };
+        const STATUS_TYPE: Record<string, InboxItem['type']> = {
+          pending: 'appointment_pending',
+          confirmed: 'appointment_confirmed',
+          rescheduled: 'appointment_rescheduled',
+          cancelled: 'appointment_cancelled',
+          completed: 'appointment_completed',
+          'no-show': 'appointment_noshow',
+        };
+        newItems.push({
+          id: `appt-${a.id}`,
+          type: STATUS_TYPE[a.status] ?? 'appointment_pending',
+          title: `${STATUS_LABEL[a.status] ?? a.status}: ${a.service}`,
+          subtitle: `Local: ${bizName} · Cliente: ${a.client_name} · Fecha: ${a.date}`,
+          date: a.created_at,
+          actionLabel: 'Ver',
+          onAction: () => router.push('/screens/global/calendar' as any),
+        });
+      });
     }
 
-    // ── COMPANY: citas pendientes de confirmación ──────────────────
+    // ── COMPANY: todas las notificaciones del negocio ──────────────
     if (role === 'company') {
-      // Obtener el negocio del company
       const { data: biz } = await supabase
         .from('businesses')
         .select('id, name')
@@ -144,9 +182,9 @@ export default function InboxScreen() {
         const [apptRes, memReqRes] = await Promise.all([
           supabase
             .from('appointments')
-            .select('id, client_name, service, date, created_at')
+            .select('id, client_name, service, date, status, created_at')
             .eq('business_id', biz.id)
-            .eq('status', 'pending')
+            .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
             .order('created_at', { ascending: false })
             .limit(50),
           supabase
@@ -158,10 +196,26 @@ export default function InboxScreen() {
         ]);
 
         (apptRes.data ?? []).forEach((a: any) => {
+          const STATUS_LABEL: Record<string, string> = {
+            pending: '📅 Nueva cita recibida (Pendiente)',
+            confirmed: '✓ Cita confirmada',
+            rescheduled: '↩ Cita reprogramada',
+            cancelled: '✕ Cita cancelada',
+            completed: '✓ Cita completada',
+            'no-show': '✕ Cliente no asistió',
+          };
+          const STATUS_TYPE: Record<string, InboxItem['type']> = {
+            pending: 'appointment_pending',
+            confirmed: 'appointment_confirmed',
+            rescheduled: 'appointment_rescheduled',
+            cancelled: 'appointment_cancelled',
+            completed: 'appointment_completed',
+            'no-show': 'appointment_noshow',
+          };
           newItems.push({
             id: `appt-${a.id}`,
-            type: 'appointment_pending',
-            title: `Nueva cita: ${a.service}`,
+            type: STATUS_TYPE[a.status] ?? 'appointment_pending',
+            title: `${STATUS_LABEL[a.status] ?? a.status}: ${a.service}`,
             subtitle: `${a.client_name} · ${a.date}`,
             date: a.created_at,
             actionLabel: 'Ver agenda',
@@ -184,7 +238,7 @@ export default function InboxScreen() {
       }
     }
 
-    // ── WORKER: citas pendientes asignadas ────────────────────────
+    // ── WORKER: todas las citas asignadas ─────────────────────────
     if (role === 'worker') {
       const { data: worker } = await supabase
         .from('workers')
@@ -195,56 +249,76 @@ export default function InboxScreen() {
       if (worker) {
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, client_name, service, date, created_at')
+          .select('id, client_name, service, date, status, created_at')
           .eq('worker_id', worker.id)
-          .eq('status', 'pending')
+          .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
           .order('created_at', { ascending: false })
           .limit(50);
 
         (appts ?? []).forEach((a: any) => {
+          const STATUS_LABEL: Record<string, string> = {
+            pending: '📅 Nueva cita asignada (Pendiente)',
+            confirmed: '✓ Cita asignada (Confirmada)',
+            rescheduled: '↩ Cita asignada (Reprogramada)',
+            cancelled: '✕ Cita asignada (Cancelada)',
+            completed: '✓ Cita asignada (Completada)',
+            'no-show': '✕ Cliente no asistió',
+          };
+          const STATUS_TYPE: Record<string, InboxItem['type']> = {
+            pending: 'appointment_pending',
+            confirmed: 'appointment_confirmed',
+            rescheduled: 'appointment_rescheduled',
+            cancelled: 'appointment_cancelled',
+            completed: 'appointment_completed',
+            'no-show': 'appointment_noshow',
+          };
           newItems.push({
             id: `appt-${a.id}`,
-            type: 'appointment_pending',
-            title: `Cita pendiente: ${a.service}`,
+            type: STATUS_TYPE[a.status] ?? 'appointment_pending',
+            title: `${STATUS_LABEL[a.status] ?? a.status}: ${a.service}`,
             subtitle: `${a.client_name} · ${a.date}`,
             date: a.created_at,
+            actionLabel: 'Ver agenda',
+            onAction: () => router.push('/screens/global/calendar' as any),
           });
         });
       }
     }
 
-    // ── CLIENT: resoluciones de citas + estado membresía ──────────
+    // ── CLIENT: todas las notificaciones personales de citas ────────
     if (role === 'client') {
       const [apptRes, memRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, service, date, status, created_at, updated_at, businesses(name)')
+          .select('id, service, date, status, created_at, businesses(name)')
           .eq('client_id', profile.id)
-          .in('status', ['confirmed', 'completed', 'rescheduled', 'no-show', 'cancelled'])
-          .order('updated_at', { ascending: false })
+          .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
+          .order('created_at', { ascending: false })
           .limit(40),
         supabase
           .from('membership_requests')
           .select('id, status, created_at, businesses(name)')
           .eq('client_id', profile.id)
           .in('status', ['approved', 'rejected'])
-          .order('updated_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(20),
       ]);
 
-      const STATUS_TYPE: Record<string, InboxItem['type']> = {
-        confirmed: 'appointment_confirmed',
-        completed: 'appointment_completed',
-        rescheduled: 'appointment_rescheduled',
-        'no-show': 'appointment_noshow',
-        cancelled: 'appointment_cancelled',
-      };
       const STATUS_LABEL: Record<string, string> = {
-        confirmed: '✓ Confirmada',
-        completed: '✓ Completada',
-        rescheduled: '↩ Reprogramada',
-        'no-show': '✕ No se presentó',
-        cancelled: '✕ Cancelada',
+        pending: '✨ Cita agendada (Pendiente)',
+        confirmed: '✓ Cita confirmada',
+        rescheduled: '↩ Cita reprogramada',
+        cancelled: '✕ Cita cancelada',
+        completed: '✓ Cita completada',
+        'no-show': '✕ No asistido (No-show)',
+      };
+      const STATUS_TYPE: Record<string, InboxItem['type']> = {
+        pending: 'appointment_pending',
+        confirmed: 'appointment_confirmed',
+        rescheduled: 'appointment_rescheduled',
+        cancelled: 'appointment_cancelled',
+        completed: 'appointment_completed',
+        'no-show': 'appointment_noshow',
       };
 
       (apptRes.data as any[] ?? []).forEach((a: any) => {
@@ -254,7 +328,9 @@ export default function InboxScreen() {
           type: STATUS_TYPE[a.status] ?? 'appointment_pending',
           title: `${STATUS_LABEL[a.status] ?? a.status}: ${a.service}`,
           subtitle: `${bizName} · ${a.date}`,
-          date: a.updated_at ?? a.created_at,
+          date: a.created_at,
+          actionLabel: 'Ver citas',
+          onAction: () => router.push('/screens/global/my-appointments' as any),
         });
       });
 

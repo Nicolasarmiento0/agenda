@@ -1,4 +1,3 @@
-import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
@@ -8,8 +7,7 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 const ITEM_HEIGHT = 44;
@@ -204,7 +202,7 @@ export default function TimeWheelPicker({
   for (let h = openingHour; h < closingHour; h++) {
     hours.push(String(h).padStart(2, '0'));
   }
-  const minutes = ['00', '10', '20', '30', '40', '50'];
+  const minutes = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 
   const defaultHour = String(openingHour).padStart(2, '0');
   const selectedHourStr = selectedSlot ? selectedSlot.split(':')[0] : defaultHour;

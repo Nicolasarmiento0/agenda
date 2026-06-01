@@ -1,4 +1,3 @@
-import { AntDesign } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -116,7 +115,7 @@ export default function LoginScreen() {
 
             {/* Header */}
             <View>
-              <Text style={appStyles.title}>Iniciar{'\n'}Sesión</Text>
+              <Text style={appStyles.title}>Iniciar Sesión</Text>
               <Text style={appStyles.subtitle}>
                 Accede a tu cuenta para continuar.
               </Text>
@@ -206,9 +205,9 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color={colors.textPrimary} />
               ) : (
                 <>
-                  <ExpoImage 
-                    source={require('../../../assets/images/google-logo.svg')} 
-                    style={{ width: 18, height: 18 }} 
+                  <ExpoImage
+                    source={require('../../../assets/images/Google__G__logo.svg.png')}
+                    style={{ width: 18, height: 18 }}
                     contentFit="contain"
                   />
                   <Text style={[loginStyles.googleText, { color: colors.textPrimary }]}>

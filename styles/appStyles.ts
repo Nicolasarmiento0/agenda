@@ -76,7 +76,7 @@ export const appStyles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     letterSpacing: 0.5,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Varien',
   },
   screen: {
     flex: 1,
