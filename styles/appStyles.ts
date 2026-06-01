@@ -248,6 +248,7 @@ export const appStyles = StyleSheet.create({
   },
   glassModalCard: {
     width: '100%',
+    maxWidth: 420,
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 0.5,
@@ -1985,7 +1986,7 @@ export const useAppStyles = () => {
     back: { alignSelf: 'flex-start', paddingVertical: 50 },
     back2: { alignSelf: 'flex-start', paddingVertical: 10 },
     screenCentered: { flex: 1, padding: 28, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, gap: 12 },
-    title: { fontSize: 38, fontWeight: '700', color: colors.textPrimary, letterSpacing: 4, textTransform: 'uppercase', padding: 10, paddingVertical: 20, fontFamily: 'Inter_700Bold' },
+    title: { fontSize: 38, fontWeight: '700', color: colors.textPrimary, letterSpacing: 4, textTransform: 'uppercase', padding: 10, paddingVertical: 20, fontFamily: 'Varien' },
     subtitle: { fontSize: 14, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_400Regular' },
     subtitleCentered: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', letterSpacing: 1, fontFamily: 'Inter_400Regular' },
     input: { alignSelf: 'stretch', borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: colors.textPrimary, backgroundColor: colors.surface, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },

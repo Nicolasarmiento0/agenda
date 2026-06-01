@@ -205,6 +205,115 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [businessOpening, setBusinessOpening] = useState<string>('09:00');
     const [businessClosing, setBusinessClosing] = useState<string>('21:00');
 
+    const { pickerOpeningHour, pickerClosingHour } = useMemo(() => {
+      let openH = 7;
+      let closeH = 22;
+
+      const d = parseDateString(date);
+      const dayOfWeek = d.getDay();
+      const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+      const dayBlocks = businessSchedule ? businessSchedule[dayKey] : null;
+
+      if (dayBlocks && Array.isArray(dayBlocks) && dayBlocks.length > 0) {
+        let minStart = 24;
+        let maxEnd = 0;
+        dayBlocks.forEach((block: any) => {
+          const [startH, startM] = block.start.split(':').map(Number);
+          const [endH, endM] = block.end.split(':').map(Number);
+          const startVal = startH + startM / 60;
+          const endVal = endH + endM / 60;
+          if (startVal < minStart) minStart = startVal;
+          if (endVal > maxEnd) maxEnd = endVal;
+        });
+        openH = Math.floor(minStart);
+        closeH = Math.ceil(maxEnd);
+      } else if (businessOpening && businessClosing) {
+        const [oH, oM] = businessOpening.split(':').map(Number);
+        const [cH, cM] = businessClosing.split(':').map(Number);
+        openH = oH;
+        closeH = cM > 0 ? cH + 1 : cH;
+      }
+
+      openH = Math.max(0, Math.min(23, openH));
+      closeH = Math.max(openH + 1, Math.min(24, closeH));
+
+      return { pickerOpeningHour: openH, pickerClosingHour: closeH };
+    }, [date, businessSchedule, businessOpening, businessClosing]);
+
+    const closedIntervals = useMemo(() => {
+      const intervals: { start: number; end: number }[] = [];
+      const d = parseDateString(date);
+      const dayOfWeek = d.getDay();
+      const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+      const dayBlocks = businessSchedule ? businessSchedule[dayKey] : null;
+
+      if (dayBlocks && Array.isArray(dayBlocks)) {
+        if (dayBlocks.length === 0) {
+          intervals.push({ start: pickerOpeningHour, end: pickerClosingHour });
+        } else {
+          const sortedBlocks = [...dayBlocks]
+            .map((block: any) => {
+              const [startH, startM] = block.start.split(':').map(Number);
+              const [endH, endM] = block.end.split(':').map(Number);
+              return {
+                start: startH + startM / 60,
+                end: endH + endM / 60,
+              };
+            })
+            .sort((a, b) => a.start - b.start);
+
+          if (sortedBlocks[0].start > pickerOpeningHour) {
+            intervals.push({ start: pickerOpeningHour, end: sortedBlocks[0].start });
+          }
+
+          for (let i = 0; i < sortedBlocks.length - 1; i++) {
+            if (sortedBlocks[i].end < sortedBlocks[i + 1].start) {
+              intervals.push({ start: sortedBlocks[i].end, end: sortedBlocks[i + 1].start });
+            }
+          }
+
+          const lastBlock = sortedBlocks[sortedBlocks.length - 1];
+          if (lastBlock.end < pickerClosingHour) {
+            intervals.push({ start: lastBlock.end, end: pickerClosingHour });
+          }
+        }
+      } else if (businessOpening && businessClosing) {
+        const [openH, openM] = businessOpening.split(':').map(Number);
+        const [closeH, closeM] = businessClosing.split(':').map(Number);
+        const openTime = openH + (openM / 60);
+        const closeTime = closeH + (closeM / 60);
+
+        if (openTime > pickerOpeningHour) {
+          intervals.push({ start: pickerOpeningHour, end: openTime });
+        }
+        if (closeTime < pickerClosingHour) {
+          intervals.push({ start: closeTime, end: pickerClosingHour });
+        }
+      }
+
+      return intervals;
+    }, [date, businessSchedule, businessOpening, businessClosing, pickerOpeningHour, pickerClosingHour]);
+
+    const combinedBusyIntervals = useMemo(() => {
+      return [...busyIntervals, ...closedIntervals];
+    }, [busyIntervals, closedIntervals]);
+
+    useEffect(() => {
+      if (startHour < pickerOpeningHour) {
+        setStartHour(pickerOpeningHour);
+      } else if (startHour >= pickerClosingHour) {
+        setStartHour(Math.max(pickerOpeningHour, pickerClosingHour - 1));
+      }
+    }, [pickerOpeningHour, pickerClosingHour, startHour]);
+
+    useEffect(() => {
+      if (endHour <= startHour) {
+        setEndHour(Math.min(pickerClosingHour, startHour + 1));
+      } else if (endHour > pickerClosingHour) {
+        setEndHour(pickerClosingHour);
+      }
+    }, [startHour, pickerClosingHour, endHour]);
+
     useEffect(() => {
       if (!businessId) return;
       supabase
@@ -979,8 +1088,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                   <View style={{ gap: 4 }}>
                     <Text style={[styles.label, { color: colors.textSecondary }]}>Desde (Hora de inicio)</Text>
                     <TimeWheelPicker
-                      openingHour={7}
-                      closingHour={22}
+                      openingHour={pickerOpeningHour}
+                      closingHour={pickerClosingHour}
                       selectedSlot={formatHour(startHour)}
                       onSlotSelect={(slot) => {
                         const parts = slot.split(':');
@@ -989,22 +1098,22 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         const newStart = h + m / 60;
                         setStartHour(newStart);
                         if (endHour <= newStart) {
-                          const newEnd = Math.min(22, newStart + 1);
+                          const newEnd = Math.min(pickerClosingHour, newStart + 1);
                           setEndHour(newEnd);
                           setDuration(newEnd - newStart);
                         } else {
                           setDuration(endHour - newStart);
                         }
                       }}
-                      busyIntervals={busyIntervals}
+                      busyIntervals={combinedBusyIntervals}
                       durationMinutes={10}
                       isDarkMode={isDarkMode}
                     />
 
                     <Text style={[styles.label, { color: colors.textSecondary }]}>Hasta (Hora de término)</Text>
                     <TimeWheelPicker
-                      openingHour={7}
-                      closingHour={22}
+                      openingHour={pickerOpeningHour}
+                      closingHour={pickerClosingHour}
                       selectedSlot={formatHour(endHour)}
                       onSlotSelect={(slot) => {
                         const parts = slot.split(':');
@@ -1023,8 +1132,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                   <>
                     <Text style={[styles.label, { color: colors.textSecondary }]}>Hora</Text>
                     <TimeWheelPicker
-                      openingHour={7}
-                      closingHour={22}
+                      openingHour={pickerOpeningHour}
+                      closingHour={pickerClosingHour}
                       selectedSlot={formatHour(startHour)}
                       onSlotSelect={(slot) => {
                         const parts = slot.split(':');
@@ -1032,7 +1141,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                         const m = parseInt(parts[1], 10);
                         setStartHour(h + m / 60);
                       }}
-                      busyIntervals={busyIntervals}
+                      busyIntervals={combinedBusyIntervals}
                       durationMinutes={duration * 60}
                       isDarkMode={isDarkMode}
                     />

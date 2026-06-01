@@ -113,30 +113,98 @@ export default function CompanyBusinessScreen() {
     }
   }, [business]);
 
-  const pickImage = async () => {
+  const handleImagePress = () => {
+    // Cerrar el modal de edición antes de mostrar el alert para evitar
+    // el problema de iOS donde dos <Modal> apilados no se ven correctamente.
+    setEditModalVisible(false);
+    setTimeout(() => {
+      const options: any[] = [
+        { text: 'Cambiar logo', onPress: handlePickImage },
+      ];
+      if (avatarUrl) {
+        options.push({ text: 'Borrar logo', style: 'destructive', onPress: handleDeleteLogo });
+      }
+      options.push({ text: 'Cancelar', style: 'cancel', onPress: () => setEditModalVisible(true) });
+      showAlert({ title: 'Logo del negocio', message: '¿Qué deseas hacer?', buttons: options });
+    }, 350);
+  };
+
+  const handlePickImage = async () => {
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert({ title: 'Permiso necesario', message: 'Necesitamos acceso a tu galería.' });
+        setEditModalVisible(true);
+        return;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
-        base64: true,
       });
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets[0].uri) {
         if (Platform.OS === 'web') {
           setTempImageUri(result.assets[0].uri);
           setCropZoom(1);
           setCropX(0);
           setCropY(0);
           setCropModalVisible(true);
+          // El modal de edición se re-abre tras completar/cancelar el recorte
         } else {
-          uploadImage(result.assets[0].uri);
+          await uploadImage(result.assets[0].uri);
+          setEditModalVisible(true);
         }
+      } else {
+        setEditModalVisible(true);
       }
-    } catch (error) {
-      showAlert({ title: 'Error', message: 'No se pudo abrir la galería' });
+    } catch (error: any) {
+      showAlert({ title: 'Error', message: 'No se pudo seleccionar la foto: ' + error.message });
+      setEditModalVisible(true);
     }
+  };
+
+  const handleDeleteLogo = () => {
+    showAlert({
+      title: 'Borrar logo',
+      message: '¿Estás seguro de que quieres eliminar el logo del negocio?',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel', onPress: () => setEditModalVisible(true) },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsUploading(true);
+              if (avatarUrl) {
+                try {
+                  const url = new URL(avatarUrl);
+                  const pathParts = url.pathname.split('/avatars/');
+                  const filePath = pathParts[1]?.split('?')[0];
+                  if (filePath) await supabase.storage.from('avatars').remove([filePath]);
+                } catch (_) {}
+              }
+              const { error } = await supabase
+                .from('businesses')
+                .update({ avatar_url: null })
+                .eq('id', business?.id);
+              if (error) throw error;
+              setAvatarUrl('');
+              await refreshProfile();
+              showAlert({ title: 'Listo', message: 'Logo eliminado.' });
+            } catch (error: any) {
+              showAlert({ title: 'Error', message: 'No se pudo eliminar el logo.' });
+            } finally {
+              setIsUploading(false);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleCropSave = async () => {
@@ -146,9 +214,11 @@ export default function CompanyBusinessScreen() {
     try {
       const croppedUri = await cropImageWeb(tempImageUri, cropZoom, cropX, cropY);
       await uploadImage(croppedUri);
+      setEditModalVisible(true);
     } catch (e: any) {
       showAlert({ title: 'Error al recortar', message: e.message });
       setIsUploading(false);
+      setEditModalVisible(true);
     }
   };
 
@@ -156,7 +226,7 @@ export default function CompanyBusinessScreen() {
     if (!profile?.id) return;
     setIsUploading(true);
     try {
-      const ext = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const ext = imageUri.startsWith('data:') ? 'jpeg' : (imageUri.split('.').pop()?.toLowerCase() ?? 'jpg');
       const filePath = `${profile.id}/business_${Date.now()}.${ext}`;
 
       let body: any;
@@ -333,7 +403,7 @@ export default function CompanyBusinessScreen() {
               <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary }]}>Editar Negocio</Text>
 
-              <TouchableOpacity style={localStyles.imagePickerContainer} onPress={pickImage} disabled={isUploading}>
+              <TouchableOpacity style={localStyles.imagePickerContainer} onPress={handleImagePress} disabled={isUploading}>
                 {avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={localStyles.pickerImage} />
                 ) : (
@@ -405,7 +475,7 @@ export default function CompanyBusinessScreen() {
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
                 <TouchableOpacity
                   style={[localStyles.modalButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => setEditModalVisible(false)}
+                  onPress={() => { setAvatarUrl(business?.avatar_url || ''); setEditModalVisible(false); }}
                 >
                   <Text style={[localStyles.modalButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
                 </TouchableOpacity>
@@ -430,7 +500,7 @@ export default function CompanyBusinessScreen() {
         visible={cropModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setCropModalVisible(false)}
+        onRequestClose={() => { setCropModalVisible(false); setEditModalVisible(true); }}
       >
         <View style={localStyles.cropModalOverlay}>
           <View style={[localStyles.cropModalCard, { backgroundColor: isDarkMode ? 'rgba(20, 20, 25, 0.95)' : 'rgba(255, 255, 255, 0.98)', borderColor: colors.border }]}>
@@ -549,7 +619,7 @@ export default function CompanyBusinessScreen() {
             <View style={localStyles.cropModalActions}>
               <TouchableOpacity
                 style={[localStyles.cropModalBtnCancel, { borderColor: colors.border }]}
-                onPress={() => setCropModalVisible(false)}
+                onPress={() => { setCropModalVisible(false); setEditModalVisible(true); }}
               >
                 <Text style={[localStyles.cropModalBtnCancelText, { color: colors.textSecondary }]}>CANCELAR</Text>
               </TouchableOpacity>
