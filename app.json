@@ -5,16 +5,16 @@
       "output": "single",
       "favicon": "./assets/images/logo.png"
     },
-    "name": "myapp",
-    "slug": "myapp",
+    "name": "Nucora",
+    "slug": "nucora",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "myapp",
+    "scheme": "nucora",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.myapp"
+      "bundleIdentifier": "com.anonymous.nucora"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/images/logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.myapp"
+      "package": "com.anonymous.nucora"
     },
     "plugins": [
       "expo-router",

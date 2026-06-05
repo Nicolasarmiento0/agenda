@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -128,7 +129,14 @@ export default function BusinessPendingScreen() {
               <View style={[styles.infoBox, { backgroundColor: `${appColors.primary}10`, borderColor: `${appColors.primary}40` }]}>
                 <Feather name="info" size={16} color={appColors.primary} />
                 <Text style={[styles.infoText, { color: appColors.primary }]}>
-                  Al abrir la app después de la aprobación, serás redirigido automáticamente a tu panel.
+                  {'Su cuenta está en revisión, para una rápida atención enviar mensaje directo a través de instagram a '}
+                  <Text
+                    style={styles.infoLink}
+                    onPress={() => Linking.openURL('https://www.instagram.com/nucorapp/')}
+                  >
+                    @nucorapp
+                  </Text>
+                  {', al abrir la app después de la aprobación, serás redirigido automáticamente a tu panel.'}
                 </Text>
               </View>
             )}
@@ -201,4 +209,5 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   infoText: { fontSize: 12, letterSpacing: 0.3, lineHeight: 18, textAlign: 'center' },
+  infoLink: { textDecorationLine: 'underline', fontFamily: 'Inter_600SemiBold' },
 });

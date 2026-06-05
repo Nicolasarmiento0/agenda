@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -119,12 +120,16 @@ export default function ForgotPasswordScreen() {
           {/* Back */}
           <TouchableOpacity
             style={appStyles.back}
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/screens/global/loginscreen');
+              }
+            }}
             activeOpacity={0.7}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
-              ← VOLVER
-            </Text>
+            <Feather name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <View style={appStyles.screenContent}>

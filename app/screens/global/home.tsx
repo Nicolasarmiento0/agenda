@@ -6,7 +6,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const handleFinish = () => {
-    router.replace('/screens/global/loginscreen' as any);
+    router.push('/screens/global/loginscreen' as any);
   };
 
   return <OnboardingScreen onFinish={handleFinish} />;

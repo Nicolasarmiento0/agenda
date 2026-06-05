@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -103,12 +104,16 @@ export default function LoginScreen() {
           {/* Back button */}
           <TouchableOpacity
             style={appStyles.back}
-            onPress={() => router.replace('/screens/global/home')}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/screens/global/home');
+              }
+            }}
             activeOpacity={0.7}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 13, letterSpacing: 1 }}>
-              ← HOME
-            </Text>
+            <Feather name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
 
           <View style={appStyles.screenContent}>
