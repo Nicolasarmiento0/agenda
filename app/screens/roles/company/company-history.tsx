@@ -20,6 +20,7 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useIsGym } from '../../../../hooks/useIsGym';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
+import { exportToCSV } from '../../../../utils/csvExporter';
 
 const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
 const PLAN_LABELS: Record<string, string> = { basic: 'BÁSICO', premium: 'PREMIUM', vip: 'VIP' };
@@ -122,6 +123,80 @@ export default function CompanyHistoryScreen() {
 
   // Gym
   const [gymMembers, setGymMembers] = useState<GymMember[]>([]);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    const dataToExport = isGym ? gymMembers : appointments;
+    if (dataToExport.length === 0) {
+      showAlert({
+        title: 'Sin datos',
+        message: 'No hay registros en el periodo seleccionado para exportar.',
+      });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const businessName = business?.name ? business.name.replace(/\s+/g, '_') : 'Empresa';
+      const todayStr = new Date().toISOString().split('T')[0];
+      const filename = `Nucora_Ingresos_${businessName}_${todayStr}.csv`;
+
+      let headers: { label: string; key: string }[] = [];
+      let mappedData: any[] = [];
+
+      if (isGym) {
+        headers = [
+          { label: 'Miembro', key: 'nickname' },
+          { label: 'Plan', key: 'plan_label' },
+          { label: 'Precio', key: 'price' },
+        ];
+        mappedData = gymMembers.map(item => ({
+          nickname: item.profiles?.nickname ?? 'Miembro',
+          plan_label: PLAN_LABELS[item.plan] ?? item.plan.toUpperCase(),
+          price: item.price,
+        }));
+      } else {
+        headers = [
+          { label: 'Servicio', key: 'service' },
+          { label: 'Precio', key: 'price' },
+          { label: 'Cliente', key: 'client_name' },
+          { label: 'Trabajador', key: 'worker_name' },
+          { label: 'Fecha', key: 'date' },
+          { label: 'Hora', key: 'hour' },
+        ];
+
+        const formatHourHelper = (h: number) => {
+          const hh = Math.floor(h);
+          const mm = Math.round((h - hh) * 60);
+          return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        };
+
+        mappedData = appointments.map(item => ({
+          service: item.service,
+          price: Number(item.price || 0),
+          client_name: item.client_name,
+          worker_name: item.workers?.name || 'General',
+          date: item.date,
+          hour: formatHourHelper(Number(item.start_hour)),
+        }));
+      }
+
+      await exportToCSV({
+        data: mappedData,
+        headers,
+        filename,
+      });
+
+    } catch (err: any) {
+      console.error('Error al exportar CSV:', err);
+      showAlert({
+        title: 'Error de Exportación',
+        message: err.message || 'Ocurrió un error al intentar generar el archivo CSV.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchHistory = useCallback(async () => {
     if (!business?.id) return;
@@ -323,6 +398,22 @@ export default function CompanyHistoryScreen() {
             ? `${gymMembers.length} miembros activos`
             : `${appointments.length} servicios realizados`}
         </Text>
+
+        <TouchableOpacity
+          style={[styles.exportButton, { borderColor: colors.border }]}
+          onPress={handleExportCSV}
+          disabled={exporting}
+          activeOpacity={0.8}
+        >
+          {exporting ? (
+            <ActivityIndicator size="small" color={appColors.primary} />
+          ) : (
+            <>
+              <Feather name="download" size={14} color={appColors.primary} />
+              <Text style={[styles.exportButtonText, { color: appColors.primary }]}>EXPORTAR CSV</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </GlassCard>
 
       {!isGym && (
@@ -596,5 +687,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     flex: 1,
     textAlign: 'center',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 16,
+  },
+  exportButtonText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontFamily: 'Inter_700Bold',
   },
 });

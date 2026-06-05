@@ -187,6 +187,7 @@ type TimeWheelPickerProps = {
   busyIntervals: BusyInterval[];
   durationMinutes: number;
   isDarkMode: boolean;
+  closedAfter?: number; // hora de cierre real (fraccional) — slots que INICIAN después quedan bloqueados
 };
 
 export default function TimeWheelPicker({
@@ -197,9 +198,10 @@ export default function TimeWheelPicker({
   busyIntervals,
   durationMinutes,
   isDarkMode,
+  closedAfter,
 }: TimeWheelPickerProps) {
   const hours: string[] = [];
-  for (let h = openingHour; h < closingHour; h++) {
+  for (let h = openingHour; h <= Math.min(closingHour, 23); h++) {
     hours.push(String(h).padStart(2, '0'));
   }
   const minutes = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
@@ -236,10 +238,12 @@ export default function TimeWheelPicker({
       const h = parseInt(hStr, 10);
       const m = parseInt(mStr, 10);
       const slotStart = h + m / 60;
+      // Slots que inician estrictamente después del cierre quedan bloqueados
+      if (closedAfter !== undefined && slotStart > closedAfter) return true;
       const slotEnd = slotStart + durationMinutes / 60;
       return busyIntervals.some(({ start, end }) => slotStart < end && slotEnd > start);
     },
-    [busyIntervals, durationMinutes],
+    [busyIntervals, durationMinutes, closedAfter],
   );
 
   const busyHourIndices = new Set(

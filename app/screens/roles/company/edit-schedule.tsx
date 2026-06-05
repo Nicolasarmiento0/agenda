@@ -39,6 +39,16 @@ export default function EditScheduleScreen() {
   const { colors, isDarkMode } = useTheme();
   const { showAlert } = useAlert();
 
+  // Horarios del negocio — el picker de bloques queda acotado a estos límites
+  const businessOpenHour = business?.opening_time
+    ? parseInt(business.opening_time.slice(0, 2), 10)
+    : 0;
+  const businessCloseHourRaw = business?.closing_time ? business.closing_time.slice(0, 5).split(':') : null;
+  const businessCloseHour = businessCloseHourRaw ? parseInt(businessCloseHourRaw[0], 10) : 23;
+  const businessCloseTime = businessCloseHourRaw
+    ? parseInt(businessCloseHourRaw[0], 10) + parseInt(businessCloseHourRaw[1], 10) / 60
+    : 23;
+
   const [activeDays, setActiveDays] = useState<string[]>(['1', '2', '3', '4', '5']);
   const [weeklyBlocks, setWeeklyBlocks] = useState<TimeBlock[]>([{ start: '10:00', end: '21:00' }]);
   
@@ -61,25 +71,37 @@ export default function EditScheduleScreen() {
         .select('schedule, opening_time, closing_time')
         .eq('id', business.id)
         .single();
-      
+
       if (error) throw error;
+
+      // Límites del negocio para recortar bloques que excedan el horario
+      const openStr = (data.opening_time || business.opening_time || '00:00').slice(0, 5);
+      const closeStr = (data.closing_time || business.closing_time || '23:59').slice(0, 5);
+
+      const clipBlocks = (blocks: TimeBlock[]): TimeBlock[] =>
+        blocks
+          .map(b => ({
+            start: b.start < openStr ? openStr : b.start,
+            end: b.end > closeStr ? closeStr : b.end,
+          }))
+          .filter(b => b.start < b.end);
 
       if (data.schedule) {
         const scheduleObj = data.schedule;
         const active = Object.keys(scheduleObj).filter(k => scheduleObj[k].length > 0);
         setActiveDays(active);
         if (active.length > 0) {
-          setWeeklyBlocks(scheduleObj[active[0]]);
+          setWeeklyBlocks(clipBlocks(scheduleObj[active[0]]));
         } else {
           setWeeklyBlocks([]);
         }
       } else {
         // Fallback a los horarios base si no hay schedule JSONB
-        const baseBlock = data.opening_time && data.closing_time 
+        const baseBlock = data.opening_time && data.closing_time
           ? [{ start: data.opening_time.slice(0, 5), end: data.closing_time.slice(0, 5) }]
-          : [{ start: '10:00', end: '21:00' }];
-        
-        setWeeklyBlocks(baseBlock);
+          : [{ start: openStr, end: closeStr }];
+
+        setWeeklyBlocks(clipBlocks(baseBlock));
         setActiveDays(['1', '2', '3', '4', '5', '6']); // Por defecto lun-sab
       }
     } catch (e: any) {
@@ -288,13 +310,14 @@ export default function EditScheduleScreen() {
             </Text>
             
             <TimeWheelPicker
-              openingHour={0}
-              closingHour={24}
+              openingHour={businessOpenHour}
+              closingHour={businessCloseHour}
               selectedSlot={tempTime}
               onSlotSelect={(t) => setTempTime(t)}
               busyIntervals={[]}
               durationMinutes={10}
               isDarkMode={isDarkMode}
+              closedAfter={businessCloseTime}
             />
 
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>

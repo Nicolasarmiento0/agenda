@@ -205,9 +205,10 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [businessOpening, setBusinessOpening] = useState<string>('09:00');
     const [businessClosing, setBusinessClosing] = useState<string>('21:00');
 
-    const { pickerOpeningHour, pickerClosingHour } = useMemo(() => {
+    const { pickerOpeningHour, pickerClosingHour, pickerClosedAfter } = useMemo(() => {
       let openH = 7;
       let closeH = 22;
+      let closedAfter: number | undefined;
 
       const d = parseDateString(date);
       const dayOfWeek = d.getDay();
@@ -227,17 +228,19 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         });
         openH = Math.floor(minStart);
         closeH = Math.ceil(maxEnd);
+        closedAfter = maxEnd; // la hora exacta de cierre del último bloque
       } else if (businessOpening && businessClosing) {
         const [oH, oM] = businessOpening.split(':').map(Number);
         const [cH, cM] = businessClosing.split(':').map(Number);
         openH = oH;
         closeH = cM > 0 ? cH + 1 : cH;
+        closedAfter = cH + cM / 60; // hora de cierre exacta del negocio
       }
 
       openH = Math.max(0, Math.min(23, openH));
       closeH = Math.max(openH + 1, Math.min(24, closeH));
 
-      return { pickerOpeningHour: openH, pickerClosingHour: closeH };
+      return { pickerOpeningHour: openH, pickerClosingHour: closeH, pickerClosedAfter: closedAfter };
     }, [date, businessSchedule, businessOpening, businessClosing]);
 
     const closedIntervals = useMemo(() => {
@@ -272,10 +275,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
             }
           }
 
-          const lastBlock = sortedBlocks[sortedBlocks.length - 1];
-          if (lastBlock.end < pickerClosingHour) {
-            intervals.push({ start: lastBlock.end, end: pickerClosingHour });
-          }
+          // El límite post-cierre se maneja vía closedAfter en el picker (inicio-exclusivo)
         }
       } else if (businessOpening && businessClosing) {
         const [openH, openM] = businessOpening.split(':').map(Number);
@@ -286,9 +286,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         if (openTime > pickerOpeningHour) {
           intervals.push({ start: pickerOpeningHour, end: openTime });
         }
-        if (closeTime < pickerClosingHour) {
-          intervals.push({ start: closeTime, end: pickerClosingHour });
-        }
+        // El límite post-cierre se maneja vía closedAfter en el picker (inicio-exclusivo)
       }
 
       return intervals;
@@ -301,8 +299,8 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     useEffect(() => {
       if (startHour < pickerOpeningHour) {
         setStartHour(pickerOpeningHour);
-      } else if (startHour >= pickerClosingHour) {
-        setStartHour(Math.max(pickerOpeningHour, pickerClosingHour - 1));
+      } else if (startHour > pickerClosingHour) {
+        setStartHour(Math.max(pickerOpeningHour, pickerClosingHour));
       }
     }, [pickerOpeningHour, pickerClosingHour, startHour]);
 
@@ -1108,6 +1106,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                       busyIntervals={combinedBusyIntervals}
                       durationMinutes={10}
                       isDarkMode={isDarkMode}
+                      closedAfter={pickerClosedAfter}
                     />
 
                     <Text style={[styles.label, { color: colors.textSecondary }]}>Hasta (Hora de término)</Text>
@@ -1144,6 +1143,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                       busyIntervals={combinedBusyIntervals}
                       durationMinutes={duration * 60}
                       isDarkMode={isDarkMode}
+                      closedAfter={pickerClosedAfter}
                     />
                   </>
                 )}
