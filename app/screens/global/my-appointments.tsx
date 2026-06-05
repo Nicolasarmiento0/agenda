@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -129,8 +129,18 @@ export default function MyAppointmentsScreen() {
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={localStyles.header}>
-        <TouchableOpacity onPress={() => setSidebarVisible(true)} activeOpacity={0.7} style={{ width: 40 }}>
-          <Text style={[localStyles.hamburger, { color: colors.textPrimary }]}>≡</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/screens/roles/client/client-dashboard' as any);
+            }
+          }}
+          activeOpacity={0.7}
+          style={{ width: 40, padding: 4 }}
+        >
+          <Feather name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>MIS CITAS</Text>
         <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>

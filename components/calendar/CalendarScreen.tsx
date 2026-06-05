@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -1094,7 +1095,13 @@ export default function CalendarScreen() {
                 styles.clientTab,
                 clientTab === t && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
               ]}
-              onPress={() => setClientTab(t)}
+              onPress={() => {
+                if (t === 'list') {
+                  router.push('/screens/global/my-appointments' as any);
+                } else {
+                  setClientTab(t);
+                }
+              }}
             >
               <Text
                 style={[
