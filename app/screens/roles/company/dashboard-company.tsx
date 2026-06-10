@@ -50,9 +50,30 @@ export default function DashboardCompanyScreen() {
   const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   const [gymStats, setGymStats] = useState({ basic: 0, premium: 0, vip: 0, revenue: 0, prices: GYM_PLAN_PRICE });
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  const getRelativeGroup = (isoString: string) => {
+    const now = new Date();
+    const apptDate = new Date(isoString);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
+    const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return { label: 'HOY', color: '#FF4B4B', bg: '#FF4B4B15' };
+    if (diffDays === 1) return { label: 'MAÑANA', color: '#FF7A00', bg: '#FF7A0015' };
+    if (diffDays <= 7) return { label: 'ESTA SEMANA', color: '#B4F736', bg: '#B4F73620' };
+    if (diffDays <= 14) return { label: 'PRÓXIMA SEMANA', color: '#00D8F6', bg: '#00D8F615' };
+    return { label: 'MÁS ADELANTE', color: '#9CA3AF', bg: '#9CA3AF15' };
+  };
+
+  const formatDateTime = (isoString: string) => {
+    const d = new Date(isoString);
+    const dateStr = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    const timeStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} a las ${timeStr}`;
+  };
 
   const SCHEDULE_DATA = React.useMemo(() => {
     const days = [
@@ -201,6 +222,33 @@ export default function DashboardCompanyScreen() {
 
       setRevenueData(newRevData.map(({ label, value }) => ({ label, value })));
     }
+
+    // Próximas citas del negocio
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { data: upcomingData } = await supabase
+      .from('appointments')
+      .select('id, date, start_hour, status, service, client_name, workers(name)')
+      .eq('business_id', business.id)
+      .in('status', ['confirmed', 'pending', 'rescheduled'])
+      .gte('date', todayStr)
+      .order('date', { ascending: true })
+      .order('start_hour', { ascending: true })
+      .limit(8);
+
+    if (upcomingData) {
+      const now = new Date();
+      const processed = upcomingData
+        .map((appt: any) => {
+          const hours = Math.floor(appt.start_hour);
+          const minutes = Math.round((appt.start_hour % 1) * 60);
+          const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+          return { ...appt, start_time: new Date(`${appt.date}T${timeStr}`).toISOString() };
+        })
+        .filter((appt) => new Date(appt.start_time).getTime() >= now.getTime());
+      setUpcomingAppointments(processed.slice(0, 5));
+    } else {
+      setUpcomingAppointments([]);
+    }
   }, [business?.id, timeFilter, isGym]);
 
   const onRefresh = useCallback(async () => {
@@ -345,6 +393,78 @@ export default function DashboardCompanyScreen() {
                   )}
                 </View>
               </TouchableOpacity>
+            </GlassCard>
+          )}
+
+          {/* PRÓXIMAS CITAS */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Citas Próximas</Text>
+            {upcomingAppointments.length > 0 && (
+              <View style={{ backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>{upcomingAppointments.length}</Text>
+              </View>
+            )}
+          </View>
+
+          {upcomingAppointments.length > 0 ? (
+            upcomingAppointments.map((appt) => {
+              const group = getRelativeGroup(appt.start_time);
+              return (
+                <TouchableOpacity
+                  key={appt.id}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/screens/global/calendar' as any)}
+                >
+                  <GlassCard style={[styles.card, { padding: 18, borderLeftWidth: 4, borderLeftColor: group.color }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 2, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>
+                          {appt.client_name || 'Cliente'}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                          {appt.service || 'Servicio'}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        <View style={{ backgroundColor: group.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: group.color, letterSpacing: 0.5 }}>{group.label}</Text>
+                        </View>
+                        <View style={{ backgroundColor: appt.status === 'confirmed' ? appColors.primary + '15' : '#EAB30815', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: appt.status === 'confirmed' ? appColors.primary : '#EAB308', letterSpacing: 0.5 }}>
+                            {appt.status === 'confirmed' ? 'CONFIRMADA' : appt.status === 'rescheduled' ? 'REPROG.' : 'PENDIENTE'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="calendar" size={14} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 13, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                          {formatDateTime(appt.start_time)}
+                        </Text>
+                      </View>
+                      {(appt.workers as any)?.name && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Feather name="user" size={14} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 13, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                            {(appt.workers as any).name.split(' ')[0]}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <GlassCard style={[styles.card, { padding: 24, alignItems: 'center' }]}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Feather name="calendar" size={20} color={colors.textSecondary} />
+              </View>
+              <Text style={{ fontSize: 15, color: colors.textPrimary, fontWeight: '600', marginBottom: 4, fontFamily: 'Inter_600SemiBold' }}>Sin citas próximas</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', fontFamily: 'Inter_400Regular' }}>
+                Las reservas confirmadas aparecerán aquí.
+              </Text>
             </GlassCard>
           )}
 

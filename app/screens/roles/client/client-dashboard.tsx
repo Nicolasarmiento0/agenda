@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -28,6 +29,9 @@ export default function ClientDashboardScreen() {
 
   // Data
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const [selectedApptId, setSelectedApptId] = useState<string | null>(null);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
 
   // Animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -47,7 +51,7 @@ export default function ClientDashboardScreen() {
           service,
           price,
           business:businesses(name, address),
-          workers(name)
+          workers(name, profiles(avatar_url))
         `)
         .eq('client_id', profile.id)
         .in('status', ['confirmed', 'pending', 'rescheduled'])
@@ -81,9 +85,21 @@ export default function ClientDashboardScreen() {
           (appt) => new Date(appt.start_time).getTime() >= now.getTime()
         );
 
-        setUpcomingAppointments(upcoming.slice(0, 5));
+        const slicedUpcoming = upcoming.slice(0, 5);
+        setUpcomingAppointments(slicedUpcoming);
+        
+        // Auto-seleccionar la cita más próxima si no hay ninguna seleccionada
+        if (slicedUpcoming.length > 0) {
+          setSelectedApptId((prev) => {
+            const exists = slicedUpcoming.some(u => u.id === prev);
+            return exists ? prev : slicedUpcoming[0].id;
+          });
+        } else {
+          setSelectedApptId(null);
+        }
       } else {
         setUpcomingAppointments([]);
+        setSelectedApptId(null);
       }
     } catch (err) {
       console.error('Error fetching client dashboard data:', err);
@@ -111,6 +127,18 @@ export default function ClientDashboardScreen() {
     setRefreshing(true);
     await refreshProfile();
     await fetchDashboardData();
+    if (selectedApptId) {
+      try {
+        const { data } = await supabase
+          .from('appointment_activities')
+          .select('*')
+          .eq('appointment_id', selectedApptId)
+          .order('created_at', { ascending: true });
+        if (data) setActivities(data);
+      } catch (e) {
+        console.error('Error refreshing activities:', e);
+      }
+    }
     setRefreshing(false);
   };
 
@@ -124,6 +152,36 @@ export default function ClientDashboardScreen() {
       ]),
     ]).start();
   }, [profile?.id]);
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      if (!selectedApptId) {
+        setActivities([]);
+        return;
+      }
+      setActivitiesLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('appointment_activities')
+          .select('*')
+          .eq('appointment_id', selectedApptId)
+          .order('created_at', { ascending: true });
+        
+        if (error) {
+          console.error('Error fetching activities:', error.message);
+          setActivities([]);
+        } else if (data) {
+          setActivities(data);
+        }
+      } catch (err) {
+        console.error('Error fetching activities:', err);
+      } finally {
+        setActivitiesLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, [selectedApptId]);
 
   const formatDateTime = (isoString: string) => {
     const d = new Date(isoString);
@@ -151,24 +209,41 @@ export default function ClientDashboardScreen() {
 
           {/* PRÓXIMAS CITAS */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary }]}>Citas Próximas</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Citas Próximas</Text>
+              {upcomingAppointments.length > 0 && (
+                <View style={{ backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>{upcomingAppointments.length}</Text>
+                </View>
+              )}
+            </View>
             {upcomingAppointments.length > 0 && (
-              <View style={{ backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>{upcomingAppointments.length}</Text>
-              </View>
+              <TouchableOpacity onPress={() => router.push('/screens/global/my-appointments')} activeOpacity={0.7}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent, fontFamily: 'Inter_600SemiBold' }}>Ver todas</Text>
+              </TouchableOpacity>
             )}
           </View>
 
           {upcomingAppointments.length > 0 ? (
             upcomingAppointments.map((appt) => {
               const group = getRelativeGroup(appt.start_time);
+              const isSelected = selectedApptId === appt.id;
               return (
                 <TouchableOpacity
                   key={appt.id}
                   activeOpacity={0.8}
-                  onPress={() => router.push('/screens/global/my-appointments')}
+                  onPress={() => setSelectedApptId(appt.id)}
                 >
-                  <GlassCard style={[appStyles.wd_card, { padding: 18, borderLeftWidth: 4, borderLeftColor: group.color }]}>
+                  <GlassCard style={[
+                    appStyles.wd_card, 
+                    { 
+                      padding: 18, 
+                      borderLeftWidth: 4, 
+                      borderLeftColor: group.color,
+                      borderWidth: isSelected ? 1.5 : StyleSheet.hairlineWidth,
+                      borderColor: isSelected ? group.color : colors.border
+                    }
+                  ]}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
                       <View style={{ flex: 1, marginRight: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 2, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>
@@ -227,6 +302,364 @@ export default function ClientDashboardScreen() {
               </Text>
             </GlassCard>
           )}
+
+          {/* DETALLE DE CITA RASTREADOR */}
+          {(() => {
+            if (upcomingAppointments.length === 0 || !selectedApptId) return null;
+            const appt = upcomingAppointments.find(a => a.id === selectedApptId);
+            if (!appt) return null;
+
+            // Formateadores de fecha y hora
+            const formatDetailDate = (isoString: string) => {
+              try {
+                const d = new Date(isoString);
+                const weekday = d.toLocaleDateString('es-ES', { weekday: 'long' });
+                const day = d.getDate();
+                const month = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+                const year = d.getFullYear();
+                const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                return `${capitalizedWeekday}, ${day} ${month} ${year}`;
+              } catch (e) {
+                return appt.date;
+              }
+            };
+
+            const formatDetailTime = (isoString: string) => {
+              try {
+                const d = new Date(isoString);
+                let hours = d.getHours();
+                const minutes = d.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                const minutesStr = String(minutes).padStart(2, '0');
+                return `${hours}:${minutesStr} ${ampm}`;
+              } catch (e) {
+                return String(appt.start_hour);
+              }
+            };
+
+            const getInitials = (name: string) => {
+              if (!name) return 'CM';
+              return name
+                .split(' ')
+                .map(n => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+            };
+
+            const workerName = appt.workers?.name || 'Carlos Méndez';
+            const initials = getInitials(workerName);
+
+            // Determinar estados del Timeline
+            const isPending = appt.status === 'pending';
+            const isConfirmed = appt.status === 'confirmed' || appt.status === 'rescheduled';
+            const isCompleted = appt.status === 'completed';
+
+            const step1Active = true;
+            const step1Color = '#FF9F0A'; // Orange/Yellow
+            
+            const step2Active = isConfirmed || isCompleted;
+            const step2Color = '#30D158'; // Green
+
+            const step3Active = isCompleted;
+            const step3Color = '#636366'; // Gray standard
+
+            return (
+              <View style={{ gap: 16, marginTop: 8 }}>
+                <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Detalle de Cita</Text>
+                
+                <GlassCard style={{ padding: 20 }}>
+                  <View style={{ gap: 20 }}>
+                    {/* Header de Cita: Barber info & Badge */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        {/* Avatar con Glow */}
+                        <View style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 24,
+                          shadowColor: '#3B82F6',
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.8,
+                          shadowRadius: 10,
+                          elevation: 5,
+                        }}>
+                          {appt.workers?.profiles?.avatar_url ? (
+                            <Image
+                              source={{ uri: appt.workers.profiles.avatar_url }}
+                              style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 24,
+                                borderWidth: 2,
+                                borderColor: '#3B82F6',
+                              }}
+                            />
+                          ) : (
+                            <View style={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 24,
+                              backgroundColor: '#1E3A8A',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderWidth: 2,
+                              borderColor: '#3B82F6',
+                            }}>
+                              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Inter_700Bold' }}>{initials}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View>
+                          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }}>{workerName}</Text>
+                          <Text style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }}>Barbero · Agenda App</Text>
+                        </View>
+                      </View>
+                      
+                      {/* Badge */}
+                      <View style={{
+                        backgroundColor: isCompleted ? 'rgba(255,255,255,0.06)' : isConfirmed ? '#EEF8F015' : '#FFF5E515',
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: isCompleted ? colors.border : isConfirmed ? '#30D15840' : '#FF9F0A40',
+                      }}>
+                        <Text style={{
+                          fontSize: 11,
+                          fontWeight: '700',
+                          color: isCompleted ? colors.textSecondary : isConfirmed ? '#30D158' : '#FF9F0A',
+                          fontFamily: 'Inter_700Bold',
+                        }}>
+                          {isCompleted ? 'Completado' : isConfirmed ? 'Confirmado' : 'Pendiente'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Grid de Servicio, Precio, Fecha, Hora */}
+                    <View style={{ gap: 10 }}>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 }}>
+                          <Text style={{ fontSize: 9, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_600SemiBold', marginBottom: 4 }}>SERVICIO</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{appt.service}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 }}>
+                          <Text style={{ fontSize: 9, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_600SemiBold', marginBottom: 4 }}>PRECIO</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }}>
+                            {(() => {
+                              const priceNum = parseFloat(appt.price || 0);
+                              return priceNum % 1 === 0 ? `$${Math.round(priceNum)}` : `$${priceNum.toFixed(2)}`;
+                            })()}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 }}>
+                          <Text style={{ fontSize: 9, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_600SemiBold', marginBottom: 4 }}>FECHA</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{formatDetailDate(appt.start_time)}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 }}>
+                          <Text style={{ fontSize: 9, color: colors.textSecondary, letterSpacing: 1, fontFamily: 'Inter_600SemiBold', marginBottom: 4 }}>HORA</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }}>{formatDetailTime(appt.start_time)}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Estado de la Cita Timeline */}
+                    <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 }}>
+                      <Text style={{ fontSize: 11, letterSpacing: 1.5, color: colors.textSecondary, fontWeight: '700', fontFamily: 'Inter_700Bold', marginBottom: 16 }}>ESTADO DE LA CITA</Text>
+                      
+                      <View>
+                        {/* Step 1: Solicitud enviada */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', minHeight: 65 }}>
+                          <View style={{ alignItems: 'center', marginRight: 16, width: 32 }}>
+                            <View style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: step1Active ? step1Color + '20' : 'transparent',
+                              borderWidth: 2,
+                              borderColor: step1Active ? step1Color : colors.border,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              shadowColor: step1Active ? step1Color : 'transparent',
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowOpacity: 0.8,
+                              shadowRadius: 6,
+                              elevation: step1Active ? 4 : 0,
+                            }}>
+                              <Ionicons name="sparkles" size={14} color={step1Active ? step1Color : colors.textSecondary} />
+                            </View>
+                            <View style={{
+                              width: 2,
+                              flex: 1,
+                              backgroundColor: step2Active ? step1Color : colors.border,
+                              marginVertical: 4,
+                              minHeight: 25,
+                            }} />
+                          </View>
+                          <View style={{ flex: 1, paddingTop: 4 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Inter_700Bold' }}>Solicitud enviada</Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1, fontFamily: 'Inter_400Regular' }}>Esperando confirmación del barbero</Text>
+                          </View>
+                        </View>
+
+                        {/* Step 2: Confirmado */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', minHeight: 65 }}>
+                          <View style={{ alignItems: 'center', marginRight: 16, width: 32 }}>
+                            <View style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: step2Active ? step2Color + '20' : 'transparent',
+                              borderWidth: 2,
+                              borderColor: step2Active ? step2Color : colors.border,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              shadowColor: step2Active ? step2Color : 'transparent',
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowOpacity: 0.8,
+                              shadowRadius: 6,
+                              elevation: step2Active ? 4 : 0,
+                            }}>
+                              <Ionicons name="checkmark" size={16} color={step2Active ? step2Color : colors.textSecondary} />
+                            </View>
+                            <View style={{
+                              width: 2,
+                              flex: 1,
+                              backgroundColor: step3Active ? step2Color : colors.border,
+                              marginVertical: 4,
+                              minHeight: 25,
+                            }} />
+                          </View>
+                          <View style={{ flex: 1, paddingTop: 4 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: step2Active ? colors.textPrimary : colors.textSecondary, fontFamily: 'Inter_700Bold' }}>Confirmado</Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1, fontFamily: 'Inter_400Regular' }}>El barbero aceptó tu cita</Text>
+                          </View>
+                        </View>
+
+                        {/* Step 3: Completado */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                          <View style={{ alignItems: 'center', marginRight: 16, width: 32 }}>
+                            <View style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: step3Active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                              borderWidth: 2,
+                              borderColor: step3Active ? colors.textSecondary : colors.border,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              shadowColor: step3Active ? colors.textSecondary : 'transparent',
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowOpacity: 0.8,
+                              shadowRadius: 6,
+                              elevation: step3Active ? 4 : 0,
+                            }}>
+                              <Ionicons name="star" size={14} color={step3Active ? colors.textSecondary : colors.textSecondary} />
+                            </View>
+                          </View>
+                          <View style={{ flex: 1, paddingTop: 4 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: step3Active ? colors.textPrimary : colors.textSecondary, fontFamily: 'Inter_700Bold' }}>Completado</Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1, fontFamily: 'Inter_400Regular' }}>Servicio realizado con éxito</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Actividad Log List */}
+                    <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 20 }}>
+                      <Text style={{ fontSize: 11, letterSpacing: 1.5, color: colors.textSecondary, fontWeight: '700', fontFamily: 'Inter_700Bold', marginBottom: 16 }}>ACTIVIDAD</Text>
+                      
+                      {activitiesLoading ? (
+                        <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }}>Cargando actividad...</Text>
+                      ) : activities.length > 0 ? (
+                        <View>
+                          {activities.map((act, idx) => {
+                            const isLast = idx === activities.length - 1;
+                            
+                            // Formatear fecha y hora relativa
+                            const formatActivityTimestamp = (isoString: string) => {
+                              try {
+                                const actDate = new Date(isoString);
+                                const nowVal = new Date();
+                                
+                                const todayVal = new Date(nowVal.getFullYear(), nowVal.getMonth(), nowVal.getDate());
+                                const yesterdayVal = new Date(todayVal);
+                                yesterdayVal.setDate(yesterdayVal.getDate() - 1);
+                                
+                                const targetVal = new Date(actDate.getFullYear(), actDate.getMonth(), actDate.getDate());
+                                
+                                let datePartVal = '';
+                                if (targetVal.getTime() === todayVal.getTime()) {
+                                  datePartVal = 'Hoy';
+                                } else if (targetVal.getTime() === yesterdayVal.getTime()) {
+                                  datePartVal = 'Ayer';
+                                } else {
+                                  datePartVal = actDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+                                }
+                                
+                                let hr = actDate.getHours();
+                                const min = actDate.getMinutes();
+                                const ap = hr >= 12 ? 'PM' : 'AM';
+                                hr = hr % 12;
+                                hr = hr ? hr : 12;
+                                const minStr = String(min).padStart(2, '0');
+                                
+                                return `${datePartVal}, ${hr}:${minStr} ${ap}`;
+                              } catch (e) {
+                                return '';
+                              }
+                            };
+
+                            return (
+                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', minHeight: 50 }} key={act.id}>
+                                <View style={{ alignItems: 'center', marginRight: 12, width: 12 }}>
+                                  <View style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: '#3b82f6',
+                                    marginTop: 6,
+                                    shadowColor: '#3b82f6',
+                                    shadowOffset: { width: 0, height: 0 },
+                                    shadowOpacity: 0.8,
+                                    shadowRadius: 4,
+                                    elevation: 3,
+                                  }} />
+                                  {!isLast && (
+                                    <View style={{
+                                      width: 1,
+                                      flex: 1,
+                                      backgroundColor: colors.border,
+                                      marginVertical: 4,
+                                      minHeight: 30,
+                                    }} />
+                                  )}
+                                </View>
+                                <View style={{ flex: 1, paddingBottom: 12 }}>
+                                  <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
+                                    {act.title}
+                                  </Text>
+                                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: 'Inter_400Regular' }}>
+                                    {formatActivityTimestamp(act.created_at)}
+                                  </Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }}>Sin registros de actividad.</Text>
+                      )}
+                    </View>
+                  </View>
+                </GlassCard>
+              </View>
+            );
+          })()}
 
           {/* ACCIONES RÁPIDAS */}
           <Text style={[appStyles.wd_sectionTitle, { color: colors.textPrimary, marginTop: 16 }]}>Acciones Rápidas</Text>
