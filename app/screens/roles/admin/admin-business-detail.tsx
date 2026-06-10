@@ -24,6 +24,15 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../../lib/supabase';
 import { appColors, appStyles } from '../../../../styles/appStyles';
 
+type Worker = {
+  id: string;
+  name: string;
+  specialty: string | null;
+  color: string | null;
+  email: string | null;
+  active: boolean;
+};
+
 type BusinessDetail = {
   id: string;
   name: string;
@@ -35,6 +44,7 @@ type BusinessDetail = {
   created_at: string;
   category: { name: string } | null;
   owner: { nickname: string; id: string } | null;
+  workers: Worker[];
 };
 
 export default function AdminBusinessDetailScreen() {
@@ -63,7 +73,8 @@ export default function AdminBusinessDetailScreen() {
       .select(`
         id, name, status, description, address, phone, logo_url, created_at,
         category:service_categories(name),
-        owner:profiles!businesses_owner_id_fkey(id, nickname)
+        owner:profiles!businesses_owner_id_fkey(id, nickname),
+        workers:workers(*)
       `)
       .eq('id', id)
       .single();
@@ -223,6 +234,75 @@ export default function AdminBusinessDetailScreen() {
               <InfoRow label="TELÉFONO" value={business.phone} />
               <InfoRow label="PROPIETARIO" value={business.owner?.nickname ?? null} />
               <InfoRow label="SOLICITUD" value={formatDate(business.created_at)} />
+            </View>
+
+            {/* Trabajadores */}
+            <Text style={[appStyles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>
+              TRABAJADORES ({business.workers?.length ?? 0})
+            </Text>
+
+            <View style={{ gap: 10, marginBottom: 20 }}>
+              {!business.workers || business.workers.length === 0 ? (
+                <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border, padding: 20, alignItems: 'center' }]}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontFamily: 'Inter_400Regular' }}>
+                    Sin trabajadores registrados
+                  </Text>
+                </View>
+              ) : (
+                business.workers.map((worker) => (
+                  <View
+                    key={worker.id}
+                    style={[
+                      styles.workerCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={[
+                          styles.workerAvatar,
+                          {
+                            backgroundColor: `${worker.color || '#3B7BE0'}18`,
+                            borderColor: worker.color || '#3B7BE0',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.workerAvatarText, { color: worker.color || '#3B7BE0' }]}>
+                          {(worker.name || 'T').substring(0, 2).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={[styles.workerName, { color: colors.textPrimary }]}>
+                          {worker.name}
+                        </Text>
+                        <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]}>
+                          {worker.specialty || 'Sin especialidad'}
+                        </Text>
+                        {worker.email ? (
+                          <Text style={[styles.workerEmail, { color: colors.textSecondary }]}>
+                            {worker.email}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View
+                        style={[
+                          styles.workerStatusBadge,
+                          {
+                            backgroundColor: worker.active ? '#EEF8F0' : '#FDEAEB',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.workerStatusText, { color: worker.active ? '#2E7D45' : '#D00024' }]}>
+                          {worker.active ? 'Activo' : 'Inactivo'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
           </ScrollView>
 
@@ -390,4 +470,46 @@ const styles = StyleSheet.create({
     minHeight: 80,
   },
   rejectModalBtn: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+  workerCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+  },
+  workerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workerAvatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  workerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  workerSpecialty: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  workerEmail: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+  },
+  workerStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  workerStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    fontFamily: 'Inter_600SemiBold',
+  },
 });

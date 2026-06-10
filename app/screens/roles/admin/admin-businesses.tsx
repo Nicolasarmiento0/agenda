@@ -27,6 +27,7 @@ type Business = {
   created_at: string;
   category: { name: string } | null;
   owner: { nickname: string } | null;
+  workers?: { count: number }[];
 };
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
@@ -52,7 +53,8 @@ export default function AdminBusinessesScreen() {
       .select(`
         id, name, status, created_at,
         category:service_categories(name),
-        owner:profiles!businesses_owner_id_fkey(nickname)
+        owner:profiles!businesses_owner_id_fkey(nickname),
+        workers:workers(count)
       `)
       .order('created_at', { ascending: false });
 
@@ -81,36 +83,47 @@ export default function AdminBusinessesScreen() {
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
   };
 
-  const renderBusiness = ({ item }: { item: Business }) => (
-    <GlassCard style={styles.card}>
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={() =>
-          router.push({
-            pathname: '/screens/roles/admin/admin-business-detail' as any,
-            params: { id: item.id },
-          })
-        }
-        style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
-      >
-        <View style={styles.cardBody}>
-          <View style={styles.cardTitleRow}>
-            <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {item.name}
+  const renderBusiness = ({ item }: { item: Business }) => {
+    const workerCount = item.workers?.[0]?.count ?? 0;
+    return (
+      <GlassCard style={styles.card}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() =>
+            router.push({
+              pathname: '/screens/roles/admin/admin-business-detail' as any,
+              params: { id: item.id },
+            })
+          }
+          style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}
+        >
+          <View style={styles.cardBody}>
+            <View style={styles.cardTitleRow}>
+              <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <StatusBadge status={item.status} colors={STATUS_COLORS} labels={STATUS_LABELS} />
+            </View>
+            <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+              {item.category?.name ?? '—'} · {item.owner?.nickname ?? '—'}
             </Text>
-            <StatusBadge status={item.status} colors={STATUS_COLORS} labels={STATUS_LABELS} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+              <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
+                Solicitud: {formatDate(item.created_at)}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Feather name="users" size={12} color={appColors.primary} />
+                <Text style={[styles.cardWorkers, { color: colors.textSecondary }]}>
+                  {workerCount} {workerCount === 1 ? 'trabajador' : 'trabajadores'}
+                </Text>
+              </View>
+            </View>
           </View>
-          <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
-            {item.category?.name ?? '—'} · {item.owner?.nickname ?? '—'}
-          </Text>
-          <Text style={[styles.cardDate, { color: colors.textSecondary }]}>
-            Solicitud: {formatDate(item.created_at)}
-          </Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={colors.textSecondary} />
-      </TouchableOpacity>
-    </GlassCard>
-  );
+          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </GlassCard>
+    );
+  };
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
@@ -188,4 +201,5 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 15, fontWeight: '600', fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, flex: 1 },
   cardMeta: { fontSize: 12, letterSpacing: 0.5, fontFamily: 'Inter_400Regular' },
   cardDate: { fontSize: 11, letterSpacing: 0.3, fontFamily: 'Inter_400Regular' },
+  cardWorkers: { fontSize: 11, letterSpacing: 0.3, fontFamily: 'Inter_400Regular' },
 });
