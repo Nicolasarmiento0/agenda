@@ -17,17 +17,26 @@ export default function ClientLayout() {
     );
   }
 
-  // Rutas que requieren estar autenticado como cliente
-  const privateRoutes = ['/profile', '/inbox', '/my-appointments', '/client-dashboard', '/client-gym-plan'];
-  
-  const isPrivate = privateRoutes.some(route => pathname.startsWith(route));
+  // Rutas exclusivas del rol client
+  const clientOnlyRoutes = ['/client-dashboard', '/my-appointments', '/client-gym-plan'];
+  // Rutas compartidas: cualquier usuario autenticado puede acceder (profile, inbox, calendar)
+  const authRequiredRoutes = ['/profile', '/inbox', '/calendar'];
 
-  if (isPrivate) {
+  const isClientOnly = clientOnlyRoutes.some(route => pathname.startsWith(route));
+  const isAuthRequired = authRequiredRoutes.some(route => pathname.startsWith(route));
+
+  if (isClientOnly) {
     if (!session) {
       return <Redirect href="/login" />;
     }
     if (profile?.role && profile.role !== 'client') {
       return <Redirect href="/" />;
+    }
+  }
+
+  if (isAuthRequired) {
+    if (!session) {
+      return <Redirect href="/login" />;
     }
   }
 
