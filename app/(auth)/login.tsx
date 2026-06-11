@@ -175,7 +175,7 @@ export default function LoginScreen() {
               onPress={() => router.push('/forgotPassword')}
               activeOpacity={0.7}
             >
-              <Text style={appStyles.forgotText}>¿Olvidaste tu contraseña? (Proximamente)</Text>
+              <Text style={appStyles.forgotText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
 
             {/* Botón primario */}
@@ -216,7 +216,7 @@ export default function LoginScreen() {
                     contentFit="contain"
                   />
                   <Text style={[loginStyles.googleText, { color: colors.textPrimary }]}>
-                    Continuar con Google (Proximamente)
+                    Continuar con Google
                   </Text>
                 </>
               )}
