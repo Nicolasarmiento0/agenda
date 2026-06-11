@@ -284,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setBusiness(null);
     setProfileLoaded(false);
-    router.replace('/screens/global/home' as any);
+    router.replace('/home');
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
