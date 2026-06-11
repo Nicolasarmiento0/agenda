@@ -1097,7 +1097,7 @@ export default function CalendarScreen() {
               ]}
               onPress={() => {
                 if (t === 'list') {
-                  router.push('/screens/global/my-appointments' as any);
+                  router.push('/my-appointments');
                 } else {
                   setClientTab(t);
                 }

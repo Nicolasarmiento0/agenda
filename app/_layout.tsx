@@ -37,18 +37,6 @@ function GlobalGuard({ children }: { children: React.ReactNode }) {
   }, [loading, profileLoaded, hasBootstrapped]);
 
   useEffect(() => {
-    console.log('🛡️  GLOBALGUARD STATE ─────────────────');
-    console.log('   loading         :', loading);
-    console.log('   profileLoaded   :', profileLoaded);
-    console.log('   hasBootstrapped :', hasBootstrapped);
-    console.log('   session         :', session ? `✅ ${session.user.id}` : '❌ null');
-    console.log('   profile         :', profile ? `✅ role=${profile.role}` : '❌ null');
-    if (!hasBootstrapped) console.log('   ⏳ BLOQUEADO → cold start inicial');
-    if (hasBootstrapped)  console.log('   ✅ GUARD OK → renderizando hijos');
-    console.log('─────────────────────────────────────');
-  }, [loading, profileLoaded, session, profile, hasBootstrapped]);
-
-  useEffect(() => {
     if (session && profileLoaded && !profile && !loading) {
       showAlert({
         title: 'Error de Conexión',
@@ -95,7 +83,7 @@ function DeepLinkHandler() {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
         // Solo redirigir a resetPassword si es un flujo de recuperación de contraseña
         if (type === 'recovery') {
-          router.replace('/screens/global/resetPassword' as any);
+          router.replace('/resetPassword');
         }
         // OAuth (Google, etc.) → onAuthStateChange se encarga del routing
       }
@@ -147,43 +135,11 @@ export default function RootLayout() {
             <GlobalGuard>
               <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerShown: false }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="screens/global/home" options={{ animation: 'slide_from_left' }} />
-                <Stack.Screen name="screens/global/loginscreen" />
-                <Stack.Screen name="screens/global/signup" />
-                <Stack.Screen name="screens/global/forgotPassword" />
-                <Stack.Screen name="screens/global/resetPassword" />
-                <Stack.Screen name="screens/global/role-select" />
-                <Stack.Screen name="screens/roles/company/dashboard-company" />
-                <Stack.Screen name="screens/global/profile" />
-                <Stack.Screen name="screens/global/privacy" />
-                <Stack.Screen name="screens/global/privacy-policy" />
-                <Stack.Screen name="screens/global/terms" />
-                <Stack.Screen name="screens/global/support" />
-                <Stack.Screen name="screens/roles/admin/admin-dashboard" />
-                <Stack.Screen name="screens/roles/admin/admin-businesses" />
-                <Stack.Screen name="screens/roles/admin/admin-business-detail" />
-                <Stack.Screen name="screens/roles/company/business-setup" />
-                <Stack.Screen name="screens/roles/company/business-pending" />
-                {/* Calendario unificado */}
-                <Stack.Screen name="screens/global/calendar" options={{ headerShown: false }} />
-                {/* Cliente */}
-                <Stack.Screen name="screens/global/explore" />
-                <Stack.Screen name="screens/global/my-appointments" />
-                <Stack.Screen name="screens/roles/client/client-business-profile" />
-                {/* Empresa */}
-                <Stack.Screen name="screens/roles/company/company-services" />
-                <Stack.Screen name="screens/roles/company/company-employees" />
-                <Stack.Screen name="screens/roles/company/company-history" />
-                <Stack.Screen name="screens/roles/company/company-business" />
-                <Stack.Screen name="screens/roles/company/company-members" options={{ headerShown: false }} />
-                <Stack.Screen name="screens/roles/company/company-booking-window" options={{ headerShown: false }} />
-                {/* Trabajador */}
-                <Stack.Screen name="screens/roles/worker/worker-dashboard" options={{ headerShown: false }} />
-                <Stack.Screen name="screens/roles/worker/worker-history" options={{ headerShown: false }} />
-                {/* Admin */}
-                <Stack.Screen name="screens/roles/admin/admin-business-employees" options={{ headerShown: false }} />
-                {/* Global */}
-                <Stack.Screen name="screens/global/inbox" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(client)" options={{ headerShown: false }} />
+                <Stack.Screen name="(company)" options={{ headerShown: false }} />
+                <Stack.Screen name="(worker)" options={{ headerShown: false }} />
+                <Stack.Screen name="(admin)" options={{ headerShown: false }} />
               </Stack>
             </GlobalGuard>
             <TeslaAlert />

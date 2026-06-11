@@ -68,7 +68,7 @@ export default function ReviewsModal({ visible, reviews, onClose, colors }: Prop
                     ))}
                   </View>
                   {r.comment ? (
-                    <Text style={[styles.reviewComment, { color: colors.textSecondary }]}>"{r.comment}"</Text>
+                    <Text style={[styles.reviewComment, { color: colors.textSecondary }]}>&quot;{r.comment}&quot;</Text>
                   ) : (
                     <Text style={[styles.reviewComment, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin comentario</Text>
                   )}

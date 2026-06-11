@@ -13,70 +13,40 @@ export default function Index() {
   const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
-    console.log('🏠 INDEX STATE ───────────────────────');
-    console.log('   loading            :', loading);
-    console.log('   profileLoaded      :', profileLoaded);
-    console.log('   rootNavigation.key :', rootNavigationState?.key ?? '❌ null (nav no lista)');
-    console.log('   session            :', session ? `✅ ${session.user.id}` : '❌ null');
-    console.log('   profile.role       :', profile?.role ?? '❌ null');
-    console.log('   business.status    :', business?.status ?? 'N/A');
-
-    if (!rootNavigationState?.key) console.log('   ⏳ BLOQUEADO → navegación no inicializada');
-    else if (loading)              console.log('   ⏳ BLOQUEADO → loading=true');
-    else if (!profileLoaded)       console.log('   ⏳ BLOQUEADO → profileLoaded=false');
-    else if (session && !profile)  console.log('   ⏳ BLOQUEADO → session existe pero profile=null');
-    else                           console.log('   ✅ INDEX LIBRE → procesando redirección...');
-    console.log('─────────────────────────────────────');
-  }, [loading, profileLoaded, session, profile, business, rootNavigationState?.key]);
-
-  useEffect(() => {
     if (!rootNavigationState?.key) return;
 
     if (loading) return;
     if (!profileLoaded) return;
 
     if (session && !profile) {
-      console.log('INDEX: Session exists but profile is still null');
       return;
     }
 
     if (!session) {
-      console.log('INDEX: No session, redirecting to Home');
       setTimeout(() => {
-        router.replace('/screens/global/home' as any);
+        router.replace('/home');
       }, 0);
       return;
     }
 
-    console.log('INDEX: Redirecting based on role:', profile?.role);
-    console.log('INDEX: Business state:', business?.id, 'Status:', business?.status);
-
     if (!profile?.role) {
-      console.log('INDEX: No role found, redirecting to Role Select');
-      setTimeout(() => router.replace('/screens/global/role-select' as any), 0);
+      setTimeout(() => router.replace('/role-select'), 0);
     } else if (profile.role === 'admin') {
-      console.log('INDEX: Admin role, redirecting to Admin Dashboard');
-      setTimeout(() => router.replace('/screens/roles/admin/admin-dashboard' as any), 0);
+      setTimeout(() => router.replace('/admin-dashboard'), 0);
     } else if (profile.role === 'client') {
-      console.log('INDEX: Client role, redirecting to Client Dashboard');
-      setTimeout(() => router.replace('/screens/roles/client/client-dashboard' as any), 0);
+      setTimeout(() => router.replace('/client-dashboard'), 0);
     } else if (profile.role === 'company') {
       if (!business) {
-        console.log('INDEX: Company role but NO business found, redirecting to Business Setup');
-        setTimeout(() => router.replace('/screens/roles/company/business-setup' as any), 0);
+        setTimeout(() => router.replace('/business-setup'), 0);
       } else if (business.status === 'pending' || business.status === 'rejected') {
-        console.log('INDEX: Company role, business is pending/rejected, redirecting to Business Pending');
-        setTimeout(() => router.replace('/screens/roles/company/business-pending' as any), 0);
+        setTimeout(() => router.replace('/business-pending'), 0);
       } else {
-        console.log('INDEX: Company role, business is approved, redirecting to Dashboard Company');
-        setTimeout(() => router.replace('/screens/roles/company/dashboard-company' as any), 0);
+        setTimeout(() => router.replace('/dashboard-company'), 0);
       }
     } else if (profile.role === 'worker') {
-      console.log('INDEX: Worker role, redirecting to Worker Dashboard');
-      setTimeout(() => router.replace('/screens/roles/worker/worker-dashboard' as any), 0);
+      setTimeout(() => router.replace('/worker-dashboard'), 0);
     } else {
-      console.log('INDEX: Unknown role, redirecting to Home');
-      setTimeout(() => router.replace('/screens/global/home' as any), 0);
+      setTimeout(() => router.replace('/home'), 0);
     }
   }, [loading, session, profile, business, profileLoaded, rootNavigationState?.key]);
 
