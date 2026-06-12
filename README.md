@@ -1,146 +1,182 @@
-# 📅 Agenda — Plataforma Premium de Agendamiento, Historial de Ingresos y CRM para PyMEs
+# Nucora — Plataforma de Agendamiento y CRM para PyMEs
 
-> **¡MVP 100% COMPLETADO Y OPERATIVO!** 🚀  
-> **La solución profesional definitiva de agendamiento y administración para negocios modernos.**  
-> Diseñada con una estética high-tech de alto impacto (Obsidian & Neon Volt Lime UI), esta aplicación permite a barberías, salones, consultorios y centros deportivos gestionar su operación diaria mientras ofrecen una experiencia interactiva y premium de clase mundial.
+> **MVP completado y operativo.**
+> Plataforma SaaS multi-tenant de agendamiento, historial de ingresos y CRM diseñada para barberías, salones, consultorios, gimnasios y centros de servicio.
 
-**Stack Tecnológico:** React Native · Expo (Router) · Supabase (PostgreSQL & RLS) · TypeScript · Obsidian & Neon Volt Lime UI
-
----
-
-## 🚀 Visión General
-
-**Agenda** automatiza la gestión de turnos eliminando la fricción de la coordinación manual. Opera bajo un esquema **Multi-Tenant** robusto, asegurando el aislamiento completo de los datos mediante políticas de seguridad de nivel de fila (**RLS**) en Supabase. Ofrece cuatro perfiles de acceso especializados para cubrir todo el flujo operativo:
-
-### 👤 1. Clientes Finales (`client`)
-- **Exploración y Descubrimiento:** Buscador interactivo para descubrir locales y comercios en la plataforma ([explore.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/global/explore.tsx)).
-- **Perfil de Negocio Premium:** Visualiza catálogo de servicios, precios, duración, personal disponible y valoraciones ([client-business-profile.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/client/client-business-profile.tsx)).
-- **Reserva Inteligente en Segundos:** Agendamiento dinámico seleccionando profesional, fecha y hora disponible en tiempo real con protección contra solapamientos.
-- **Dashboard de Control:** Gestión y seguimiento de citas activas, cancelaciones permitidas e historial completo ([my-appointments.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/global/my-appointments.tsx)).
-- **Módulo de Gimnasios & Planes:** Control dinámico de clases semanales para gimnasios, contadores de cupos y validez del plan (Básico, Premium, VIP) ([client-gym-plan.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/client/client-gym-plan.tsx)).
-
-### 🏢 2. Empresas y Dueños de Negocio (`company`)
-- **Onboarding Guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/business-setup.tsx)).
-- **Dashboard Gerencial:** Visualización en tiempo real de ingresos acumulados del mes, próximas citas y métricas analíticas clave ([dashboard-company.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/dashboard-company.tsx)).
-- **Agenda Multitrabajador:** Vista unificada de calendario (diario/semanal) con control absoluto del estado del turno.
-- **Módulo de CRM & Historial Financiero:** Consulta de ingresos históricos y citas completadas con filtros por rangos y filtros especializados por empleado ([company-history.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-history.tsx)).
-- **Gestión de Personal & Catálogos:** Control detallado de empleados ([company-employees.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-employees.tsx)), servicios ([company-services.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-services.tsx)), y ventanas horarias ([company-booking-window.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-booking-window.tsx)).
-- **Control de Membresías:** Panel administrativo para dar de alta y seguir planes y clases consumidas por socios ([company-members.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/company/company-members.tsx)).
-
-### 🛠️ 3. Profesionales y Colaboradores (`worker`)
-- **Dashboard de Trabajo:** Vista focalizada e individual con su agenda diaria, indicadores personales y valoraciones ([worker-dashboard.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/worker/worker-dashboard.tsx)).
-- **Historial de Comisiones & Reporte:** Registro de servicios completados de forma exclusiva e ingresos acumulados en el tiempo con navegación temporal de periodos ([worker-history.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/worker/worker-history.tsx)).
-
-### 🛡️ 4. Administradores de la Plataforma (`admin`)
-- **Supervisión Global:** Métricas de crecimiento general, negocios activos y volumen de transacciones de la plataforma ([admin-dashboard.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/admin/admin-dashboard.tsx)).
-- **Auditoría & Moderación:** Flujo de aprobación y control de calidad de comercios solicitantes ([admin-businesses.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/app/screens/roles/admin/admin-businesses.tsx)).
+**Stack:** React Native · Expo SDK 55 · Expo Router · Supabase (PostgreSQL + RLS) · TypeScript
 
 ---
 
-## 💎 Características Estrella del MVP Completado
+## Visión General
 
-### 📊 1. Módulo CRM de Ingresos & Historial Consistente
-* **Cálculo de Ingresos Reales:** Suma acumulada basada única y estrictamente en las citas con estado `'completed'`.
-* **Filtros de Rangos Estrictos:** Limites cerrados mediante consultas dinámicas en Supabase (`.eq` para día seleccionado; `.gte` y `.lte` para rangos semanales y mensuales). Evita la fuga de ingresos o fechas futuras.
-* **Filtros Cruzados:** Las empresas pueden cruzar el periodo seleccionado con un profesional en particular para obtener reportes de productividad instantáneos.
-
-### 📅 2. Navegador Temporal por Periodos
-* **Navegación Interactiva:** Contenedores horizontales de diseño glassmorphic con botones Feather (`chevron-left` / `chevron-right`) para desplazarse de forma infinita hacia atrás o adelante en el tiempo (días anteriores, semanas previas, meses pasados).
-* **Labels Amigables en Español:** Formateo local descriptivo automático (Ej: *"Lunes, 25 de Mayo, 2026"*, *"18 - 24 de Mayo, 2026"*, *"Mayo 2026"*).
-
-### 🔒 3. Bloqueo de Horarios con Rango Flexible
-* **Selector Dinámico Desde / Hasta:** Al inhabilitar bloques en el calendario (`isBlockedSlot` en [AppointmentModal.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/calendar/AppointmentModal.tsx)), se habilitan dos selectores de tiempo `TimeWheelPicker` independientes para elegir la hora de inicio y término con total precisión.
-* **Validación de Consistencia Temporal:** El sistema verifica que la hora de término sea posterior a la de inicio e impide el guardado de bloques inconsistentes.
-* **Sincronización Inteligente:** Si la hora "Desde" es movida después de la hora "Hasta", esta última se auto-ajusta 1 hora adelante para mantener el flujo de usuario limpio.
-
-### 🌐 4. Consistencia Absoluta de Zona Horaria (Fecha Local)
-* **Eliminación de Desfases UTC/ISO:** Lógica de formateo puramente local en formato `YYYY-MM-DD` que previene el desplazamiento de días, garantizando que el calendario y los filtros operen exactamente en el huso horario local.
+Nucora automatiza la gestión de turnos eliminando la fricción de la coordinación manual. Opera bajo un esquema **Multi-Tenant** con aislamiento completo de datos mediante políticas RLS en Supabase. Cuatro roles especializados cubren todo el flujo operativo.
 
 ---
 
-## 🎨 Sistema de Diseño y Estilo Visual
+## Roles y Funcionalidades
 
-La aplicación destaca por una interfaz moderna inspirada en interfaces futuristas oscuras:
+### Cliente (`client`)
+- **Exploración:** Buscador para descubrir negocios en la plataforma ([explore.tsx](app/(client)/explore.tsx)).
+- **Perfil de negocio:** Catálogo de servicios, precios, duración, personal y valoraciones ([client-business-profile.tsx](app/(client)/client-business-profile.tsx)).
+- **Reserva inteligente:** Agendamiento dinámico con selección de profesional, fecha y hora disponible en tiempo real con protección contra solapamientos.
+- **Mis citas:** Gestión de citas activas, cancelaciones e historial ([my-appointments.tsx](app/(client)/my-appointments.tsx)).
+- **Planes de gimnasio:** Control de clases semanales, contadores de cupos y validez de plan (Básico, Premium, VIP) ([client-gym-plan.tsx](app/(client)/client-gym-plan.tsx)).
 
-- **Paleta Volt Lime & Obsidian:** 
-  - **Fondo Principal:** Negro Obsidian profundo (`#0B0E14`) que maximiza el contraste de las pantallas OLED.
-  - **Acento Primario:** Verde Limón de alta intensidad (`#B4F736`) para elementos interactivos, botones de acción y selecciones críticas.
-  - **Textos Estructurados:** Tipografía limpia `F9FAFB` para contrastes fuertes y `9CA3AF` para detalles secundarios.
-- **Glassmorphism Suite:**
-  - Componentes robustos semi-transparentes creados a mano con gradientes suaves y bordes finos utilizando canales alfa (`glassColors`).
-  - Integración nativa de hojas de estilo adaptables que detectan Light/Dark Mode mediante [ThemeContext](file:///Users/nico/Desktop/Workspace/my-app/myapp/context/ThemeContext.tsx).
-- **Componentes de UI Reutilizables:**
-  - [GlassCard.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/GlassCard.tsx) — Tarjetas vidriadas con efecto satinado.
-  - [GlassInput.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/GlassInput.tsx) — Entradas de datos adaptables y estilizadas.
-  - [GlassModal.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/GlassModal.tsx) — Modales flotantes de confirmación.
-  - [ScreenHeader.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/ScreenHeader.tsx) — Encabezado global dinámico.
-  - [TimeWheelPicker.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/TimeWheelPicker.tsx) — Selector de horario estilizado en formato de rueda.
-  - [RevenueBarChart.tsx](file:///Users/nico/Desktop/Workspace/my-app/myapp/components/company/RevenueBarChart.tsx) — Gráfico estilizado para ingresos financieros.
+### Empresa (`company`)
+- **Onboarding guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](app/(company)/business-setup.tsx)).
+- **Dashboard gerencial:** Ingresos del mes en tiempo real, próximas citas y métricas clave ([dashboard-company.tsx](app/(company)/dashboard-company.tsx)).
+- **Agenda multi-trabajador:** Vista unificada de calendario (diario/semanal) con control de estado de cada turno ([calendar.tsx](app/(shared)/calendar.tsx)).
+- **CRM e historial financiero:** Ingresos históricos por rango temporal y filtros por empleado ([company-history.tsx](app/(company)/company-history.tsx)).
+- **Gestión de personal y catálogos:** Empleados ([company-employees.tsx](app/(company)/company-employees.tsx)), servicios ([company-services.tsx](app/(company)/company-services.tsx)) y ventanas horarias ([company-booking-window.tsx](app/(company)/company-booking-window.tsx)).
+- **Membresías:** Panel de alta y seguimiento de planes y clases consumidas por socios ([company-members.tsx](app/(company)/company-members.tsx)).
+
+### Trabajador (`worker`)
+- **Dashboard personal:** Agenda diaria individual con indicadores y valoraciones ([worker-dashboard.tsx](app/(worker)/worker-dashboard.tsx)).
+- **Historial de comisiones:** Servicios completados e ingresos acumulados con navegación por periodos ([worker-history.tsx](app/(worker)/worker-history.tsx)).
+
+### Administrador (`admin`)
+- **Supervisión global:** Métricas de crecimiento, negocios activos y volumen de transacciones ([admin-dashboard.tsx](app/(admin)/admin-dashboard.tsx)).
+- **Auditoría y moderación:** Flujo de aprobación de comercios, detalle de negocio y revisión de empleados ([admin-businesses.tsx](app/(admin)/admin-businesses.tsx)).
 
 ---
 
-## 📁 Estructura del Proyecto
+## Pantallas Compartidas (`shared`)
 
-El código está estructurado bajo principios de modularidad y escalabilidad:
+Disponibles para todos los roles autenticados:
+
+| Ruta | Descripción |
+|------|-------------|
+| [calendar.tsx](app/(shared)/calendar.tsx) | Calendario unificado de citas |
+| [profile.tsx](app/(shared)/profile.tsx) | Perfil de usuario y configuración de cuenta |
+| [inbox.tsx](app/(shared)/inbox.tsx) | Bandeja de notificaciones |
+| [privacy.tsx](app/(shared)/privacy.tsx) | Configuración de privacidad y eliminación de cuenta |
+| [privacy-policy.tsx](app/(shared)/privacy-policy.tsx) | Política de privacidad |
+| [terms.tsx](app/(shared)/terms.tsx) | Términos y condiciones |
+| [support.tsx](app/(shared)/support.tsx) | Centro de soporte |
+
+---
+
+## Características Principales
+
+### Módulo CRM de Ingresos
+- Suma acumulada basada exclusivamente en citas con estado `'completed'`.
+- Filtros por rango cerrado: diario (`.eq`), semanal y mensual (`.gte` / `.lte`).
+- Filtros cruzados por periodo + empleado para reportes de productividad.
+
+### Navegador Temporal por Periodos
+- Contenedor glassmorphic con botones para avanzar/retroceder infinitamente (días, semanas, meses).
+- Labels en español: *"Lunes, 25 de Mayo 2026"*, *"18 - 24 de Mayo 2026"*, *"Mayo 2026"*.
+
+### Bloqueo de Horarios con Rango Flexible
+- Selectores `TimeWheelPicker` independientes para hora de inicio y término.
+- Validación de consistencia temporal: la hora de fin debe ser posterior a la de inicio.
+- Auto-ajuste: si "Desde" supera "Hasta", el sistema adelanta "Hasta" 1 hora.
+
+### Consistencia de Zona Horaria
+- Formato local puro `YYYY-MM-DD` en todos los filtros y calendarios.
+- Elimina desfases UTC/ISO en dispositivos de América del Sur/Norte.
+
+---
+
+## Sistema de Diseño
+
+Nucora usa un sistema visual dark-first inspirado en Tesla y Liquid Glass:
+
+- **Fondo principal:** `#0B0E14` (Negro Obsidian) — maximiza contraste en pantallas OLED.
+- **Acento primario:** `#E31937` (Rojo Nucora) — botones de acción y selecciones críticas.
+- **Textos:** `#F9FAFB` (primario) / `#9CA3AF` (secundario).
+- **Glassmorphism:** Componentes semi-transparentes con gradientes y bordes finos con canales alfa.
+- **Temas:** Light/Dark Mode mediante [ThemeContext](context/ThemeContext.tsx).
+
+### Componentes UI Reutilizables
+
+| Componente | Descripción |
+|------------|-------------|
+| [GlassCard.tsx](components/GlassCard.tsx) | Tarjetas con efecto vidriado |
+| [GlassInput.tsx](components/GlassInput.tsx) | Entradas de datos estilizadas |
+| [GlassModal.tsx](components/GlassModal.tsx) | Modales flotantes de confirmación |
+| [ScreenHeader.tsx](components/ScreenHeader.tsx) | Encabezado global dinámico |
+| [TimeWheelPicker.tsx](components/TimeWheelPicker.tsx) | Selector de horario tipo rueda |
+| [TeslaAlert.tsx](components/TeslaAlert.tsx) | Alertas de sistema estilo Tesla |
+| [Sidebar.tsx](components/Sidebar.tsx) | Navegación lateral |
+| [StatusBadge.tsx](components/StatusBadge.tsx) | Badges de estado de citas |
+
+---
+
+## Estructura del Proyecto
 
 ```
-agenda/
+nucora/
 ├── app/                        # Rutas de navegación (Expo Router)
-│   ├── _layout.tsx             # Punto de entrada base y cargador de providers
-│   ├── index.tsx               # Enrutador inteligente basado en roles de usuario
-│   └── screens/
-│       ├── global/             # Pantallas compartidas (Autenticación, explorar, citas)
-│       └── roles/              # Módulos especializados por rol (admin, client, company, worker)
-├── components/                 # Componentes interactivos del ecosistema
-│   ├── ui/                     # Primitivas básicas de UI
-│   ├── calendar/               # Calendario central, grid de turnos y formularios de citas
-│   ├── client/                 # Modales y tarjetas para flujo de clientes
-│   └── company/                # Formularios y gráficos financieros de empresa
-├── context/                    # Estado global (Autenticación, Alertas, Temas visuales)
-├── styles/                     # Sistema de tokens visuales y hojas de estilo (appStyles.ts)
-├── lib/                        # Clientes externos e integraciones (Supabase)
-├── hooks/                      # Ganchos lógicos personalizados de React
-├── utils/                      # Formateadores, validadores de hora y utilidades generales
-└── assets/                     # Recursos estáticos, imágenes, fuentes e iconos
+│   ├── _layout.tsx             # Root layout y providers
+│   ├── index.tsx               # Enrutador basado en rol de usuario
+│   ├── (auth)/                 # Login, registro, recuperación de contraseña
+│   ├── (client)/               # Dashboard, explorar, citas, planes de gym
+│   ├── (company)/              # Dashboard, agenda, empleados, servicios, CRM
+│   ├── (worker)/               # Dashboard personal e historial de comisiones
+│   ├── (admin)/                # Supervisión global y moderación de negocios
+│   └── (shared)/               # Calendario, perfil, inbox, privacidad, soporte
+├── components/                 # Componentes UI reutilizables
+│   ├── ui/                     # Primitivas básicas
+│   ├── calendar/               # Calendario, grid de turnos, formularios
+│   ├── client/                 # Modales y tarjetas del flujo de cliente
+│   └── company/                # Formularios y gráficos financieros
+├── context/                    # Estado global (Auth, Alertas, Tema)
+├── styles/                     # Tokens visuales y hojas de estilo
+├── lib/                        # Cliente Supabase e integraciones
+├── hooks/                      # Custom hooks de React
+├── utils/                      # Formateadores de fecha, validadores y helpers
+└── assets/                     # Imágenes, fuentes e iconos
 ```
 
 ---
 
-## 🛠️ Instalación y Desarrollo
+## Instalación y Desarrollo
 
-### Requisitos Previos
-- **Node.js:** Versión 18 o superior.
-- **Expo CLI:** Configuración global (`npm install -g expo-cli`).
-- **Base de Datos:** Proyecto en [Supabase](https://supabase.com) configurado con el schema correspondiente.
+### Requisitos
+- Node.js 22 LTS (via nvm)
+- Expo CLI (`npm install -g expo-cli`)
+- Proyecto en [Supabase](https://supabase.com) con el schema configurado
 
-### Configuración del Entorno
-1. **Clonar el Repositorio e Instalar Dependencias:**
-   ```bash
-   git clone https://github.com/Nicolasarmiento0/agenda.git
-   cd agenda
-   npm install
-   ```
-2. **Configurar Variables de Entorno:**
-   Crea un archivo `.env` en la raíz del proyecto y añade tus credenciales:
-   ```env
-   EXPO_PUBLIC_SUPABASE_URL=tu_proyecto_supabase_url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_proyecto_supabase_anon_key
-   ```
-3. **Iniciar el Servidor de Desarrollo:**
-   ```bash
-   npx expo start
-   ```
-   *Puedes presionar `a` para abrir en el emulador de Android, `i` para iOS, o `w` para la versión web.*
+### Setup
 
----
+```bash
+git clone https://github.com/Nicolasarmiento0/nucora.git
+cd nucora
+npm install
+```
 
-## 📄 Documentos de Desarrollo e Historial
-- [**Estado del Proyecto**](./estado_proyecto.md) — Progreso del MVP, funcionalidades completadas y roadmaps.
-- [**Filosofía y Objetivos**](./QUE-ES-Y-OBJETIVO.md) — Análisis detallado del valor de negocio y flujos principales.
-- [**Arquitectura de Creación de Citas**](./solución-crear-citas.md) — Estándares técnicos aplicados al core de reservas.
+Crea un archivo `.env` en la raíz:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=tu_proyecto_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_proyecto_supabase_anon_key
+```
+
+Inicia el servidor de desarrollo:
+
+```bash
+npx expo start
+```
+
+Presiona `a` para Android, `i` para iOS, o `w` para web.
 
 ---
 
-## 📬 Contacto & Soporte
-Desarrollado con dedicación y enfoque en la excelencia por [@Nicolasarmiento0](https://github.com/Nicolasarmiento0).  
-*Haciendo de la gestión comercial y agendamiento una experiencia fluida, rápida y sumamente visual.*
+## Roadmap Post-MVP
+
+- Notificaciones Push (recordatorios automáticos via Expo Notifications).
+- Skeleton loaders en calendarios y listas de carga.
+- Micro-interacciones hápticas con `expo-haptics`.
+- Swipe-to-action en tarjetas de cita (completar / no asistió).
+- Deploy a App Store y Google Play via EAS Build.
+
+---
+
+## Documentación Adicional
+
+- [Estado del Proyecto](./estado_proyecto.md) — Progreso del MVP y funcionalidades completadas.
+
+---
+
+Desarrollado por [@Nicolasarmiento0](https://github.com/Nicolasarmiento0).
