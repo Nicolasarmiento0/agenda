@@ -3,7 +3,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AppState, Platform, Linking } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -65,10 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = useCallback(async (userId: string) => {
     console.log('AUTH: fetchProfile START → userId:', userId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const email = user?.email || '';
-      const defaultNickname = email ? email.split('@')[0] : '';
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -79,23 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         let finalRole = data.role;
-        let profileData = { ...data };
-
-        // Si no tiene nickname, lo completamos con la parte del correo
-        if (!data.nickname && defaultNickname) {
-          console.log('AUTH: Profile has no nickname. Setting to default:', defaultNickname);
-          const { data: updateData, error: updateError } = await supabase
-            .from('profiles')
-            .update({ nickname: defaultNickname })
-            .eq('id', userId)
-            .select()
-            .single();
-
-          if (!updateError && updateData) {
-            profileData = updateData;
-          }
-        }
-
         if (!finalRole || finalRole === 'client') {
           const { data: workerCheck } = await supabase
             .from('workers')
@@ -106,12 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (workerCheck) {
             console.log('AUTH: User registered in workers table, auto-assigning role: worker');
             await supabase.from('profiles').update({ role: 'worker' }).eq('id', userId);
-            profileData.role = 'worker';
+            data.role = 'worker';
             finalRole = 'worker';
           }
         }
 
-        setProfile(profileData);
+        setProfile(data);
 
         if (finalRole === 'company') {
           console.log('AUTH: Fetching business for company user...');
@@ -130,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setBusiness(null);
           }
           if (bError) console.error('AUTH: Error fetching business:', bError);
-        } else if (profileData.role === 'worker') {
+        } else if (data.role === 'worker') {
           console.log('AUTH: Fetching business for worker user...');
           // Suponemos que el worker tiene un registro en la tabla `workers` que vincula a un business
           const { data: workerData, error: wError } = await supabase
@@ -155,29 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         console.log('AUTH: No profile found for userId:', userId);
-        
-        // Si no existe el perfil (por ejemplo, registro OAuth), lo creamos con el defaultNickname
-        if (defaultNickname) {
-          console.log('AUTH: Creating default profile for new user...');
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              id: userId,
-              nickname: defaultNickname,
-              role: 'client'
-            })
-            .select()
-            .single();
-
-          if (!createError && newProfile) {
-            setProfile(newProfile);
-            setBusiness(null);
-            return;
-          } else if (createError) {
-            console.error('AUTH: Error creating default profile:', createError.message);
-          }
-        }
-
         setProfile(null);
         setBusiness(null);
       }
@@ -195,9 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.auth.getUser();
       if (!data?.user?.id) return;
 
-      const email = data.user.email || '';
-      const defaultNickname = email ? email.split('@')[0] : '';
-
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -206,21 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileData) {
         let finalRole = profileData.role;
-        let updatedProfile = { ...profileData };
-
-        if (!profileData.nickname && defaultNickname) {
-          const { data: updatedData } = await supabase
-            .from('profiles')
-            .update({ nickname: defaultNickname })
-            .eq('id', data.user.id)
-            .select()
-            .single();
-
-          if (updatedData) {
-            updatedProfile = updatedData;
-          }
-        }
-
         if (!finalRole || finalRole === 'client') {
           const { data: workerCheck } = await supabase
             .from('workers')
@@ -231,12 +169,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (workerCheck) {
             console.log('AUTH: User registered in workers table, auto-assigning role: worker');
             await supabase.from('profiles').update({ role: 'worker' }).eq('id', data.user.id);
-            updatedProfile.role = 'worker';
+            profileData.role = 'worker';
             finalRole = 'worker';
           }
         }
 
-        setProfile(updatedProfile);
+        setProfile(profileData);
 
         if (finalRole === 'company') {
           const { data: bRaw } = await supabase
@@ -250,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setBusiness(null);
           }
-        } else if (updatedProfile.role === 'worker') {
+        } else if (profileData.role === 'worker') {
           const { data: workerData } = await supabase
             .from('workers')
             .select('business_id')
@@ -283,16 +221,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setProfile(null);
     setBusiness(null);
-    setProfileLoaded(false);
-    router.replace('/screens/global/home' as any);
+    setProfileLoaded(true);
+    router.replace('/home');
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const webUrl = Platform.OS === 'web'
-      ? window.location.origin
-      : (process.env.EXPO_PUBLIC_WEB_URL || 'https://nucoraapp.vercel.app');
-
-    const redirectTo = webUrl;
+    const redirectTo = Platform.OS === 'web'
+      ? undefined
+      : makeRedirectUri({ scheme: 'nucora', path: 'auth/callback' });
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -306,8 +242,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
 
     if (Platform.OS !== 'web' && data.url) {
-      // Redirigir directamente al navegador externo del sistema móvil
-      await Linking.openURL(data.url);
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo!);
+      if (result.type === 'success') {
+        const fragment = result.url.split('#')[1] ?? '';
+        const query = result.url.split('?')[1] ?? '';
+        const params = new URLSearchParams(fragment || query);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        }
+      }
     }
   }, []);
 
@@ -333,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setProfile(null);
         setBusiness(null);
-        setProfileLoaded(false);
+        setProfileLoaded(true);
         setLoading(false);
         return;
       }

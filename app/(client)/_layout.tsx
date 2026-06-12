@@ -17,12 +17,12 @@ export default function ClientLayout() {
     );
   }
 
-  // Rutas que requieren estar autenticado como cliente
-  const privateRoutes = ['/profile', '/inbox', '/my-appointments', '/client-dashboard', '/client-gym-plan'];
-  
-  const isPrivate = privateRoutes.some(route => pathname.startsWith(route));
+  // Rutas que son exclusivas de cliente
+  const clientOnlyRoutes = ['/client-dashboard', '/client-gym-plan', '/my-appointments'];
 
-  if (isPrivate) {
+  const isClientOnly = clientOnlyRoutes.some(route => pathname.startsWith(route));
+
+  if (isClientOnly) {
     if (!session) {
       return <Redirect href="/login" />;
     }
@@ -38,13 +38,6 @@ export default function ClientLayout() {
       <Stack.Screen name="client-gym-plan" />
       <Stack.Screen name="explore" />
       <Stack.Screen name="my-appointments" />
-      <Stack.Screen name="calendar" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="inbox" />
-      <Stack.Screen name="support" />
-      <Stack.Screen name="privacy" />
-      <Stack.Screen name="privacy-policy" />
-      <Stack.Screen name="terms" />
     </Stack>
   );
 }

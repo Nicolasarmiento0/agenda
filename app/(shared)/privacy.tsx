@@ -24,7 +24,7 @@ export default function PrivacyScreen() {
     try {
       // Usar la funcionalidad de GoTrue para tier gratuito
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: 'nucora://reset-password'
+        redirectTo: 'nucora://auth/callback'
       });
       if (error) throw error;
       showAlert({ title: 'Correo enviado', message: 'Revisa tu bandeja de entrada para restablecer tu contraseña. (Límite: 3 correos por hora)' });
