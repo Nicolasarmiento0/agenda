@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -918,8 +918,9 @@ export default function CalendarScreen() {
   const { profile, business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { selectedBusiness } = useBusiness();
+  const { businessId: paramBusinessId } = useLocalSearchParams<{ businessId?: string }>();
   const role = profile?.role ?? 'client';
-  const businessId = role === 'client' ? selectedBusiness?.id : business?.id;
+  const businessId = paramBusinessId || (role === 'client' ? selectedBusiness?.id : business?.id);
 
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [anchor, setAnchor] = useState(new Date());
@@ -1020,8 +1021,9 @@ export default function CalendarScreen() {
   };
 
   const openCreate = useCallback((date: Date, hour?: number, workerId?: string) => {
+    if (role === 'admin') return;
     modalRef.current?.open({ mode: 'create', date: toLocalISO(date), startHour: hour, workerId });
-  }, []);
+  }, [role]);
 
   const openDetail = useCallback((a: Appointment) => {
     modalRef.current?.open({ mode: 'detail', appointment: a });
@@ -1042,9 +1044,15 @@ export default function CalendarScreen() {
       {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
-            <Feather name="menu" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          {router.canGoBack() || role === 'admin' ? (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Feather name="arrow-left" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+              <Feather name="menu" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           <View style={styles.headerCenter}>
             <TouchableOpacity onPress={() => navigate(-1)}>
               <Feather name="chevron-left" size={22} color={colors.textPrimary} />
@@ -1199,10 +1207,12 @@ export default function CalendarScreen() {
       )}
 
       {/* ── FAB ── */}
-      <FAB
-        onNewAppointment={handleFABNew}
-        colors={colors}
-      />
+      {role !== 'admin' && (
+        <FAB
+          onNewAppointment={handleFABNew}
+          colors={colors}
+        />
+      )}
 
       {/* ── Appointment Modal ── */}
       <AppointmentModal

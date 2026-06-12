@@ -191,7 +191,11 @@ export default function AdminDashboardScreen() {
 
             {/* Métricas */}
             <Text style={[appStyles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>MÉTRICAS</Text>
-            <View style={[appStyles.glassCard, { borderColor: glass.border }]}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={goBusinesses}
+              style={[appStyles.glassCard, { borderColor: glass.border }]}
+            >
               <BlurView intensity={36} tint={glass.tint} style={[appStyles.glassInner, { backgroundColor: glass.fill, padding: 18 }]}>
                 <View style={styles.metricRow}>
                   <View style={styles.gaugeBox}>
@@ -221,7 +225,7 @@ export default function AdminDashboardScreen() {
                   </View>
                 </View>
               </BlurView>
-            </View>
+            </TouchableOpacity>
 
             {/* Actividad semanal */}
             <View style={[appStyles.glassCard, { borderColor: glass.border, marginTop: 12 }]}>

@@ -53,6 +53,7 @@ export default function AdminBusinessDetailScreen() {
   const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -68,21 +69,38 @@ export default function AdminBusinessDetailScreen() {
 
   const fetchBusiness = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('businesses')
-      .select(`
-        id, name, status, description, address, phone, logo_url, created_at,
-        category:service_categories(name),
-        owner:profiles!businesses_owner_id_fkey(id, nickname),
-        workers:workers(*)
-      `)
-      .eq('id', id)
-      .single();
+    const [bizRes, apptRes] = await Promise.all([
+      supabase
+        .from('businesses')
+        .select(`
+          id, name, status, description, address, phone, logo_url, created_at,
+          category:service_categories(name),
+          owner:profiles!businesses_owner_id_fkey(id, nickname),
+          workers:workers(*)
+        `)
+        .eq('id', id)
+        .single(),
+      supabase
+        .from('appointments')
+        .select(`
+          id, date, start_hour, duration_hours, service, status, client_name,
+          workers(name)
+        `)
+        .eq('business_id', id)
+        .gte('date', new Date().toISOString().split('T')[0])
+        .neq('status', 'cancelled')
+        .order('date', { ascending: true })
+        .order('start_hour', { ascending: true })
+        .limit(5)
+    ]);
 
-    if (!error && data) {
-      setBusiness(data as any);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    if (!bizRes.error && bizRes.data) {
+      setBusiness(bizRes.data as any);
     }
+    if (!apptRes.error && apptRes.data) {
+      setAppointments(apptRes.data as any);
+    }
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     setLoading(false);
   };
 
@@ -236,6 +254,26 @@ export default function AdminBusinessDetailScreen() {
               <InfoRow label="SOLICITUD" value={formatDate(business.created_at)} />
             </View>
 
+            {/* Banner Agenda */}
+            {business.status === 'approved' && (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.agendaBanner, { borderColor: appColors.primary }]}
+                onPress={() => router.push(`/calendar?businessId=${id}`)}
+              >
+                <View style={[styles.agendaBannerIcon, { backgroundColor: `${appColors.primary}20` }]}>
+                  <Feather name="calendar" size={24} color={appColors.primary} />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.agendaBannerTitle, { color: colors.textPrimary }]}>MONITOREAR AGENDA</Text>
+                  <Text style={[styles.agendaBannerSub, { color: colors.textSecondary }]}>
+                    Ver calendario de citas y disponibilidad en tiempo real
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
             {/* Trabajadores */}
             <Text style={[appStyles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>
               TRABAJADORES ({business.workers?.length ?? 0})
@@ -302,6 +340,73 @@ export default function AdminBusinessDetailScreen() {
                     </View>
                   </View>
                 ))
+              )}
+            </View>
+
+            {/* Próximas Citas */}
+            <Text style={[appStyles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>
+              PRÓXIMAS CITAS ({appointments.length})
+            </Text>
+
+            <View style={{ gap: 10, marginBottom: 20 }}>
+              {appointments.length === 0 ? (
+                <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border, padding: 20, alignItems: 'center' }]}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, fontFamily: 'Inter_400Regular' }}>
+                    Sin citas próximas programadas
+                  </Text>
+                </View>
+              ) : (
+                appointments.map((appt) => {
+                  const formatHour = (h: number) => {
+                    const hh = Math.floor(h);
+                    const mm = Math.round((h - hh) * 60);
+                    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+                  };
+
+                  return (
+                    <View
+                      key={appt.id}
+                      style={[
+                        styles.workerCard,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Text style={[styles.workerName, { color: colors.textPrimary }]}>
+                            {appt.client_name || 'Cliente'}
+                          </Text>
+                          <Text style={[styles.workerSpecialty, { color: colors.textSecondary }]}>
+                            {appt.service} · {appt.workers?.name || 'Cualquiera'}
+                          </Text>
+                          <Text style={[styles.workerEmail, { color: colors.textSecondary }]}>
+                            {appt.date} a las {formatHour(appt.start_hour)}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.workerStatusBadge,
+                            {
+                              backgroundColor: appt.status === 'confirmed' ? '#EEF8F0' : '#FFF5E5',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.workerStatusText,
+                              { color: appt.status === 'confirmed' ? '#2E7D45' : '#A0660A' },
+                            ]}
+                          >
+                            {appt.status === 'confirmed' ? 'Confirmada' : appt.status === 'pending' ? 'Pendiente' : appt.status}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
               )}
             </View>
           </ScrollView>
@@ -511,5 +616,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     fontFamily: 'Inter_600SemiBold',
+  },
+  agendaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  },
+  agendaBannerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  agendaBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: 'Inter_700Bold',
+  },
+  agendaBannerSub: {
+    fontSize: 12,
+    letterSpacing: 0.3,
+    fontFamily: 'Inter_400Regular',
   },
 });

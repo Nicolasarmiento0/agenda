@@ -216,18 +216,7 @@ export default function AdminBusinessEmployeesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-          {/* Botón invitar */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.addButton, { borderColor: appColors.primary }]}
-            onPress={() => {
-              setEditingEmp(undefined);
-              setFormVisible(true);
-            }}
-          >
-            <Feather name="user-plus" size={18} color={appColors.primary} />
-            <Text style={[styles.addButtonText, { color: appColors.primary }]}>AGREGAR EMPLEADO</Text>
-          </TouchableOpacity>
+          {/* Botón invitar - Ocultado para rol admin de monitoreo */}
 
           {/* Stats */}
           <View style={styles.statsRow}>
@@ -245,14 +234,14 @@ export default function AdminBusinessEmployeesScreen() {
               <EmptyState
                 icon="users"
                 title="SIN EMPLEADOS"
-                subtitle="Invita a tu equipo para gestionar citas y servicios juntos."
+                subtitle="El negocio no tiene trabajadores registrados."
               />
             ) : (
               employees.map((emp) => (
                 <GlassCard key={emp.id} style={styles.employeeCard}>
                   <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => openSheet(emp)}
+                    activeOpacity={1}
+                    disabled={true}
                     style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 }}
                   >
                     <View style={[styles.avatar, { backgroundColor: `${emp.color}20`, borderColor: emp.color }]}>

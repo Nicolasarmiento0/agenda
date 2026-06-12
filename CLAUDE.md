@@ -48,8 +48,6 @@ Usa la siguiente tabla para saber qué skill invocar según la tarea:
 | Configurar hooks, permisos, settings.json | `/update-config` |
 | Tarea repetitiva con intervalo | `/loop` |
 | Agendar tarea futura o rutina cron | `/schedule` |
-| Exploración del codebase / buscar símbolos | CodeGraph tools (`codegraph_search`, `codegraph_context`) |
-
 ---
 
 ## Skills disponibles

@@ -166,6 +166,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const [appointment, setAppointment] = useState<Appointment | null>(null);
 
     const canEditOrCancel = useMemo(() => {
+      if (role === 'admin') return false;
       if (!appointment) return false;
       if (role === 'company' || role === 'worker') return true;
 
@@ -1328,7 +1329,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
                   <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
                     {/* 1. Primary Action (Confirmar or Completar) */}
-                    {role !== 'client' && appointment.status !== 'blocked' && (
+                    {role !== 'client' && role !== 'admin' && appointment.status !== 'blocked' && (
                       <>
                         {appointment.status === 'pending' && (
                           <ActionBtn
