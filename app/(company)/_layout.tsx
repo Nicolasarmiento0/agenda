@@ -41,8 +41,6 @@ export default function CompanyLayout() {
       <Stack.Screen name="company-employees" />
       <Stack.Screen name="company-history" />
       <Stack.Screen name="company-business" />
-      <Stack.Screen name="company-members" />
-      <Stack.Screen name="company-booking-window" />
       <Stack.Screen name="edit-schedule" />
     </Stack>
   );

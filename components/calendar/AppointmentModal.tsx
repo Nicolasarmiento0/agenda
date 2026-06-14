@@ -30,7 +30,6 @@ import { Appointment, AppointmentStatus, STATUS_CONFIG, WorkerRow } from '../../
 import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useIsGym } from '../../hooks/useIsGym';
 import { ToastOptions } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
 import GlassModal from '../GlassModal';
@@ -158,7 +157,6 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     const { profile } = useAuth();
     const role = profile?.role ?? 'client';
     const { showAlert } = useAlert();
-    const isGym = useIsGym();
 
     const snapPoints = useMemo(() => ['55%', '92%'], []);
 
@@ -394,7 +392,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           setEndHour(initialStartHour + 1);
           setIsBlockedSlot(false);
           setClientName(role === 'client' ? (profile?.nickname ?? '') : '');
-          setService(isGym ? 'CLASE' : '');
+          setService('');
           setServiceSearch('');
           setDuration(1);
           if (role === 'worker') {
@@ -541,59 +539,6 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         }
       }
 
-      // 4. Gym membership cap validation for clients
-      if (!isBlockedSlot && isGym && role === 'client') {
-        // Query active membership
-        const { data: membership, error: memError } = await supabase
-          .from('gym_memberships')
-          .select('*')
-          .eq('business_id', businessId)
-          .eq('client_id', profile?.id)
-          .maybeSingle();
-
-        if (memError || !membership || membership.status !== 'active') {
-          showAlert({
-            title: 'Membresía inactiva',
-            message: 'No cuentas con una membresía activa en este gimnasio. Por favor acércate a recepción para habilitar tu cuenta.',
-          });
-          return;
-        }
-
-        // Active plan weekly class check
-        const PLAN_LIMITS: Record<string, number> = { basic: 1, premium: 3, vip: 5 };
-        const limit = PLAN_LIMITS[membership.plan] ?? 1;
-
-        // Calculate Monday-to-Sunday dates for the selected week
-        const d = new Date(apptDate);
-        const day = d.getDay();
-        const diffDays = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diffDays));
-        monday.setHours(0, 0, 0, 0);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23, 59, 59, 999);
-
-        const isoStart = monday.toISOString().split('T')[0];
-        const isoEnd = sunday.toISOString().split('T')[0];
-
-        // Fetch counts for this client in this target week
-        const { count: weekCount, error: countError } = await supabase
-          .from('appointments')
-          .select('id', { count: 'exact', head: true })
-          .eq('business_id', businessId)
-          .eq('client_id', profile?.id)
-          .gte('date', isoStart)
-          .lte('date', isoEnd)
-          .in('status', ['confirmed', 'pending']);
-
-        if (!countError && weekCount !== null && weekCount >= limit) {
-          showAlert({
-            title: 'Límite de plan alcanzado',
-            message: `Has alcanzado el límite semanal de clases permitido por tu plan ${membership.plan.toUpperCase()} (${limit} ${limit === 1 ? 'clase' : 'clases'} por semana).`,
-          });
-          return;
-        }
-      }
 
       setSaving(true);
       const workerForInsert = role === 'worker'
@@ -887,7 +832,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                       onPress={() => {
                         setIsBlockedSlot(false);
                         setClientName('');
-                        setService(isGym ? 'CLASE' : '');
+                        setService('');
                       }}
                     >
                       <Text style={[styles.tabText, { color: !isBlockedSlot ? colors.accent : colors.textSecondary }]}>

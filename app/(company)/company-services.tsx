@@ -20,14 +20,12 @@ import Sidebar from '../../components/Sidebar';
 import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useIsGym } from '../../hooks/useIsGym';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles, glassColors } from '../../styles/appStyles';
 
 export default function CompanyServicesScreen() {
   const { business } = useAuth();
   const { colors, isDarkMode } = useTheme();
-  const isGym = useIsGym();
   const { showAlert } = useAlert();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,34 +50,6 @@ export default function CompanyServicesScreen() {
         console.warn('Error fetching services:', error);
       }
 
-      if (isGym) {
-        // Enforce the existence of the 3 plans
-        const planNames = ['Plan Básico', 'Plan Premium', 'Plan VIP'];
-        const existingPlans = data ? data.filter(s => planNames.includes(s.name)) : [];
-        if (existingPlans.length < 3) {
-          const defaultPrices: Record<string, number> = { 'Plan Básico': 15000, 'Plan Premium': 25000, 'Plan VIP': 35000 };
-          const plansToCreate = planNames.filter(name => !existingPlans.some(p => p.name === name));
-
-          if (plansToCreate.length > 0) {
-            const inserts = plansToCreate.map(name => ({
-              business_id: business.id,
-              name,
-              price: defaultPrices[name],
-              duration_min: 30,
-              is_active: true
-            }));
-            const { data: newPlans, error: insertError } = await supabase
-              .from('business_services')
-              .insert(inserts)
-              .select('*');
-
-            if (!insertError && newPlans) {
-              setServices([...(data || []), ...newPlans].sort((a, b) => a.name.localeCompare(b.name)));
-              return;
-            }
-          }
-        }
-      }
 
       if (!error && data && data.length > 0) {
         setServices(data.sort((a, b) => a.name.localeCompare(b.name)));
@@ -89,7 +59,7 @@ export default function CompanyServicesScreen() {
     } catch (err) {
       console.error('Error fetching services:', err);
     }
-  }, [business?.id, isGym]);
+  }, [business?.id]);
 
   // Refresca servicios cada vez que la pantalla gana foco
   useFocusEffect(useCallback(() => {
@@ -128,14 +98,6 @@ export default function CompanyServicesScreen() {
           return;
         }
 
-        if (isGym) {
-          // Si es gym, solo puede crear estos servicios extra, no puede crear planes adicionales
-          if (editName !== 'Taller Extraprogramático' && editName !== 'Evaluación') {
-            showAlert({ title: 'Atención', message: 'Los gimnasios solo pueden agregar "Taller Extraprogramático" o "Evaluación". Los planes base ya existen.' });
-            setIsSaving(false);
-            return;
-          }
-        }
 
         const { error } = await supabase
           .from('business_services')
@@ -148,10 +110,6 @@ export default function CompanyServicesScreen() {
           });
         if (error) throw error;
       } else {
-        const isBasePlan = ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService.name);
-        if (isGym && isBasePlan) {
-          finalName = editingService.name; // Cannot change name of base plan
-        }
 
         const { error } = await supabase
           .from('business_services')
@@ -190,11 +148,6 @@ export default function CompanyServicesScreen() {
     const serviceToDelete = editingService;
     if (!serviceToDelete || serviceToDelete.id === 'new') return;
 
-    const isBasePlan = ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(serviceToDelete.name);
-    if (isGym && isBasePlan) {
-      showAlert({ title: 'No Permitido', message: 'Los planes de gimnasio no se pueden eliminar. Solo puedes modificar su precio.' });
-      return;
-    }
 
     // Cerramos el modal de edición primero para evitar que bloquee la alerta
     setEditingService(null);
@@ -334,32 +287,11 @@ export default function CompanyServicesScreen() {
               </View>
 
               <Text style={[localStyles.label, { color: colors.textSecondary, marginTop: 20 }]}>NOMBRE DEL SERVICIO</Text>
-              {isGym && editingService?.id !== 'new' && ['Plan Básico', 'Plan Premium', 'Plan VIP'].includes(editingService?.name) ? (
-                <Text style={[localStyles.readonlyField, { color: colors.textSecondary, borderColor: colors.border, backgroundColor: colors.background }]}>
-                  {editName}
-                </Text>
-              ) : isGym && editingService?.id === 'new' ? (
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <TouchableOpacity
-                    onPress={() => setEditName('Taller Extraprogramático')}
-                    style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Taller Extraprogramático' ? appColors.primary : colors.border }]}
-                  >
-                    <Text style={{ fontSize: 12, color: editName === 'Taller Extraprogramático' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Taller Extraprogramático</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setEditName('Evaluación')}
-                    style={[localStyles.modalBtn, { flex: 1, paddingHorizontal: 10, borderColor: editName === 'Evaluación' ? appColors.primary : colors.border }]}
-                  >
-                    <Text style={{ fontSize: 12, color: editName === 'Evaluación' ? appColors.primary : colors.textSecondary, textAlign: 'center' }}>Evaluación</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <GlassInput
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Ej: Corte y Barba"
-                />
-              )}
+              <GlassInput
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Ej: Corte y Barba"
+              />
 
               <GlassInput
                 value={editPrice}

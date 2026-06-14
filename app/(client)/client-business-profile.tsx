@@ -45,9 +45,6 @@ export default function ClientBusinessProfileScreen() {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Gym state
-  const [isGym, setIsGym] = useState(false);
-  const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -87,39 +84,6 @@ export default function ClientBusinessProfileScreen() {
       setFetchedBusiness(selectedBusiness);
     }
 
-    // Now detect Gym and membership status if we have the profile and business info
-    const currentBiz = selectedBusiness || (await supabase.from('businesses').select('*').eq('id', businessId).single()).data;
-    if (currentBiz?.category_id && profile?.id) {
-      const { data: cat } = await supabase
-        .from('service_categories')
-        .select('name')
-        .eq('id', currentBiz.category_id)
-        .single();
-
-      const gymFlag = !!(cat?.name?.toUpperCase().includes('GIMNASIO') || cat?.name?.toUpperCase().includes('FITNESS'));
-      setIsGym(gymFlag);
-
-      if (gymFlag) {
-        const { data: mem } = await supabase
-          .from('gym_memberships')
-          .select('status')
-          .eq('business_id', currentBiz.id)
-          .eq('client_id', profile.id)
-          .single();
-
-        if (mem && mem.status === 'active') {
-          setMembershipStatus('active');
-        } else {
-          const { data: req } = await supabase
-            .from('membership_requests')
-            .select('status')
-            .eq('business_id', currentBiz.id)
-            .eq('client_id', profile.id)
-            .single();
-          if (req) setMembershipStatus(req.status);
-        }
-      }
-    }
   };
 
   useEffect(() => {
@@ -159,22 +123,6 @@ export default function ClientBusinessProfileScreen() {
     }
   };
 
-  const handleRequestMembership = async () => {
-    if (!profile?.id || !fetchedBusiness?.id) return;
-    setIsSubmitting(true);
-    const { error } = await supabase.from('membership_requests').insert([{
-      business_id: fetchedBusiness.id,
-      client_id: profile.id,
-    }]);
-    setIsSubmitting(false);
-
-    if (error) {
-      showAlert({ title: 'Error', message: 'No se pudo enviar la solicitud. Quizá ya tienes una pendiente.' });
-    } else {
-      showAlert({ title: 'Solicitud Enviada', message: 'El gimnasio revisará tu solicitud y te asignará un plan.' });
-      setMembershipStatus('pending');
-    }
-  };
 
   if (fetchLoading) {
     return (
@@ -305,56 +253,13 @@ export default function ClientBusinessProfileScreen() {
 
       {!isPreviewMode && (
         <View style={[appStyles.clientProfileFooter, { backgroundColor: colors.background, borderTopColor: colors.border, }]}>
-          {isGym && membershipStatus === 'active' ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[appStyles.primaryButton, { width: '100%' }]}
-              onPress={() =>
-                router.push(
-                  `/calendar`
-                )
-              }
-            >
-              <Text style={appStyles.primaryButtonText}>
-                VER CLASES Y RESERVAR
-              </Text>
-            </TouchableOpacity>
-          ) : isGym && membershipStatus === 'pending' ? (
-            <View style={{ gap: 12, width: '100%' }}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[appStyles.primaryButton, { width: '100%', opacity: 0.6 }]}
-                disabled
-              >
-                <Text style={appStyles.primaryButtonText}>SOLICITUD EN REVISIÓN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push(`/calendar`)}>
-                <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
-              </TouchableOpacity>
-            </View>
-          ) : isGym ? (
-            <View style={{ gap: 12, width: '100%' }}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[appStyles.primaryButton, { width: '100%' }]}
-                onPress={handleRequestMembership}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <ActivityIndicator color="#111827" /> : <Text style={appStyles.primaryButtonText}>SOLICITAR INGRESO AL GIMNASIO</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push(`/calendar`)}>
-                <Text style={{ textAlign: 'center', color: appColors.primary, fontSize: 12, fontWeight: '600' }}>Ver talleres y evaluaciones extra</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[appStyles.primaryButton, { width: '100%' }]}
-              onPress={() => router.push(`/calendar`)}
-            >
-              <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[appStyles.primaryButton, { width: '100%' }]}
+            onPress={() => router.push(`/calendar`)}
+          >
+            <Text style={appStyles.primaryButtonText}>VER AGENDA Y RESERVAR</Text>
+          </TouchableOpacity>
         </View>
       )}
 

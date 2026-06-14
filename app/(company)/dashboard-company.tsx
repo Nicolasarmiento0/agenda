@@ -19,12 +19,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
-import { useIsGym } from '../../hooks/useIsGym';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 import { getGreeting } from '../../utils/helpers';
-
-const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
 
 type TimeFilter = 'daily' | 'weekly' | 'monthly';
 
@@ -39,7 +36,6 @@ export default function DashboardCompanyScreen() {
   const { setSelectedBusiness } = useBusiness();
   const { colors } = useTheme();
   const { showAlert } = useAlert();
-  const isGym = useIsGym();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -60,7 +56,6 @@ export default function DashboardCompanyScreen() {
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
 
-  const [gymStats, setGymStats] = useState({ basic: 0, premium: 0, vip: 0, revenue: 0, prices: GYM_PLAN_PRICE });
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -109,38 +104,6 @@ export default function DashboardCompanyScreen() {
   const fetchDashboardData = useCallback(async () => {
     if (!business?.id) return;
     const token = ++activeRequestToken.current;
-
-    if (isGym) {
-      const { data: servicesData } = await supabase
-        .from('business_services')
-        .select('name, price')
-        .eq('business_id', business.id);
-
-      if (token !== activeRequestToken.current) return;
-
-      const currentPrices = {
-        basic: servicesData?.find((s: any) => s.name === 'Plan Básico')?.price || GYM_PLAN_PRICE.basic,
-        premium: servicesData?.find((s: any) => s.name === 'Plan Premium')?.price || GYM_PLAN_PRICE.premium,
-        vip: servicesData?.find((s: any) => s.name === 'Plan VIP')?.price || GYM_PLAN_PRICE.vip,
-      };
-
-      const { data: members } = await supabase
-        .from('gym_memberships')
-        .select('plan')
-        .eq('business_id', business.id)
-        .eq('status', 'active');
-
-      if (token !== activeRequestToken.current) return;
-
-      const stats = { basic: 0, premium: 0, vip: 0, revenue: 0, prices: currentPrices };
-      (members ?? []).forEach((m: any) => {
-        if (m.plan === 'basic') stats.basic++;
-        else if (m.plan === 'premium') stats.premium++;
-        else if (m.plan === 'vip') stats.vip++;
-        if (m.plan in currentPrices) stats.revenue += currentPrices[m.plan as keyof typeof currentPrices];
-      });
-      setGymStats(stats);
-    }
 
     const { data: workers } = await supabase
       .from('workers')
@@ -274,7 +237,7 @@ export default function DashboardCompanyScreen() {
     } else {
       setUpcomingAppointments([]);
     }
-  }, [business?.id, timeFilter, isGym]);
+  }, [business?.id, timeFilter]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -355,97 +318,52 @@ export default function DashboardCompanyScreen() {
             </TouchableOpacity>
           </GlassCard>
 
-          {!isGym && (
-            <GlassCard style={styles.card}>
-              <View style={styles.chartHeaderRow}>
-                <View>
-                  <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 4 }]}>Ingresos Totales</Text>
-                  <Text
-                    style={[styles.scoreText, { color: colors.textPrimary }]}
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                  >
-                    ${revenueData.reduce((sum, item) => sum + item.value, 0).toLocaleString('es-CL')}
-                  </Text>
-                  <Text style={[styles.subText, { color: colors.textSecondary }]}>
-                    en este periodo
-                  </Text>
-                </View>
-                <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
-                  {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      activeOpacity={0.8}
-                      onPress={() => setTimeFilter(filter)}
-                      style={[styles.filterBtn, timeFilter === filter && { backgroundColor: appColors.primary }]}
-                    >
-                      <Text style={[styles.filterText, { color: timeFilter === filter ? '#111827' : colors.textSecondary }]}>
-                        {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  if (isSuspended) {
-                    handleSuspendedAction();
-                    return;
-                  }
-                  const rangeParam = timeFilter === 'daily' ? 'day' : timeFilter === 'weekly' ? 'week' : 'month';
-                  router.push(`/company-history?range=${rangeParam}` as any);
-                }}
-                style={[styles.historialCta, { borderTopColor: colors.border, marginTop: 16 }]}
-              >
-                <Text style={[styles.historialCtaText, { color: appColors.primary }]}>Ver historial completo</Text>
-                <Feather name="arrow-right" size={14} color={appColors.primary} />
-              </TouchableOpacity>
-            </GlassCard>
-          )}
-
-          {isGym && (
-            <GlassCard style={styles.card}>
-              <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/company-history')} style={{ flex: 1 }}>
-                <View style={styles.cardHeader}>
-                  <Feather name="users" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>MEMBRESÍAS MENSUALES</Text>
-                  <Feather name="chevron-right" size={14} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
-                </View>
+          <GlassCard style={styles.card}>
+            <View style={styles.chartHeaderRow}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 4 }]}>Ingresos Totales</Text>
                 <Text
                   style={[styles.scoreText, { color: colors.textPrimary }]}
                   adjustsFontSizeToFit
                   numberOfLines={1}
                 >
-                  ${gymStats.revenue.toLocaleString('es-CL')}
+                  ${revenueData.reduce((sum, item) => sum + item.value, 0).toLocaleString('es-CL')}
                 </Text>
-                <Text style={[styles.subText, { color: colors.textSecondary }]}>ingresos estimados del mes</Text>
-                <View style={{ gap: 6, marginTop: 12 }}>
-                  {gymStats.basic > 0 && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={[styles.subText, { color: colors.textSecondary }]}>Básico × {gymStats.basic}</Text>
-                      <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.basic * gymStats.prices.basic).toLocaleString('es-CL')}</Text>
-                    </View>
-                  )}
-                  {gymStats.premium > 0 && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={[styles.subText, { color: colors.textSecondary }]}>Premium × {gymStats.premium}</Text>
-                      <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.premium * gymStats.prices.premium).toLocaleString('es-CL')}</Text>
-                    </View>
-                  )}
-                  {gymStats.vip > 0 && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={[styles.subText, { color: colors.textSecondary }]}>VIP × {gymStats.vip}</Text>
-                      <Text style={[styles.subText, { color: colors.textPrimary, fontWeight: '600' }]}>${(gymStats.vip * gymStats.prices.vip).toLocaleString('es-CL')}</Text>
-                    </View>
-                  )}
-                  {gymStats.basic === 0 && gymStats.premium === 0 && gymStats.vip === 0 && (
-                    <Text style={[styles.subText, { color: colors.textSecondary, fontStyle: 'italic' }]}>Sin miembros activos aún.</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </GlassCard>
-          )}
+                <Text style={[styles.subText, { color: colors.textSecondary }]}>
+                  en este periodo
+                </Text>
+              </View>
+              <View style={[styles.filterContainer, { backgroundColor: colors.background }]}>
+                {(['daily', 'weekly', 'monthly'] as TimeFilter[]).map((filter) => (
+                  <TouchableOpacity
+                    key={filter}
+                    activeOpacity={0.8}
+                    onPress={() => setTimeFilter(filter)}
+                    style={[styles.filterBtn, timeFilter === filter && { backgroundColor: appColors.primary }]}
+                  >
+                    <Text style={[styles.filterText, { color: timeFilter === filter ? '#111827' : colors.textSecondary }]}>
+                      {filter === 'daily' ? 'Diario' : filter === 'weekly' ? 'Semanal' : 'Mensual'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                if (isSuspended) {
+                  handleSuspendedAction();
+                  return;
+                }
+                const rangeParam = timeFilter === 'daily' ? 'day' : timeFilter === 'weekly' ? 'week' : 'month';
+                router.push(`/company-history?range=${rangeParam}` as any);
+              }}
+              style={[styles.historialCta, { borderTopColor: colors.border, marginTop: 16 }]}
+            >
+              <Text style={[styles.historialCtaText, { color: appColors.primary }]}>Ver historial completo</Text>
+              <Feather name="arrow-right" size={14} color={appColors.primary} />
+            </TouchableOpacity>
+          </GlassCard>
 
           {/* PRÓXIMAS CITAS */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>

@@ -17,20 +17,9 @@ import ScreenHeader from '../../components/ScreenHeader';
 import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useIsGym } from '../../hooks/useIsGym';
 import { supabase } from '../../lib/supabase';
 import { appColors, appStyles } from '../../styles/appStyles';
 import { exportToCSV } from '../../utils/csvExporter';
-
-const GYM_PLAN_PRICE: Record<string, number> = { basic: 15000, premium: 25000, vip: 35000 };
-const PLAN_LABELS: Record<string, string> = { basic: 'BÁSICO', premium: 'PREMIUM', vip: 'VIP' };
-
-type GymMember = {
-  id: string;
-  plan: 'basic' | 'premium' | 'vip';
-  profiles: { nickname: string; avatar_url: string | null } | null;
-  price: number;
-};
 
 // --- Local Date Helpers ---
 const toLocalDateString = (date: Date): string => {
@@ -107,12 +96,9 @@ export default function CompanyHistoryScreen() {
   const { showAlert } = useAlert();
   const { range } = useLocalSearchParams<{ range?: 'day' | 'week' | 'month' }>();
 
-  const isGym = useIsGym();
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Non-gym
   const [appointments, setAppointments] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | 'all'>('all');
@@ -121,12 +107,10 @@ export default function CompanyHistoryScreen() {
   // Navigation
   const [anchorDate, setAnchorDate] = useState<Date>(new Date());
 
-  // Gym
-  const [gymMembers, setGymMembers] = useState<GymMember[]>([]);
   const [exporting, setExporting] = useState(false);
 
   const handleExportCSV = async () => {
-    const dataToExport = isGym ? gymMembers : appointments;
+    const dataToExport = appointments;
     if (dataToExport.length === 0) {
       showAlert({
         title: 'Sin datos',
@@ -141,45 +125,29 @@ export default function CompanyHistoryScreen() {
       const todayStr = new Date().toISOString().split('T')[0];
       const filename = `Nucora_Ingresos_${businessName}_${todayStr}.csv`;
 
-      let headers: { label: string; key: string }[] = [];
-      let mappedData: any[] = [];
+      const headers = [
+        { label: 'Servicio', key: 'service' },
+        { label: 'Precio', key: 'price' },
+        { label: 'Cliente', key: 'client_name' },
+        { label: 'Trabajador', key: 'worker_name' },
+        { label: 'Fecha', key: 'date' },
+        { label: 'Hora', key: 'hour' },
+      ];
 
-      if (isGym) {
-        headers = [
-          { label: 'Miembro', key: 'nickname' },
-          { label: 'Plan', key: 'plan_label' },
-          { label: 'Precio', key: 'price' },
-        ];
-        mappedData = gymMembers.map(item => ({
-          nickname: item.profiles?.nickname ?? 'Miembro',
-          plan_label: PLAN_LABELS[item.plan] ?? item.plan.toUpperCase(),
-          price: item.price,
-        }));
-      } else {
-        headers = [
-          { label: 'Servicio', key: 'service' },
-          { label: 'Precio', key: 'price' },
-          { label: 'Cliente', key: 'client_name' },
-          { label: 'Trabajador', key: 'worker_name' },
-          { label: 'Fecha', key: 'date' },
-          { label: 'Hora', key: 'hour' },
-        ];
+      const formatHourHelper = (h: number) => {
+        const hh = Math.floor(h);
+        const mm = Math.round((h - hh) * 60);
+        return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      };
 
-        const formatHourHelper = (h: number) => {
-          const hh = Math.floor(h);
-          const mm = Math.round((h - hh) * 60);
-          return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-        };
-
-        mappedData = appointments.map(item => ({
-          service: item.service,
-          price: Number(item.price || 0),
-          client_name: item.client_name,
-          worker_name: item.workers?.name || 'General',
-          date: item.date,
-          hour: formatHourHelper(Number(item.start_hour)),
-        }));
-      }
+      const mappedData = appointments.map(item => ({
+        service: item.service,
+        price: Number(item.price || 0),
+        client_name: item.client_name,
+        worker_name: item.workers?.name || 'General',
+        date: item.date,
+        hour: formatHourHelper(Number(item.start_hour)),
+      }));
 
       await exportToCSV({
         data: mappedData,
@@ -206,87 +174,55 @@ export default function CompanyHistoryScreen() {
     setLoading(true);
 
     try {
-      if (isGym) {
-        const [servicesRes, membersRes] = await Promise.all([
-          supabase
-            .from('business_services')
-            .select('name, price')
-            .eq('business_id', business.id),
-          supabase
-            .from('gym_memberships')
-            .select('id, plan, status, profiles(nickname, avatar_url)')
-            .eq('business_id', business.id)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false }),
-        ]);
+      const { data: workersData } = await supabase
+        .from('workers')
+        .select('id, name')
+        .eq('business_id', business.id);
 
-        if (token !== activeRequestToken.current) return;
+      if (token !== activeRequestToken.current) return;
+      if (workersData) setWorkers(workersData);
 
-        const prices = {
-          basic: servicesRes.data?.find((s: any) => s.name === 'Plan Básico')?.price ?? GYM_PLAN_PRICE.basic,
-          premium: servicesRes.data?.find((s: any) => s.name === 'Plan Premium')?.price ?? GYM_PLAN_PRICE.premium,
-          vip: servicesRes.data?.find((s: any) => s.name === 'Plan VIP')?.price ?? GYM_PLAN_PRICE.vip,
-        };
+      let startDateStr = '';
+      let endDateStr = '';
 
-        if (membersRes.error) throw membersRes.error;
-
-        setGymMembers(
-          (membersRes.data ?? []).map((m: any) => ({
-            ...m,
-            price: prices[m.plan as keyof typeof prices] ?? 0,
-          })) as GymMember[]
-        );
+      if (timeRange === 'day') {
+        startDateStr = toLocalDateString(anchorDate);
+        endDateStr = startDateStr;
+      } else if (timeRange === 'week') {
+        const start = getStartOfWeek(anchorDate);
+        const end = getEndOfWeek(start);
+        startDateStr = toLocalDateString(start);
+        endDateStr = toLocalDateString(end);
       } else {
-        const { data: workersData } = await supabase
-          .from('workers')
-          .select('id, name')
-          .eq('business_id', business.id);
-
-        if (token !== activeRequestToken.current) return;
-        if (workersData) setWorkers(workersData);
-
-        let startDateStr = '';
-        let endDateStr = '';
-
-        if (timeRange === 'day') {
-          startDateStr = toLocalDateString(anchorDate);
-          endDateStr = startDateStr;
-        } else if (timeRange === 'week') {
-          const start = getStartOfWeek(anchorDate);
-          const end = getEndOfWeek(start);
-          startDateStr = toLocalDateString(start);
-          endDateStr = toLocalDateString(end);
-        } else {
-          const start = getStartOfMonth(anchorDate);
-          const end = getEndOfMonth(anchorDate);
-          startDateStr = toLocalDateString(start);
-          endDateStr = toLocalDateString(end);
-        }
-
-        let query = supabase
-          .from('appointments')
-          .select('*, workers(name)')
-          .eq('business_id', business.id)
-          .eq('status', 'completed');
-
-        if (timeRange === 'day') {
-          query = query.eq('date', startDateStr);
-        } else {
-          query = query.gte('date', startDateStr).lte('date', endDateStr);
-        }
-
-        if (selectedWorkerId !== 'all') {
-          query = query.eq('worker_id', selectedWorkerId);
-        }
-
-        const { data, error } = await query
-          .order('date', { ascending: false })
-          .order('start_hour', { ascending: false });
-
-        if (token !== activeRequestToken.current) return;
-        if (error) throw error;
-        setAppointments(data || []);
+        const start = getStartOfMonth(anchorDate);
+        const end = getEndOfMonth(anchorDate);
+        startDateStr = toLocalDateString(start);
+        endDateStr = toLocalDateString(end);
       }
+
+      let query = supabase
+        .from('appointments')
+        .select('*, workers(name)')
+        .eq('business_id', business.id)
+        .eq('status', 'completed');
+
+      if (timeRange === 'day') {
+        query = query.eq('date', startDateStr);
+      } else {
+        query = query.gte('date', startDateStr).lte('date', endDateStr);
+      }
+
+      if (selectedWorkerId !== 'all') {
+        query = query.eq('worker_id', selectedWorkerId);
+      }
+
+      const { data, error } = await query
+        .order('date', { ascending: false })
+        .order('start_hour', { ascending: false });
+
+      if (token !== activeRequestToken.current) return;
+      if (error) throw error;
+      setAppointments(data || []);
     } catch (error: any) {
       if (token !== activeRequestToken.current) return;
       console.error('Error fetching history:', error);
@@ -297,7 +233,7 @@ export default function CompanyHistoryScreen() {
         setRefreshing(false);
       }
     }
-  }, [business?.id, selectedWorkerId, timeRange, anchorDate, isGym]);
+  }, [business?.id, selectedWorkerId, timeRange, anchorDate]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -339,9 +275,7 @@ export default function CompanyHistoryScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchHistory(); };
 
-  const totalEarnings = isGym
-    ? gymMembers.reduce((sum, m) => sum + m.price, 0)
-    : appointments.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const totalEarnings = appointments.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const renderAppointment = ({ item }: { item: any }) => (
     <GlassCard style={styles.itemCard}>
@@ -368,52 +302,19 @@ export default function CompanyHistoryScreen() {
     </GlassCard>
   );
 
-  const renderGymMember = ({ item }: { item: GymMember }) => (
-    <GlassCard style={styles.itemCard}>
-      <View style={styles.itemHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {item.profiles?.avatar_url ? (
-            <Image source={{ uri: item.profiles.avatar_url }} style={styles.memberAvatar} />
-          ) : (
-            <View style={[styles.memberAvatarFallback, { backgroundColor: appColors.primary + '20' }]}>
-              <Text style={[styles.memberAvatarInitial, { color: appColors.primary }]}>
-                {item.profiles?.nickname?.[0]?.toUpperCase() ?? '?'}
-              </Text>
-            </View>
-          )}
-          <View>
-            <Text style={[styles.itemService, { color: colors.textPrimary }]}>
-              {item.profiles?.nickname ?? 'Miembro'}
-            </Text>
-            <Text style={[styles.planLabel, { color: colors.textSecondary }]}>
-              {PLAN_LABELS[item.plan] ?? item.plan}
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.itemPrice, { color: appColors.primary }]}>
-          ${item.price.toLocaleString('es-CL')}
-        </Text>
-      </View>
-    </GlassCard>
-  );
-
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader leftIcon="arrow-left" onLeft={() => router.back()} title="HISTORIAL" />
 
       <GlassCard style={styles.summaryCard}>
         <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-          {isGym
-            ? 'INGRESOS MENSUALES'
-            : `INGRESOS DEL PERIODO · ${timeRange === 'day' ? 'DIARIO' : timeRange === 'week' ? 'SEMANAL' : 'MENSUAL'}`}
+          {`INGRESOS DEL PERIODO · ${timeRange === 'day' ? 'DIARIO' : timeRange === 'week' ? 'SEMANAL' : 'MENSUAL'}`}
         </Text>
         <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
           ${totalEarnings.toLocaleString('es-CL')}
         </Text>
         <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
-          {isGym
-            ? `${gymMembers.length} miembros activos`
-            : `${appointments.length} servicios realizados`}
+          {`${appointments.length} servicios realizados`}
         </Text>
 
         <TouchableOpacity
@@ -433,30 +334,27 @@ export default function CompanyHistoryScreen() {
         </TouchableOpacity>
       </GlassCard>
 
-      {!isGym && (
-        <View style={[styles.navigatorContainer, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
-          <TouchableOpacity 
-            onPress={() => navigatePeriod('prev')} 
-            style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
-          >
-            <Feather name="chevron-left" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-          
-          <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
-            {getPeriodLabel().toUpperCase()}
-          </Text>
-          
-          <TouchableOpacity 
-            onPress={() => navigatePeriod('next')} 
-            style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
-          >
-            <Feather name="chevron-right" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={[styles.navigatorContainer, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
+        <TouchableOpacity 
+          onPress={() => navigatePeriod('prev')} 
+          style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
+        >
+          <Feather name="chevron-left" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+        
+        <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
+          {getPeriodLabel().toUpperCase()}
+        </Text>
+        
+        <TouchableOpacity 
+          onPress={() => navigatePeriod('next')} 
+          style={[styles.navButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}
+        >
+          <Feather name="chevron-right" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
 
-      {!isGym && (
-        <View style={styles.filtersContainer}>
+      <View style={styles.filtersContainer}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -508,29 +406,10 @@ export default function CompanyHistoryScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
-      )}
+      </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={appColors.primary} style={{ marginTop: 40 }} />
-      ) : isGym ? (
-        <FlatList
-          data={gymMembers}
-          keyExtractor={item => item.id}
-          renderItem={renderGymMember}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textPrimary} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Feather name="users" size={48} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No hay miembros activos aún.
-              </Text>
-            </View>
-          }
-        />
       ) : (
         <FlatList
           data={appointments}

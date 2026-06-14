@@ -90,18 +90,15 @@ const formatMonthFriendly = (date: Date): string => {
 };
 
 export default function WorkerHistoryScreen() {
-  const { business, profile } = useAuth();
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { profile } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   const { showAlert } = useAlert();
   const { range } = useLocalSearchParams<{ range?: 'day' | 'week' | 'month' }>();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [appointments, setAppointments] = useState<any[]>([]);
-  const [workers, setWorkers] = useState<any[]>([]);
-  const [selectedWorkerId, setSelectedWorkerId] = useState<string | 'all'>('all');
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>(range ?? 'day');
-  const [isGym, setIsGym] = useState(false);
   
   // Navigation
   const [anchorDate, setAnchorDate] = useState<Date>(new Date());
@@ -126,17 +123,6 @@ export default function WorkerHistoryScreen() {
       if (!meData) {
         setLoading(false);
         return;
-      }
-
-      // 2. Detectar si es Gimnasio
-      if (meData.business_id) {
-        const { data: bData } = await supabase.from('businesses').select('category_id').eq('id', meData.business_id).single();
-        if (token !== activeRequestToken.current) return;
-        if (bData?.category_id) {
-          const { data: catData } = await supabase.from('service_categories').select('name').eq('id', bData.category_id).single();
-          if (token !== activeRequestToken.current) return;
-          if (catData) setIsGym(catData.name.toUpperCase().includes('GIMNASIO') || catData.name.toUpperCase().includes('FITNESS'));
-        }
       }
 
       // 3. Definir rango de fechas locales
@@ -274,7 +260,7 @@ export default function WorkerHistoryScreen() {
           ${totalEarnings.toLocaleString('es-CL')}
         </Text>
         <Text style={[appStyles.wh_summaryCount, { color: colors.textSecondary }]}>
-          {appointments.length} {isGym ? 'asistencias registradas' : 'servicios realizados'}
+          {appointments.length} servicios realizados
         </Text>
       </GlassCard>
 

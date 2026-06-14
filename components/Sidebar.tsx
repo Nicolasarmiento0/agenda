@@ -39,7 +39,6 @@ type Props = {
   onClose: () => void;
 };
 
-const GYM_KEYWORDS = ['gym', 'gimnasio', 'gimnasios', 'fitness'];
 
 const ROLE_COLORS: Record<string, string> = {
   admin: '#E31937',
@@ -60,9 +59,6 @@ export default function Sidebar({ visible, onClose }: Props) {
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const { showAlert } = useAlert();
 
-  const isGym = GYM_KEYWORDS.some(kw =>
-    business?.category_name?.toLowerCase().includes(kw)
-  );
 
   const [inboxCount, setInboxCount] = useState(0);
 
@@ -279,18 +275,6 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="briefcase" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>MI NEGOCIO</Text>
                 </TouchableOpacity>
-                {isGym && (
-                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/company-members')}>
-                    <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>MIEMBROS GYM</Text>
-                  </TouchableOpacity>
-                )}
-                {isGym && (
-                  <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/company-booking-window')}>
-                    <Feather name="clock" size={20} color={colors.textSecondary} style={styles.iconWidth} />
-                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>TOMA DE HORARIO</Text>
-                  </TouchableOpacity>
-                )}
               </>
             )}
 

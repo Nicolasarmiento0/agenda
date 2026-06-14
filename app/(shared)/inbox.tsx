@@ -22,7 +22,7 @@ import { appColors } from '../../styles/appStyles';
 
 type InboxItem = {
   id: string;
-  type: 'appointment_pending' | 'appointment_confirmed' | 'appointment_completed' | 'appointment_rescheduled' | 'appointment_noshow' | 'appointment_cancelled' | 'business_pending' | 'membership_request' | 'membership_approved' | 'membership_rejected';
+  type: 'appointment_pending' | 'appointment_confirmed' | 'appointment_completed' | 'appointment_rescheduled' | 'appointment_noshow' | 'appointment_cancelled' | 'business_pending';
   title: string;
   subtitle: string;
   date: string;
@@ -50,9 +50,6 @@ const TYPE_ICON: Record<string, { name: string; color: string }> = {
   appointment_noshow: { name: 'user-x', color: '#D00024' },
   appointment_cancelled: { name: 'x-circle', color: '#888888' },
   business_pending: { name: 'briefcase', color: '#3B7BE0' },
-  membership_request: { name: 'user-plus', color: appColors.primary },
-  membership_approved: { name: 'check-circle', color: '#3D9E5A' },
-  membership_rejected: { name: 'x-circle', color: '#C0392B' },
 };
 
 // ─── Componente: Item ─────────────────────────────────────────────────────────
@@ -179,21 +176,13 @@ export default function InboxScreen() {
         .maybeSingle();
 
       if (biz) {
-        const [apptRes, memReqRes] = await Promise.all([
-          supabase
-            .from('appointments')
-            .select('id, client_name, service, date, status, created_at')
-            .eq('business_id', biz.id)
-            .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
-            .order('created_at', { ascending: false })
-            .limit(50),
-          supabase
-            .from('membership_requests')
-            .select('id, client_id, created_at, profiles(nickname)')
-            .eq('business_id', biz.id)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false }),
-        ]);
+        const apptRes = await supabase
+          .from('appointments')
+          .select('id, client_name, service, date, status, created_at')
+          .eq('business_id', biz.id)
+          .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
+          .order('created_at', { ascending: false })
+          .limit(50);
 
         (apptRes.data ?? []).forEach((a: any) => {
           const STATUS_LABEL: Record<string, string> = {
@@ -223,18 +212,6 @@ export default function InboxScreen() {
           });
         });
 
-        (memReqRes.data as any[] ?? []).forEach((r: any) => {
-          const nickname = r.profiles?.nickname ?? 'Cliente';
-          newItems.push({
-            id: `mem-${r.id}`,
-            type: 'membership_request',
-            title: `Solicitud de membresía`,
-            subtitle: nickname,
-            date: r.created_at,
-            actionLabel: 'Gestionar',
-            onAction: () => router.push('/company-members'),
-          });
-        });
       }
     }
 
@@ -287,22 +264,13 @@ export default function InboxScreen() {
 
     // ── CLIENT: todas las notificaciones personales de citas ────────
     if (role === 'client') {
-      const [apptRes, memRes] = await Promise.all([
-        supabase
-          .from('appointments')
-          .select('id, service, date, status, created_at, businesses(name)')
-          .eq('client_id', profile.id)
-          .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
-          .order('created_at', { ascending: false })
-          .limit(40),
-        supabase
-          .from('membership_requests')
-          .select('id, status, created_at, businesses(name)')
-          .eq('client_id', profile.id)
-          .in('status', ['approved', 'rejected'])
-          .order('created_at', { ascending: false })
-          .limit(20),
-      ]);
+      const apptRes = await supabase
+        .from('appointments')
+        .select('id, service, date, status, created_at, businesses(name)')
+        .eq('client_id', profile.id)
+        .in('status', ['pending', 'confirmed', 'rescheduled', 'cancelled', 'completed', 'no-show'])
+        .order('created_at', { ascending: false })
+        .limit(40);
 
       const STATUS_LABEL: Record<string, string> = {
         pending: '✨ Cita agendada (Pendiente)',
@@ -334,16 +302,6 @@ export default function InboxScreen() {
         });
       });
 
-      (memRes.data as any[] ?? []).forEach((r: any) => {
-        const bizName = r.businesses?.name ?? 'Gimnasio';
-        newItems.push({
-          id: `mem-${r.id}`,
-          type: r.status === 'approved' ? 'membership_approved' : 'membership_rejected',
-          title: r.status === 'approved' ? '¡Membresía aprobada!' : 'Membresía rechazada',
-          subtitle: bizName,
-          date: r.created_at,
-        });
-      });
     }
 
     // Ordenar por fecha descendente

@@ -1,7 +1,7 @@
 # Nucora — Plataforma de Agendamiento y CRM para PyMEs
 
 > **MVP completado y operativo.**
-> Plataforma SaaS multi-tenant de agendamiento, historial de ingresos y CRM diseñada para barberías, salones, consultorios, gimnasios y centros de servicio.
+> Plataforma SaaS multi-tenant de agendamiento, historial de ingresos y CRM diseñada para barberías, salones, consultorios y centros de servicio.
 
 **Stack:** React Native · Expo SDK 55 · Expo Router · Supabase (PostgreSQL + RLS) · TypeScript
 
@@ -20,15 +20,13 @@ Nucora automatiza la gestión de turnos eliminando la fricción de la coordinaci
 - **Perfil de negocio:** Catálogo de servicios, precios, duración, personal y valoraciones ([client-business-profile.tsx](app/(client)/client-business-profile.tsx)).
 - **Reserva inteligente:** Agendamiento dinámico con selección de profesional, fecha y hora disponible en tiempo real con protección contra solapamientos.
 - **Mis citas:** Gestión de citas activas, cancelaciones e historial ([my-appointments.tsx](app/(client)/my-appointments.tsx)).
-- **Planes de gimnasio:** Control de clases semanales, contadores de cupos y validez de plan (Básico, Premium, VIP) ([client-gym-plan.tsx](app/(client)/client-gym-plan.tsx)).
 
 ### Empresa (`company`)
 - **Onboarding guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](app/(company)/business-setup.tsx)).
 - **Dashboard gerencial:** Ingresos del mes en tiempo real, próximas citas y métricas clave ([dashboard-company.tsx](app/(company)/dashboard-company.tsx)).
 - **Agenda multi-trabajador:** Vista unificada de calendario (diario/semanal) con control de estado de cada turno ([calendar.tsx](app/(shared)/calendar.tsx)).
 - **CRM e historial financiero:** Ingresos históricos por rango temporal y filtros por empleado ([company-history.tsx](app/(company)/company-history.tsx)).
-- **Gestión de personal y catálogos:** Empleados ([company-employees.tsx](app/(company)/company-employees.tsx)), servicios ([company-services.tsx](app/(company)/company-services.tsx)) y ventanas horarias ([company-booking-window.tsx](app/(company)/company-booking-window.tsx)).
-- **Membresías:** Panel de alta y seguimiento de planes y clases consumidas por socios ([company-members.tsx](app/(company)/company-members.tsx)).
+- **Gestión de personal y catálogos:** Empleados ([company-employees.tsx](app/(company)/company-employees.tsx)) y servicios ([company-services.tsx](app/(company)/company-services.tsx)).
 
 ### Trabajador (`worker`)
 - **Dashboard personal:** Agenda diaria individual con indicadores y valoraciones ([worker-dashboard.tsx](app/(worker)/worker-dashboard.tsx)).
@@ -111,8 +109,8 @@ nucora/
 │   ├── _layout.tsx             # Root layout y providers
 │   ├── index.tsx               # Enrutador basado en rol de usuario
 │   ├── (auth)/                 # Login, registro, recuperación de contraseña
-│   ├── (client)/               # Dashboard, explorar, citas, planes de gym
-│   ├── (company)/              # Dashboard, agenda, empleados, servicios, CRM
+│   ├── (client)/               # Dashboard, explorar y citas
+│   ├── (company)/              # Dashboard, agenda, empleados, servicios y CRM
 │   ├── (worker)/               # Dashboard personal e historial de comisiones
 │   ├── (admin)/                # Supervisión global y moderación de negocios
 │   └── (shared)/               # Calendario, perfil, inbox, privacidad, soporte

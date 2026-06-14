@@ -18,7 +18,7 @@ export default function ClientLayout() {
   }
 
   // Rutas que son exclusivas de cliente
-  const clientOnlyRoutes = ['/client-dashboard', '/client-gym-plan', '/my-appointments'];
+  const clientOnlyRoutes = ['/client-dashboard', '/my-appointments'];
 
   const isClientOnly = clientOnlyRoutes.some(route => pathname.startsWith(route));
 
@@ -35,7 +35,6 @@ export default function ClientLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="client-dashboard" />
       <Stack.Screen name="client-business-profile" />
-      <Stack.Screen name="client-gym-plan" />
       <Stack.Screen name="explore" />
       <Stack.Screen name="my-appointments" />
     </Stack>

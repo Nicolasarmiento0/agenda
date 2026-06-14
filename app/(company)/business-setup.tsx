@@ -1,4 +1,6 @@
 import { Feather } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -13,8 +15,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import GlassInput from '../../components/GlassInput';
 import TimeWheelPicker from '../../components/TimeWheelPicker';
 import { useAuth } from '../../context/AuthContext';
@@ -30,7 +30,6 @@ type Category = {
 };
 
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const GYM_KEYWORDS = ['gym', 'gimnasio', 'gimnasios', 'fitness'];
 
 const cropImageWeb = (uri: string, zoom: number, x: number, y: number): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -47,20 +46,20 @@ const cropImageWeb = (uri: string, zoom: number, x: number, y: number): Promise<
         reject(new Error('Canvas context not available'));
         return;
       }
-      
+
       canvas.width = 300;
       canvas.height = 300;
-      
+
       const frameVisualSize = 200;
       const sourceToVisualRatio = Math.min(img.width, img.height) / frameVisualSize;
       const sSize = Math.min(img.width, img.height) / zoom;
-      
+
       const sourceOffsetX = x * sourceToVisualRatio;
       const sourceOffsetY = y * sourceToVisualRatio;
-      
+
       const sx = (img.width - sSize) / 2 - sourceOffsetX;
       const sy = (img.height - sSize) / 2 - sourceOffsetY;
-      
+
       ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, 300, 300);
       resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
@@ -92,10 +91,6 @@ export default function BusinessSetupScreen() {
   const [openingTime, setOpeningTime] = useState('09:00');
   const [closingTime, setClosingTime] = useState('20:00');
 
-  // Paso 3 — Gym: ventana de reserva dinámica
-  const [bookingWindowDay, setBookingWindowDay] = useState(0);
-  const [bookingWindowOpenTime, setBookingWindowOpenTime] = useState('19:00');
-  const [bookingWindowCloseTime, setBookingWindowCloseTime] = useState('23:00');
 
   // Paso 3 — Completar Después (no gym)
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -105,7 +100,7 @@ export default function BusinessSetupScreen() {
 
   // Time picker modal state
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerField, setPickerField] = useState<'opening' | 'closing' | 'bookingOpen' | 'bookingClose' | null>(null);
+  const [pickerField, setPickerField] = useState<'opening' | 'closing' | null>(null);
   const [tempTime, setTempTime] = useState('09:00');
 
   const [saving, setSaving] = useState(false);
@@ -139,7 +134,15 @@ export default function BusinessSetupScreen() {
       .select('*')
       .eq('is_active', true)
       .then(({ data }) => {
-        if (data) setCategories(data);
+        if (data) {
+          // Remove Gimnasios category (ID: 854d3db2-1e6c-4e61-be48-e7a3fb887bd9 or name matches)
+          const filtered = data.filter(c =>
+            c.id !== '854d3db2-1e6c-4e61-be48-e7a3fb887bd9' &&
+            c.name.toLowerCase() !== 'gimnasios' &&
+            c.name.toLowerCase() !== 'gimnasio'
+          );
+          setCategories(filtered);
+        }
       });
   }, []);
 
@@ -148,18 +151,11 @@ export default function BusinessSetupScreen() {
 
   const selectedParent = parentCategories.find(c => c.id === parentCategoryId);
   const selectedSub = categories.find(c => c.id === subCategoryId);
-  const isGym = GYM_KEYWORDS.some(kw =>
-    selectedParent?.name?.toLowerCase().includes(kw) ||
-    selectedSub?.name?.toLowerCase().includes(kw)
-  );
-
-  const stepTitles = ['TU NEGOCIO', 'DÓNDE Y CUÁNDO', isGym ? 'RESERVAS' : 'COMPLETAR DESPUÉS'];
+  const stepTitles = ['TU NEGOCIO', 'DÓNDE Y CUÁNDO', 'COMPLETAR DESPUÉS'];
   const stepSubtitles = [
     'Cuéntanos quién eres.',
     'Para que tus clientes te encuentren.',
-    isGym
-      ? 'Define cuándo pueden reservar tus alumnos.'
-      : 'Agrega una foto, tu cuenta de Instagram y una descripción (opcional).',
+    'Agrega una foto, tu cuenta de Instagram y una descripción (opcional).',
   ];
 
   const goToStep = (next: 1 | 2 | 3) => {
@@ -283,13 +279,11 @@ export default function BusinessSetupScreen() {
     }
   };
 
-  const openTimePicker = (field: 'opening' | 'closing' | 'bookingOpen' | 'bookingClose') => {
+  const openTimePicker = (field: 'opening' | 'closing') => {
     let initialTime = '09:00';
     if (field === 'opening') initialTime = openingTime;
     else if (field === 'closing') initialTime = closingTime;
-    else if (field === 'bookingOpen') initialTime = bookingWindowOpenTime;
-    else if (field === 'bookingClose') initialTime = bookingWindowCloseTime;
-    
+
     setTempTime(initialTime);
     setPickerField(field);
     setPickerVisible(true);
@@ -298,8 +292,6 @@ export default function BusinessSetupScreen() {
   const confirmTime = () => {
     if (pickerField === 'opening') setOpeningTime(tempTime);
     else if (pickerField === 'closing') setClosingTime(tempTime);
-    else if (pickerField === 'bookingOpen') setBookingWindowOpenTime(tempTime);
-    else if (pickerField === 'bookingClose') setBookingWindowCloseTime(tempTime);
     setPickerVisible(false);
     setPickerField(null);
   };
@@ -336,11 +328,6 @@ export default function BusinessSetupScreen() {
         schedule: defaultSchedule,
       };
 
-      if (isGym) {
-        businessData.booking_window_day = bookingWindowDay;
-        businessData.booking_window_open_time = `${bookingWindowOpenTime}:00`;
-        businessData.booking_window_close_time = `${bookingWindowCloseTime}:00`;
-      }
 
       // Si ya existe un negocio (ej. rechazado), hacemos upsert por ID
       if (business?.id) {
@@ -369,15 +356,13 @@ export default function BusinessSetupScreen() {
         });
 
         // 2. Agregar un servicio general por defecto
-        if (!isGym) {
-          await supabase.from('business_services').insert({
-            business_id: biz.id,
-            name: 'Servicio Estándar',
-            price: 10000,
-            duration_min: 30,
-            is_active: true,
-          });
-        }
+        await supabase.from('business_services').insert({
+          business_id: biz.id,
+          name: 'Servicio Estándar',
+          price: 10000,
+          duration_min: 30,
+          is_active: true,
+        });
       }
 
       await refreshProfile();
@@ -419,7 +404,7 @@ export default function BusinessSetupScreen() {
               <>
                 <GlassInput
                   label="NOMBRE DEL NEGOCIO *"
-                  placeholder="Ej: Barbería Los Andes"
+                  placeholder="Ej: Estudio New Style"
                   value={name}
                   onChangeText={setName}
                   autoFocus
@@ -506,61 +491,8 @@ export default function BusinessSetupScreen() {
               </>
             )}
 
-            {/* ── PASO 3: Gym — Ventana de reserva dinámica ── */}
-            {step === 3 && isGym && (
-              <>
-                <Text style={[styles.hint, { color: colors.textSecondary, marginBottom: 20 }]}>
-                  Los alumnos dinámicos podrán reservar sus clases de la semana siguiente dentro de esta ventana.
-                  Los alumnos estáticos tendrán su horario fijo asignado desde tu panel.
-                </Text>
-
-                <Text style={[styles.label, { color: colors.textSecondary }]}>DÍA DE APERTURA DE RESERVAS</Text>
-                <View style={[styles.chipGrid, { marginBottom: 20 }]}>
-                  {DAY_LABELS.map((label, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      activeOpacity={0.7}
-                      onPress={() => setBookingWindowDay(i)}
-                      style={[styles.dayChip, {
-                        borderColor: bookingWindowDay === i ? appColors.primary : colors.border,
-                        backgroundColor: bookingWindowDay === i ? appColors.primary : colors.surface,
-                      }]}
-                    >
-                      <Text style={[styles.dayChipText, { color: bookingWindowDay === i ? '#111827' : colors.textPrimary }]}>{label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={[styles.label, { color: colors.textSecondary }]}>HORARIO DE RESERVA</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 6 }]}>DESDE</Text>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => openTimePicker('bookingOpen')}
-                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    >
-                      <Feather name="clock" size={16} color={appColors.primary} />
-                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{bookingWindowOpenTime}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 6 }]}>HASTA</Text>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => openTimePicker('bookingClose')}
-                      style={[styles.timeSelectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    >
-                      <Feather name="clock" size={16} color={appColors.primary} />
-                      <Text style={[styles.timeSelectBtnText, { color: colors.textPrimary }]}>{bookingWindowCloseTime}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* ── PASO 3: No gym — Completar después (opcional) ── */}
-            {step === 3 && !isGym && (
+            {/* ── PASO 3: Completar después (opcional) ── */}
+            {step === 3 && (
               <>
                 <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 8 }]}>FOTO DE PERFIL / LOGO</Text>
                 <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage} disabled={isUploading}>
@@ -635,12 +567,9 @@ export default function BusinessSetupScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {pickerField === 'opening' ? 'Hora de apertura' 
-               : pickerField === 'closing' ? 'Hora de cierre'
-               : pickerField === 'bookingOpen' ? 'Apertura de reservas'
-               : 'Cierre de reservas'}
+              {pickerField === 'opening' ? 'Hora de apertura' : 'Hora de cierre'}
             </Text>
-            
+
             <TimeWheelPicker
               openingHour={0}
               closingHour={24}
@@ -652,14 +581,14 @@ export default function BusinessSetupScreen() {
             />
 
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-              <TouchableOpacity 
-                style={[styles.modalBtn, { borderColor: colors.border, borderWidth: 1 }]} 
+              <TouchableOpacity
+                style={[styles.modalBtn, { borderColor: colors.border, borderWidth: 1 }]}
                 onPress={() => setPickerVisible(false)}
               >
                 <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: appColors.primary }]} 
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: appColors.primary }]}
                 onPress={confirmTime}
               >
                 <Text style={[styles.modalBtnText, { color: '#111827' }]}>Confirmar</Text>
@@ -722,7 +651,7 @@ export default function BusinessSetupScreen() {
                   >
                     <Feather name="minus" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
-                  
+
                   <View style={[styles.cropSliderTrack, { backgroundColor: colors.border }]}>
                     <View style={[styles.cropSliderFill, { width: `${Math.min(100, Math.max(0, (cropZoom - 1) / 3 * 100))}%`, backgroundColor: colors.primary }]} />
                   </View>
@@ -757,7 +686,7 @@ export default function BusinessSetupScreen() {
                     >
                       <Feather name="chevron-left" size={20} color={colors.textPrimary} />
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={[styles.cropDpadCenterBtn, { backgroundColor: colors.primary }]}
                       onPress={() => {

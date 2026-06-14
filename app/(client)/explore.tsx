@@ -140,7 +140,15 @@ export default function ExploreScreen() {
     ]);
 
     if (!bizRes.error && bizRes.data) setBusinesses(bizRes.data as Business[]);
-    if (!catRes.error && catRes.data) setCategories(catRes.data as Category[]);
+    if (!catRes.error && catRes.data) {
+      // Exclude Gimnasios category (ID: 854d3db2-1e6c-4e61-be48-e7a3fb887bd9 or name matches)
+      const filtered = (catRes.data as Category[]).filter(c => 
+        c.id !== '854d3db2-1e6c-4e61-be48-e7a3fb887bd9' &&
+        c.name.toLowerCase() !== 'gimnasios' &&
+        c.name.toLowerCase() !== 'gimnasio'
+      );
+      setCategories(filtered);
+    }
 
     if (!reviewsRes.error && reviewsRes.data) {
       const sums: Record<string, { sum: number; count: number }> = {};
