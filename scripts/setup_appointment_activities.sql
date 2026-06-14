@@ -75,7 +75,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 -- 5. Crear el trigger en la tabla de citas
 DROP TRIGGER IF EXISTS trg_appointment_activity_log ON public.appointments;
@@ -83,6 +83,9 @@ CREATE TRIGGER trg_appointment_activity_log
 AFTER INSERT OR UPDATE ON public.appointments
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_appointment_activity_log();
+
+-- 6. Revocar permisos de ejecución pública sobre la función trigger para evitar llamadas directas por API RPC
+REVOKE EXECUTE ON FUNCTION public.handle_appointment_activity_log() FROM PUBLIC;
 
 -- 6. Retroalimentación/Poblar actividades básicas para citas pre-existentes
 -- Esto garantiza que las citas previas funcionen de inmediato

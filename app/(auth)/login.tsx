@@ -119,9 +119,14 @@ export default function LoginScreen() {
           <View style={appStyles.screenContent}>
 
             {/* Header */}
-            <View>
-              <Text style={appStyles.title}>Iniciar Sesión</Text>
-              <Text style={appStyles.subtitle}>
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <ExpoImage
+                source={require('../../assets/images/logo.png')}
+                style={{ width: 48, height: 48, marginBottom: 8 }}
+                contentFit="contain"
+              />
+              <Text style={[appStyles.title, { padding: 0, textAlign: 'center' }]}>Iniciar Sesión</Text>
+              <Text style={[appStyles.subtitle, { textAlign: 'center' }]}>
                 Accede a tu cuenta para continuar.
               </Text>
             </View>
