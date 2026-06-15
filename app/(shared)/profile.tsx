@@ -3,6 +3,7 @@ import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
+import { readLocalUriAsBlob } from '../../utils/webUploadHelper';
 import {
   ActivityIndicator,
   Modal,
@@ -155,8 +156,7 @@ export default function ProfileScreen() {
       let contentType: string | undefined = `image/${fileExt}`;
 
       if (Platform.OS === 'web') {
-        const response = await fetch(imageUri);
-        body = await response.blob();
+        body = await readLocalUriAsBlob(imageUri);
       } else {
         const formData = new FormData();
         formData.append('file', {

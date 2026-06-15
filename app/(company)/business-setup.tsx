@@ -3,6 +3,7 @@ import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
+import { readLocalUriAsBlob } from '../../utils/webUploadHelper';
 import {
   Animated,
   Image,
@@ -244,9 +245,8 @@ export default function BusinessSetupScreen() {
       let contentType: string | undefined;
 
       if (Platform.OS === 'web') {
-        const response = await fetch(imageUri);
-        body = await response.blob();
-        contentType = `image/${ext}`;
+        body = await readLocalUriAsBlob(imageUri);
+        contentType = body.type || `image/${ext}`;
       } else {
         const formData = new FormData();
         formData.append('file', {

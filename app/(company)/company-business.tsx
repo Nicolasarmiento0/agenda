@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { decode } from 'base64-arraybuffer';
 import React, { useEffect, useRef, useState } from 'react';
+import { readLocalUriAsBlob } from '../../utils/webUploadHelper';
 import {
   ActivityIndicator,
   Animated,
@@ -243,9 +244,8 @@ export default function CompanyBusinessScreen() {
       let contentType: string | undefined;
 
       if (Platform.OS === 'web') {
-        const response = await fetch(imageUri);
-        body = await response.blob();
-        contentType = `image/${ext}`;
+        body = await readLocalUriAsBlob(imageUri);
+        contentType = body.type || `image/${ext}`;
       } else if (base64Str) {
         body = decode(base64Str);
         contentType = `image/${ext}`;
@@ -291,7 +291,8 @@ export default function CompanyBusinessScreen() {
         });
 
         if (!result.canceled && result.assets[0].uri) {
-          await uploadWorkPhoto(result.assets[0].uri);
+          const file = (result.assets[0] as any).file as File | undefined;
+          await uploadWorkPhoto(result.assets[0].uri, undefined, file);
         }
       } catch (error: any) {
         showAlert({ title: 'Error', message: 'No se pudo seleccionar la foto: ' + error.message });
@@ -334,30 +335,23 @@ export default function CompanyBusinessScreen() {
     }, 350);
   };
 
-  const uploadWorkPhoto = async (imageUri: string, base64Str?: string) => {
+  const uploadWorkPhoto = async (imageUri: string, base64Str?: string, webFile?: File) => {
     if (!profile?.id) return;
     setIsUploadingPhoto(true);
     try {
-      let body: Blob | ArrayBuffer;
+      let body: Blob | ArrayBuffer | File;
       let contentType: string;
       let fileExt: string;
 
       if (Platform.OS === 'web') {
-        if (imageUri.startsWith('data:')) {
-          const mime = imageUri.split(';')[0].split(':')[1];
-          const base64 = imageUri.split(',')[1];
-          body = decode(base64);
-          contentType = mime;
-          const mimeExt = mime.split('/')[1]?.split('+')[0] ?? 'jpg';
-          fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+        if (webFile) {
+          body = webFile;
         } else {
-          const response = await fetch(imageUri);
-          const blob = await response.blob();
-          contentType = blob.type || 'image/jpeg';
-          const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
-          fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
-          body = blob;
+          body = await readLocalUriAsBlob(imageUri);
         }
+        contentType = body.type || 'image/jpeg';
+        const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
+        fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
       } else if (base64Str) {
         fileExt = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
         contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
