@@ -231,12 +231,33 @@ export default function MyAppointmentsScreen() {
                     </View>
 
                     {canCancel && (
-                      <TouchableOpacity
-                        style={localStyles.cancelBtn}
-                        onPress={() => handleCancel(appt.id)}
-                      >
-                        <Text style={localStyles.cancelBtnText}>Cancelar Cita</Text>
-                      </TouchableOpacity>
+                      <View style={[localStyles.actionsRow, { borderTopColor: colors.border }]}>
+                        {(!appt.reschedule_count || appt.reschedule_count < 1) && (
+                          <TouchableOpacity
+                            style={[localStyles.actionBtn, { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: colors.border }]}
+                            onPress={() => {
+                              router.push({
+                                pathname: '/calendar',
+                                params: {
+                                  businessId: appt.business_id,
+                                  rescheduleApptId: appt.id,
+                                },
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[localStyles.actionBtnText, { color: appColors.primary }]}>Reagendar</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                          style={localStyles.actionBtn}
+                          onPress={() => handleCancel(appt.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[localStyles.actionBtnText, { color: '#E24B4A' }]}>Cancelar Cita</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </GlassCard>
                 );
@@ -365,14 +386,18 @@ const localStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  cancelBtn: {
-    paddingVertical: 10,
+  actionsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
   },
-  cancelBtnText: {
-    color: '#E24B4A',
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnText: {
     fontSize: 14,
     fontWeight: '600',
   }

@@ -24,6 +24,7 @@ export type Appointment = {
   price?: number;
   notes?: string;
   client_id?: string;
+  reschedule_count?: number;
 };
 
 export type WorkerRow = {

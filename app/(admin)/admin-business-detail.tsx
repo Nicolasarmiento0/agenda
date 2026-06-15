@@ -212,7 +212,13 @@ export default function AdminBusinessDetailScreen() {
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="DETALLE DE EMPRESA"
-        onLeft={() => router.back()}
+        onLeft={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/admin-businesses');
+          }
+        }}
         leftIcon="arrow-left"
       />
 

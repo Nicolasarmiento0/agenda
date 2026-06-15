@@ -45,13 +45,15 @@ export default function ClientDashboardScreen() {
         .from('appointments')
         .select(`
           id,
+          business_id,
           date,
           start_hour,
           status,
           service,
           price,
+          reschedule_count,
           business:businesses(name, address),
-          workers(name, profiles(avatar_url))
+          workers(name, specialty, profiles(avatar_url))
         `)
         .eq('client_id', profile.id)
         .in('status', ['confirmed', 'pending', 'rescheduled'])
@@ -232,7 +234,17 @@ export default function ClientDashboardScreen() {
                 <TouchableOpacity
                   key={appt.id}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedApptId(appt.id)}
+                  onPress={() => {
+                    setSelectedApptId(appt.id);
+                    router.push({
+                      pathname: '/calendar',
+                      params: {
+                        businessId: appt.business_id,
+                        selectedDate: appt.date,
+                        focusedApptId: appt.id
+                      }
+                    });
+                  }}
                 >
                   <GlassCard style={[
                     appStyles.wd_card, 
@@ -580,6 +592,14 @@ export default function ClientDashboardScreen() {
                           {activities.map((act, idx) => {
                             const isLast = idx === activities.length - 1;
                             
+                            let displayTitle = act.title;
+                            if (act.title === 'Solicitud enviada al barbero' && appt.workers?.specialty) {
+                              const specialty = appt.workers.specialty.trim();
+                              if (specialty) {
+                                displayTitle = `Solicitud enviada al ${specialty}`;
+                              }
+                            }
+
                             // Formatear fecha y hora relativa
                             const formatActivityTimestamp = (isoString: string) => {
                               try {
@@ -641,7 +661,7 @@ export default function ClientDashboardScreen() {
                                 </View>
                                 <View style={{ flex: 1, paddingBottom: 12 }}>
                                   <Text style={{ fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: 'Inter_500Medium' }}>
-                                    {act.title}
+                                    {displayTitle}
                                   </Text>
                                   <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2, fontFamily: 'Inter_400Regular' }}>
                                     {formatActivityTimestamp(act.created_at)}

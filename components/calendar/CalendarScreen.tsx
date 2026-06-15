@@ -918,15 +918,23 @@ export default function CalendarScreen() {
   const { profile, business } = useAuth();
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { selectedBusiness } = useBusiness();
-  const { businessId: paramBusinessId } = useLocalSearchParams<{ businessId?: string }>();
+  const { businessId: paramBusinessId, rescheduleApptId, focusedApptId, selectedDate } = useLocalSearchParams<{ businessId?: string; rescheduleApptId?: string; focusedApptId?: string; selectedDate?: string }>();
   const role = profile?.role ?? 'client';
   const businessId = paramBusinessId || (role === 'client' ? selectedBusiness?.id : business?.id);
 
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [anchor, setAnchor] = useState(new Date());
+  const [anchor, setAnchor] = useState(() => {
+    if (selectedDate) {
+      const parsed = new Date(selectedDate + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
   const [clientTab, setClientTab] = useState<'calendar' | 'list'>('calendar');
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [rescheduledOpened, setRescheduledOpened] = useState(false);
+  const [focusedOpened, setFocusedOpened] = useState(false);
 
   const { showToast } = useToast();
   const modalRef = useRef<AppointmentModalHandle>(null);
@@ -1030,6 +1038,84 @@ export default function CalendarScreen() {
   }, []);
 
   const handleFABNew = () => openCreate(new Date());
+
+  useEffect(() => {
+    if (rescheduleApptId && modalRef.current && workers.length > 0 && !rescheduledOpened) {
+      supabase
+        .from('appointments')
+        .select('*, workers(name, color)')
+        .eq('id', rescheduleApptId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data && modalRef.current) {
+            if (role === 'client' && data.reschedule_count >= 1) {
+              showToast({ type: 'error', message: 'No puedes volver a reagendar esta cita. Límite de 1 reagendamiento alcanzado.' });
+              setRescheduledOpened(true);
+              return;
+            }
+            const appt: Appointment = {
+              id: data.id,
+              clientName: data.client_name,
+              service: data.service,
+              worker_id: data.worker_id,
+              worker: data.workers?.name || 'Desconocido',
+              workerColor: data.workers?.color || '#000',
+              startHour: Number(data.start_hour),
+              durationHours: Number(data.duration_hours),
+              status: data.status,
+              date: data.date,
+              price: data.price || 0,
+              notes: data.notes || undefined,
+              client_id: data.client_id || undefined,
+              reschedule_count: data.reschedule_count || 0,
+            };
+            modalRef.current.open({ mode: 'edit', appointment: appt });
+            setRescheduledOpened(true);
+          }
+        });
+    }
+  }, [rescheduleApptId, workers, modalRef.current, rescheduledOpened]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      const parsed = new Date(selectedDate + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) {
+        setAnchor(parsed);
+      }
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (focusedApptId && modalRef.current && workers.length > 0 && !focusedOpened) {
+      supabase
+        .from('appointments')
+        .select('*, workers(name, color)')
+        .eq('id', focusedApptId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data && modalRef.current) {
+            const appt: Appointment = {
+              id: data.id,
+              clientName: data.client_name,
+              service: data.service,
+              worker_id: data.worker_id,
+              worker: data.workers?.name || 'Desconocido',
+              workerColor: data.workers?.color || '#000',
+              startHour: Number(data.start_hour),
+              durationHours: Number(data.duration_hours),
+              status: data.status,
+              date: data.date,
+              price: data.price || 0,
+              notes: data.notes || undefined,
+              client_id: data.client_id || undefined,
+              reschedule_count: data.reschedule_count || 0,
+            };
+            modalRef.current.open({ mode: 'detail', appointment: appt });
+            setFocusedOpened(true);
+          }
+        });
+    }
+  }, [focusedApptId, workers, modalRef.current, focusedOpened]);
 
   const weekDays = useMemo(() => getWeekDays(anchor), [anchor]);
 

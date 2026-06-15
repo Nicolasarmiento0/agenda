@@ -94,6 +94,7 @@ export function useAgendaAppointments(
               price: ownAppt.price || 0,
               notes: ownAppt.notes,
               client_id: ownAppt.client_id,
+              reschedule_count: ownAppt.reschedule_count,
             };
           } else {
             const isBlocked = slot.status === 'blocked';
@@ -146,6 +147,7 @@ export function useAgendaAppointments(
           price: a.price || 0,
           notes: a.notes,
           client_id: a.client_id,
+          reschedule_count: a.reschedule_count,
         }));
       }
     }
@@ -168,6 +170,7 @@ export function useAgendaAppointments(
           price: a.price || 0,
           notes: a.notes || undefined,
           client_id: a.client_id || undefined,
+          reschedule_count: a.reschedule_count || 0,
         }))
       );
     }

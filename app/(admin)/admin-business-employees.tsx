@@ -205,7 +205,15 @@ export default function AdminBusinessEmployeesScreen() {
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="GESTIÓN DE EQUIPO"
-        onLeft={() => router.back()}
+        onLeft={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else if (businessId) {
+            router.replace({ pathname: '/admin-business-detail', params: { id: businessId } });
+          } else {
+            router.replace('/admin-dashboard');
+          }
+        }}
         leftIcon="arrow-left"
         paddingTop={Platform.OS === 'ios' ? 56 : 36}
       />

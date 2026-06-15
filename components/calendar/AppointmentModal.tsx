@@ -65,8 +65,13 @@ export type OpenDetailPayload = {
   appointment: Appointment;
 };
 
+export type OpenEditPayload = {
+  mode: 'edit';
+  appointment: Appointment;
+};
+
 export type AppointmentModalHandle = {
-  open: (payload: OpenCreatePayload | OpenDetailPayload) => void;
+  open: (payload: OpenCreatePayload | OpenDetailPayload | OpenEditPayload) => void;
   close: () => void;
 };
 
@@ -403,6 +408,26 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
           }
           setAppointment(null);
           sheetRef.current?.snapToIndex(1);
+        } else if (payload.mode === 'edit') {
+          setMode('edit');
+          const appt = payload.appointment;
+          setAppointment(appt);
+          setClientName(appt.clientName || '');
+          setService(appt.service || '');
+          setServiceSearch('');
+          setDate(appt.date ?? '');
+          if (appt.date) {
+            const parsed = parseDateString(appt.date);
+            setCalendarYear(parsed.getFullYear());
+            setCalendarMonth(parsed.getMonth());
+          }
+          setStartHour(appt.startHour);
+          setDuration(appt.durationHours);
+          setEndHour(appt.startHour + appt.durationHours);
+          setSelectedWorkerId(appt.worker_id || null);
+          setIsBlockedSlot(appt.status === 'blocked');
+          setPrice(appt.price || 0);
+          sheetRef.current?.snapToIndex(1);
         } else {
           setMode('detail');
           setAppointment(payload.appointment);
@@ -712,17 +737,32 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       }
 
       setSaving(true);
+      const updatePayload: any = {
+        client_name: isBlockedSlot ? 'Bloqueo de horario' : clientName.trim(),
+        service: isBlockedSlot ? (service.trim() || 'Bloqueo') : service.trim(),
+        date,
+        start_hour: startHour,
+        duration_hours: duration,
+        worker_id: workerIdVal,
+        price: isBlockedSlot ? 0 : price,
+      };
+
+      if (role === 'client') {
+        if (appointment.reschedule_count && appointment.reschedule_count >= 1) {
+          showToast({ type: 'error', message: 'No puedes volver a reagendar esta cita. Límite de 1 reagendamiento alcanzado.' });
+          setSaving(false);
+          return;
+        }
+        if (appointment.status === 'confirmed' || appointment.status === 'rescheduled') {
+          updatePayload.status = 'pending';
+        }
+        updatePayload.created_at = new Date().toISOString();
+        updatePayload.reschedule_count = (appointment.reschedule_count || 0) + 1;
+      }
+
       const { error } = await supabase
         .from('appointments')
-        .update({
-          client_name: isBlockedSlot ? 'Bloqueo de horario' : clientName.trim(),
-          service: isBlockedSlot ? (service.trim() || 'Bloqueo') : service.trim(),
-          date,
-          start_hour: startHour,
-          duration_hours: duration,
-          worker_id: workerIdVal,
-          price: isBlockedSlot ? 0 : price,
-        })
+        .update(updatePayload)
         .eq('id', appointment.id);
 
       if (error) {
@@ -1272,6 +1312,12 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
                     </View>
                   </BlurView>
 
+                  {role === 'client' && appointment.reschedule_count && appointment.reschedule_count >= 1 ? (
+                    <Text style={{ fontSize: 12, color: '#DC2626', textAlign: 'center', marginTop: 12, fontFamily: 'Inter_500Medium' }}>
+                      * Ya has reagendado esta cita. Límite de 1 reagendamiento permitido.
+                    </Text>
+                  ) : null}
+
                   <View style={[styles.actions, { flexDirection: 'row', gap: 8, width: '100%', marginTop: 20 }]}>
                     {/* 1. Primary Action (Confirmar or Completar) */}
                     {role !== 'client' && role !== 'admin' && appointment.status !== 'blocked' && (
@@ -1299,31 +1345,33 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
                     {/* 2. Secondary Actions (Editar, Eliminar) */}
                     {canEditOrCancel && appointment.status !== 'cancelled' && appointment.status !== 'completed' && (
-                      <ActionBtn
-                        label="Editar"
-                        color="#fda428ff"
-                        onPress={() => {
-                          setMode('edit');
-                          setClientName(appointment.clientName);
-                          setService(appointment.service);
-                          setServiceSearch('');
-                          setDate(appointment.date ?? '');
-                          if (appointment.date) {
-                            const parsed = parseDateString(appointment.date);
-                            setCalendarYear(parsed.getFullYear());
-                            setCalendarMonth(parsed.getMonth());
-                          }
-                          setStartHour(appointment.startHour);
-                          setDuration(appointment.durationHours);
-                          setEndHour(appointment.startHour + appointment.durationHours);
-                          setSelectedWorkerId(appointment.worker_id);
-                          setIsBlockedSlot(appointment.status === 'blocked');
-                          setPrice(appointment.price || 0);
-                          sheetRef.current?.snapToIndex(1);
-                        }}
-                        saving={saving}
-                        style={{ flex: 1 }}
-                      />
+                      (role !== 'client' || !appointment.reschedule_count || appointment.reschedule_count < 1) ? (
+                        <ActionBtn
+                          label="Editar"
+                          color="#fda428ff"
+                          onPress={() => {
+                            setMode('edit');
+                            setClientName(appointment.clientName);
+                            setService(appointment.service);
+                            setServiceSearch('');
+                            setDate(appointment.date ?? '');
+                            if (appointment.date) {
+                              const parsed = parseDateString(appointment.date);
+                              setCalendarYear(parsed.getFullYear());
+                              setCalendarMonth(parsed.getMonth());
+                            }
+                            setStartHour(appointment.startHour);
+                            setDuration(appointment.durationHours);
+                            setEndHour(appointment.startHour + appointment.durationHours);
+                            setSelectedWorkerId(appointment.worker_id);
+                            setIsBlockedSlot(appointment.status === 'blocked');
+                            setPrice(appointment.price || 0);
+                            sheetRef.current?.snapToIndex(1);
+                          }}
+                          saving={saving}
+                          style={{ flex: 1 }}
+                        />
+                      ) : null
                     )}
 
                     {canEditOrCancel && (
