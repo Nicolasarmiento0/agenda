@@ -49,7 +49,7 @@ const SLIDES: Slide[] = [
     type: 'message',
     title: '"Todo en un\nsolo lugar"',
     subtitle:
-      'Organiza tu tiempo, tus tareas y tu equipo desde una sola pantalla.',
+      'Organiza tu tiempo, tus finanzas y tu equipo desde una sola pantalla.',
   },
 ];
 
