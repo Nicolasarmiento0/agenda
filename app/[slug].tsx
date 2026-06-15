@@ -8,6 +8,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -145,7 +146,7 @@ export default function PublicBusinessScreen() {
   const isCompanyPreview = session && profile?.role && profile.role !== 'client';
 
   return (
-    <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
+    <View style={[styles.pageContainer, { backgroundColor: colors.background }]}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handleBack}
@@ -154,7 +155,7 @@ export default function PublicBusinessScreen() {
         <Feather name="arrow-left" size={20} color={colors.textPrimary} />
       </TouchableOpacity>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         <Animated.View
           style={[appStyles.clientProfileContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
         >
@@ -288,9 +289,9 @@ export default function PublicBusinessScreen() {
         </Animated.View>
       </ScrollView>
 
-      {/* CTA */}
+      {/* CTA — flex child (not absolute) so it stays visible on web/PC */}
       {!isCompanyPreview && (
-        <View style={[appStyles.clientProfileFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             style={[appStyles.primaryButton, { width: '100%' }]}
@@ -343,6 +344,19 @@ export default function PublicBusinessScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageContainer: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
