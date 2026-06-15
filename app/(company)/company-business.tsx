@@ -296,9 +296,9 @@ export default function CompanyBusinessScreen() {
 
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
+          allowsEditing: Platform.OS !== 'web',
           quality: 0.6,
-          base64: true,
+          base64: Platform.OS !== 'web',
         });
 
         if (!result.canceled && result.assets[0].uri) {
@@ -321,31 +321,35 @@ export default function CompanyBusinessScreen() {
     if (!profile?.id) return;
     setIsUploadingPhoto(true);
     try {
-      const ext = imageUri.startsWith('data:') ? 'jpeg' : (imageUri.split('.').pop()?.toLowerCase() ?? 'jpg');
-      const filePath = `${profile.id}/work_${Date.now()}.${ext}`;
-
-      let body: any;
-      let contentType: string | undefined;
+      let body: Blob | ArrayBuffer;
+      let contentType: string;
+      let fileExt: string;
 
       if (Platform.OS === 'web') {
+        // On web, imageUri is a blob: URL — fetch it to read the real MIME type
         const response = await fetch(imageUri);
-        body = await response.blob();
-        contentType = `image/${ext}`;
+        const blob = await response.blob();
+        contentType = blob.type || 'image/jpeg';
+        const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
+        fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+        body = blob;
       } else if (base64Str) {
+        fileExt = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+        contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
         body = decode(base64Str);
-        contentType = `image/${ext}`;
       } else {
         const response = await fetch(imageUri);
-        body = await response.blob();
-        contentType = `image/${ext}`;
+        const blob = await response.blob();
+        contentType = blob.type || 'image/jpeg';
+        const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
+        fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+        body = blob;
       }
 
+      const filePath = `${profile.id}/work_${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, body, {
-          upsert: true,
-          contentType,
-        });
+        .upload(filePath, body, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
