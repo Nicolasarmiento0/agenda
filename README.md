@@ -17,9 +17,11 @@ Nucora automatiza la gestión de turnos eliminando la fricción de la coordinaci
 
 ### Cliente (`client`)
 - **Exploración:** Buscador para descubrir negocios en la plataforma ([explore.tsx](app/(client)/explore.tsx)).
-- **Perfil de negocio:** Catálogo de servicios, precios, duración, personal y valoraciones ([client-business-profile.tsx](app/(client)/client-business-profile.tsx)).
+- **Perfil de negocio:** Catálogo de servicios, precios, duración, personal, galería de fotos y valoraciones ([client-business-profile.tsx](app/(client)/client-business-profile.tsx)).
 - **Reserva inteligente:** Agendamiento dinámico con selección de profesional, fecha y hora disponible en tiempo real con protección contra solapamientos.
 - **Mis citas:** Gestión de citas activas, cancelaciones e historial ([my-appointments.tsx](app/(client)/my-appointments.tsx)).
+- **Reagendamiento con límite único:** Los clientes pueden reagendar una cita una sola vez; el sistema bloquea intentos adicionales mediante el campo `reschedule_count`.
+- **Acceso directo al calendario:** Al tocar una cita en el dashboard, navega directo al calendario con la fecha y la cita enfocada.
 
 ### Empresa (`company`)
 - **Onboarding guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](app/(company)/business-setup.tsx)).
@@ -27,6 +29,8 @@ Nucora automatiza la gestión de turnos eliminando la fricción de la coordinaci
 - **Agenda multi-trabajador:** Vista unificada de calendario (diario/semanal) con control de estado de cada turno ([calendar.tsx](app/(shared)/calendar.tsx)).
 - **CRM e historial financiero:** Ingresos históricos por rango temporal y filtros por empleado ([company-history.tsx](app/(company)/company-history.tsx)).
 - **Gestión de personal y catálogos:** Empleados ([company-employees.tsx](app/(company)/company-employees.tsx)) y servicios ([company-services.tsx](app/(company)/company-services.tsx)).
+- **Galería de portfolio:** Las empresas pueden subir hasta 5 fotos de su trabajo visibles en el perfil público ([company-business.tsx](app/(company)/company-business.tsx)).
+- **Link público de reservas:** Cada negocio obtiene una URL pública única (`nucoraapp.vercel.app/{slug}`) compartible en redes sociales o WhatsApp, con flujo de booking sin necesidad de app.
 
 ### Trabajador (`worker`)
 - **Dashboard personal:** Agenda diaria individual con indicadores y valoraciones ([worker-dashboard.tsx](app/(worker)/worker-dashboard.tsx)).
@@ -34,7 +38,7 @@ Nucora automatiza la gestión de turnos eliminando la fricción de la coordinaci
 
 ### Administrador (`admin`)
 - **Supervisión global:** Métricas de crecimiento, negocios activos y volumen de transacciones ([admin-dashboard.tsx](app/(admin)/admin-dashboard.tsx)).
-- **Auditoría y moderación:** Flujo de aprobación de comercios, detalle de negocio y revisión de empleados ([admin-businesses.tsx](app/(admin)/admin-businesses.tsx)).
+- **Auditoría y moderación:** Flujo de aprobación de comercios, detalle de negocio con dashboard de citas integrado y revisión de empleados (solo lectura) ([admin-businesses.tsx](app/(admin)/admin-businesses.tsx)).
 
 ---
 
@@ -52,9 +56,32 @@ Disponibles para todos los roles autenticados:
 | [terms.tsx](app/(shared)/terms.tsx) | Términos y condiciones |
 | [support.tsx](app/(shared)/support.tsx) | Centro de soporte |
 
+## Páginas Públicas (sin autenticación)
+
+| Ruta | Descripción |
+|------|-------------|
+| [[slug].tsx](app/[slug].tsx) | Landing pública de negocio: perfil, galería, servicios y botón de reserva. Accesible via `/{slug}` sin login. |
+
 ---
 
 ## Características Principales
+
+### Link Público de Reservas
+- Cada negocio recibe un slug único auto-generado desde su nombre (función `slugify()` en Supabase).
+- La URL `nucoraapp.vercel.app/{slug}` es pública, compartible y no requiere login.
+- Si el visitante no tiene cuenta, se guarda la intención de reserva en `AsyncStorage` y se redirige al registro con rol `client` pre-asignado; al completar el signup la reserva pendiente continúa automáticamente.
+- La page muestra logo, descripción, horarios, galería de fotos, servicios, equipo y valoraciones con animaciones de entrada.
+
+### Galería de Portfolio
+- Las empresas pueden cargar hasta 5 fotos de su trabajo desde la pantalla de configuración del negocio.
+- Las fotos se almacenan en Supabase Storage y aparecen en el perfil público y en el perfil de negocio visible para clientes.
+- En la landing pública incluye un lightbox con navegación entre imágenes.
+- Subida cross-platform: en web usa blob URL + XMLHttpRequest con fallback a base64 ([webUploadHelper.ts](utils/webUploadHelper.ts)); en móvil usa el flujo nativo de `expo-image-picker`.
+
+### Reagendamiento con Límite Único
+- Los clientes pueden reagendar una cita activa (`confirmed` / `rescheduled`) una sola vez.
+- La columna `reschedule_count` en `appointments` lleva el conteo; al llegar a 1 el botón de reagendamiento desaparece.
+- El estado de la cita pasa a `rescheduled` y queda visible en el historial con badge diferenciado.
 
 ### Módulo CRM de Ingresos
 - Suma acumulada basada exclusivamente en citas con estado `'completed'`.
@@ -108,6 +135,7 @@ nucora/
 ├── app/                        # Rutas de navegación (Expo Router)
 │   ├── _layout.tsx             # Root layout y providers
 │   ├── index.tsx               # Enrutador basado en rol de usuario
+│   ├── [slug].tsx              # Landing pública de negocio (sin auth)
 │   ├── (auth)/                 # Login, registro, recuperación de contraseña
 │   ├── (client)/               # Dashboard, explorar y citas
 │   ├── (company)/              # Dashboard, agenda, empleados, servicios y CRM
@@ -124,6 +152,8 @@ nucora/
 ├── lib/                        # Cliente Supabase e integraciones
 ├── hooks/                      # Custom hooks de React
 ├── utils/                      # Formateadores de fecha, validadores y helpers
+│   └── webUploadHelper.ts      # Upload cross-platform: blob URL + base64 fallback
+├── supabase/migrations/        # Migraciones SQL versionadas
 └── assets/                     # Imágenes, fuentes e iconos
 ```
 
@@ -167,6 +197,7 @@ Presiona `a` para Android, `i` para iOS, o `w` para web.
 - Skeleton loaders en calendarios y listas de carga.
 - Micro-interacciones hápticas con `expo-haptics`.
 - Swipe-to-action en tarjetas de cita (completar / no asistió).
+- Sistema de reseñas y valoraciones post-servicio (NucoraPoints / Stardust).
 - Deploy a App Store y Google Play via EAS Build.
 
 ---
