@@ -282,6 +282,23 @@ export default function CompanyBusinessScreen() {
       return;
     }
 
+    if (Platform.OS === 'web') {
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: false,
+          quality: 0.6,
+        });
+
+        if (!result.canceled && result.assets[0].uri) {
+          await uploadWorkPhoto(result.assets[0].uri);
+        }
+      } catch (error: any) {
+        showAlert({ title: 'Error', message: 'No se pudo seleccionar la foto: ' + error.message });
+      }
+      return;
+    }
+
     setEditModalVisible(false);
 
     // Esperar a que el modal termine de cerrarse
@@ -296,9 +313,9 @@ export default function CompanyBusinessScreen() {
 
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          allowsEditing: Platform.OS !== 'web',
+          allowsEditing: true,
           quality: 0.6,
-          base64: Platform.OS !== 'web',
+          base64: true,
         });
 
         if (!result.canceled && result.assets[0].uri) {
@@ -326,13 +343,21 @@ export default function CompanyBusinessScreen() {
       let fileExt: string;
 
       if (Platform.OS === 'web') {
-        // On web, imageUri is a blob: URL — fetch it to read the real MIME type
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
-        contentType = blob.type || 'image/jpeg';
-        const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
-        fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
-        body = blob;
+        if (imageUri.startsWith('data:')) {
+          const mime = imageUri.split(';')[0].split(':')[1];
+          const base64 = imageUri.split(',')[1];
+          body = decode(base64);
+          contentType = mime;
+          const mimeExt = mime.split('/')[1]?.split('+')[0] ?? 'jpg';
+          fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+        } else {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          contentType = blob.type || 'image/jpeg';
+          const mimeExt = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
+          fileExt = mimeExt === 'jpeg' ? 'jpg' : mimeExt;
+          body = blob;
+        }
       } else if (base64Str) {
         fileExt = imageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
         contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
