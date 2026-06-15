@@ -2,9 +2,11 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { decode } from 'base64-arraybuffer';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -13,6 +15,7 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -89,6 +92,10 @@ export default function CompanyBusinessScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Showcase photos state
+  const [photos, setPhotos] = useState<string[]>(business?.photos || []);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -111,6 +118,7 @@ export default function CompanyBusinessScreen() {
       setAvatarUrl(business.avatar_url || '');
       setOpeningTime(business.opening_time?.substring(0, 5) || '07:00');
       setClosingTime(business.closing_time?.substring(0, 5) || '22:00');
+      setPhotos(business.photos || []);
     }
   }, [business]);
 
@@ -268,6 +276,120 @@ export default function CompanyBusinessScreen() {
     }
   };
 
+  const handlePickWorkPhoto = async () => {
+    if (photos.length >= 5) {
+      showAlert({ title: 'Límite alcanzado', message: 'Puedes exhibir un máximo de 5 fotos de tu trabajo.' });
+      return;
+    }
+
+    setEditModalVisible(false);
+
+    // Esperar a que el modal termine de cerrarse
+    setTimeout(async () => {
+      try {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          showAlert({ title: 'Permiso necesario', message: 'Necesitamos acceso a tu galería.' });
+          setEditModalVisible(true);
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          quality: 0.6,
+          base64: true,
+        });
+
+        if (!result.canceled && result.assets[0].uri) {
+          setEditModalVisible(true);
+          // Esperar a que el modal se abra antes de iniciar la subida para mostrar el loader
+          setTimeout(async () => {
+            await uploadWorkPhoto(result.assets[0].uri, result.assets[0].base64 || undefined);
+          }, 350);
+        } else {
+          setEditModalVisible(true);
+        }
+      } catch (error: any) {
+        showAlert({ title: 'Error', message: 'No se pudo seleccionar la foto: ' + error.message });
+        setEditModalVisible(true);
+      }
+    }, 350);
+  };
+
+  const uploadWorkPhoto = async (imageUri: string, base64Str?: string) => {
+    if (!profile?.id) return;
+    setIsUploadingPhoto(true);
+    try {
+      const ext = imageUri.startsWith('data:') ? 'jpeg' : (imageUri.split('.').pop()?.toLowerCase() ?? 'jpg');
+      const filePath = `${profile.id}/work_${Date.now()}.${ext}`;
+
+      let body: any;
+      let contentType: string | undefined;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(imageUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
+      } else if (base64Str) {
+        body = decode(base64Str);
+        contentType = `image/${ext}`;
+      } else {
+        const response = await fetch(imageUri);
+        body = await response.blob();
+        contentType = `image/${ext}`;
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, body, {
+          upsert: true,
+          contentType,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setPhotos(prev => [...prev, publicUrlData.publicUrl]);
+    } catch (error: any) {
+      showAlert({ title: 'Error al subir la foto', message: error.message });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleDeletePhoto = (photoUrl: string) => {
+    showAlert({
+      title: 'Eliminar foto',
+      message: '¿Estás seguro de que quieres eliminar esta foto de tu galería de trabajos?',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Extract file path from public URL
+              const url = new URL(photoUrl);
+              const pathParts = url.pathname.split('/avatars/');
+              const filePath = pathParts[1]?.split('?')[0];
+              if (filePath) {
+                await supabase.storage.from('avatars').remove([filePath]);
+              }
+              setPhotos(prev => prev.filter(p => p !== photoUrl));
+            } catch (error: any) {
+              // Even if storage deletion fails, we update the local list
+              setPhotos(prev => prev.filter(p => p !== photoUrl));
+            }
+          }
+        }
+      ]
+    });
+  };
+
   const handleSave = async () => {
     if (!business?.id) return;
     setIsSaving(true);
@@ -282,6 +404,7 @@ export default function CompanyBusinessScreen() {
           avatar_url: avatarUrl,
           opening_time: `${openingTime}:00`,
           closing_time: `${closingTime}:00`,
+          photos,
         })
         .eq('id', business.id);
 
@@ -314,6 +437,35 @@ export default function CompanyBusinessScreen() {
     await refreshProfile();
     setRefreshing(false);
   }, [refreshProfile]);
+
+  const publicLink = business?.slug ? `https://nucoraapp.vercel.app/${business.slug}` : null;
+
+  const handleCopyLink = () => {
+    if (!publicLink) return;
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(publicLink);
+      showAlert({ title: 'Copiado', message: 'Link copiado al portapapeles.' });
+    } else {
+      Share.share({ message: publicLink });
+    }
+  };
+
+  const handleShareLink = async () => {
+    if (!publicLink) return;
+    const message = `Reserva tu hora aquí 👇\n${publicLink}`;
+    if (Platform.OS === 'web') {
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({ title: business?.name, url: publicLink });
+      } else {
+        handleCopyLink();
+      }
+    } else {
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Share.share({ message });
+      }
+    }
+  };
 
   return (
     <View style={[appStyles.screen, { backgroundColor: colors.background }]}>
@@ -355,6 +507,22 @@ export default function CompanyBusinessScreen() {
             </View>
           ) : null}
 
+          {/* Portfolio Showcase Preview */}
+          {business?.photos && business.photos.length > 0 ? (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+              <Text style={[localStyles.aboutTitle, { color: colors.textPrimary, fontSize: 16, marginBottom: 12 }]}>
+                Nuestro Trabajo
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {business.photos.map((url) => (
+                  <View key={url} style={{ borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+                    <Image source={{ uri: url }} style={{ width: 140, height: 100 }} resizeMode="cover" />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+
           <View style={[localStyles.divider, { backgroundColor: colors.border }]} />
 
           {/* Info cards */}
@@ -392,6 +560,37 @@ export default function CompanyBusinessScreen() {
             <Text style={localStyles.editButtonText}>EDITAR INFORMACIÓN</Text>
           </TouchableOpacity>
 
+          {/* Link público de reservas */}
+          {publicLink && business?.status === 'approved' && (
+            <View style={[localStyles.linkCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[localStyles.linkCardLabel, { color: colors.textSecondary }]}>MI LINK DE RESERVAS</Text>
+              <Text style={[localStyles.linkCardUrl, { color: appColors.primary }]} numberOfLines={1}>
+                {publicLink}
+              </Text>
+              <View style={localStyles.linkCardActions}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleCopyLink}
+                  style={[localStyles.linkBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                >
+                  <Feather name="copy" size={14} color={colors.textPrimary} />
+                  <Text style={[localStyles.linkBtnText, { color: colors.textPrimary }]}>COPIAR</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleShareLink}
+                  style={[localStyles.linkBtn, { backgroundColor: appColors.primary, borderColor: appColors.primary }]}
+                >
+                  <Feather name="share-2" size={14} color="#111827" />
+                  <Text style={[localStyles.linkBtnText, { color: '#111827' }]}>COMPARTIR</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[localStyles.linkCardHint, { color: colors.textSecondary }]}>
+                Pega este link en tu bio de Instagram para que tus clientes reserven directo
+              </Text>
+            </View>
+          )}
+
         </Animated.View>
       </ScrollView>
 
@@ -403,79 +602,119 @@ export default function CompanyBusinessScreen() {
               <View style={[localStyles.glassContent, !isDarkMode && localStyles.glassContentLight]}>
               <Text style={[localStyles.modalTitle, { color: colors.textPrimary }]}>Editar Negocio</Text>
 
-              <TouchableOpacity style={localStyles.imagePickerContainer} onPress={handleImagePress} disabled={isUploading}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={localStyles.pickerImage} />
-                ) : (
-                  <View style={[localStyles.pickerImage, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
-                    <Feather name="camera" size={32} color={colors.textSecondary} />
+              <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={localStyles.imagePickerContainer} onPress={handleImagePress} disabled={isUploading}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={localStyles.pickerImage} />
+                  ) : (
+                    <View style={[localStyles.pickerImage, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+                      <Feather name="camera" size={32} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={[localStyles.pickerBadge, { backgroundColor: appColors.primary }]}>
+                    <Feather name="edit-2" size={12} color="#fff" />
                   </View>
-                )}
-                <View style={[localStyles.pickerBadge, { backgroundColor: appColors.primary }]}>
-                  <Feather name="edit-2" size={12} color="#fff" />
+                </TouchableOpacity>
+                {isUploading && <Text style={{ textAlign: 'center', color: appColors.primary, marginBottom: 16 }}>Subiendo imagen...</Text>}
+
+                <GlassInput
+                  value={name}
+                  onChangeText={setName}
+                  label="Nombre del negocio"
+                  style={{ marginBottom: 16 }}
+                />
+
+                <GlassInput
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Cuenta sobre tu negocio..."
+                  label="Descripción"
+                  inputStyle={{ height: 80 }}
+                  style={{ marginBottom: 16 }}
+                />
+
+                <GlassInput
+                  value={mapsUrl}
+                  onChangeText={setMapsUrl}
+                  placeholder="https://maps.app.goo.gl/..."
+                  label="Enlace de Google Maps"
+                  autoCapitalize="none"
+                  style={{ marginBottom: 16 }}
+                />
+
+                <GlassInput
+                  value={instagramUrl}
+                  onChangeText={setInstagramUrl}
+                  placeholder="https://instagram.com/..."
+                  label="Enlace de Instagram"
+                  autoCapitalize="none"
+                  style={{ marginBottom: 16 }}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                  <View style={{ flex: 1 }}>
+                    <GlassInput
+                      value={openingTime}
+                      onChangeText={setOpeningTime}
+                      placeholder="09:00"
+                      label="Apertura"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <GlassInput
+                      value={closingTime}
+                      onChangeText={setClosingTime}
+                      placeholder="18:00"
+                      label="Cierre"
+                    />
+                  </View>
                 </View>
-              </TouchableOpacity>
-              {isUploading && <Text style={{ textAlign: 'center', color: appColors.primary, marginBottom: 16 }}>Subiendo imagen...</Text>}
 
-              <GlassInput
-                value={name}
-                onChangeText={setName}
-                label="Nombre del negocio"
-                style={{ marginBottom: 16 }}
-              />
-
-              <GlassInput
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                placeholder="Cuenta sobre tu negocio..."
-                label="Descripción"
-                inputStyle={{ height: 80 }}
-                style={{ marginBottom: 16 }}
-              />
-
-              <GlassInput
-                value={mapsUrl}
-                onChangeText={setMapsUrl}
-                placeholder="https://maps.app.goo.gl/..."
-                label="Enlace de Google Maps"
-                autoCapitalize="none"
-                style={{ marginBottom: 16 }}
-              />
-
-              <GlassInput
-                value={instagramUrl}
-                onChangeText={setInstagramUrl}
-                placeholder="https://instagram.com/..."
-                label="Enlace de Instagram"
-                autoCapitalize="none"
-                style={{ marginBottom: 16 }}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <GlassInput
-                    value={openingTime}
-                    onChangeText={setOpeningTime}
-                    placeholder="09:00"
-                    label="Apertura"
-                  />
+                {/* Showcase Photos Manager */}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 2, marginBottom: 8, marginTop: 8 }}>
+                  FOTOS DE TU TRABAJO
+                </Text>
+                
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  {photos.map((url) => (
+                    <View key={url} style={localStyles.photoTile}>
+                      <Image source={{ uri: url }} style={localStyles.photoTileImage} />
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handleDeletePhoto(url)}
+                        style={localStyles.deletePhotoBtn}
+                      >
+                        <Feather name="trash-2" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  
+                  {photos.length < 5 && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={handlePickWorkPhoto}
+                      disabled={isUploadingPhoto}
+                      style={[localStyles.addPhotoTile, { borderColor: colors.border }]}
+                    >
+                      {isUploadingPhoto ? (
+                        <ActivityIndicator size="small" color={appColors.primary} />
+                      ) : (
+                        <>
+                          <Feather name="plus" size={20} color={colors.textSecondary} />
+                          <Text style={{ fontSize: 9, color: colors.textSecondary, marginTop: 2 }}>Subir</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <GlassInput
-                    value={closingTime}
-                    onChangeText={setClosingTime}
-                    placeholder="18:00"
-                    label="Cierre"
-                  />
-                </View>
-              </View>
+              </ScrollView>
 
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
                 <TouchableOpacity
                   style={[localStyles.modalButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => { setAvatarUrl(business?.avatar_url || ''); setEditModalVisible(false); }}
+                  onPress={() => { setAvatarUrl(business?.avatar_url || ''); setPhotos(business?.photos || []); setEditModalVisible(false); }}
                 >
                   <Text style={[localStyles.modalButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
                 </TouchableOpacity>
@@ -940,5 +1179,78 @@ const localStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     fontFamily: 'Inter_700Bold',
+  },
+  photoTile: {
+    width: 78,
+    height: 78,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoTileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  deletePhotoBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(239, 83, 80, 0.9)',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoTile: {
+    width: 78,
+    height: 78,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  linkCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    gap: 8,
+  },
+  linkCardLabel: {
+    fontSize: 10,
+    letterSpacing: 3,
+    fontWeight: '700',
+  },
+  linkCardUrl: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  linkCardActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  linkBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  linkBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  linkCardHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
   },
 });

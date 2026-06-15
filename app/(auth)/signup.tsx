@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { appColors, useAppStyles } from '../../styles/appStyles';
 export default function SignupScreen() {
   const { colors } = useTheme();
   const appStyles = useAppStyles();
+  const { returnTo, forceRole } = useLocalSearchParams<{ returnTo?: string; forceRole?: string }>();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -107,9 +108,12 @@ export default function SignupScreen() {
       return;
     }
 
-    // Si tienes confirmación de email activa en Supabase,
-    // avisa al usuario que revise su correo
-    router.push('/role-select');
+    // Propagate deferred booking params so role-select can redirect afterwards
+    if (forceRole && returnTo) {
+      router.push(`/role-select?returnTo=${encodeURIComponent(returnTo)}&forceRole=${forceRole}` as any);
+    } else {
+      router.push('/role-select');
+    }
   };
 
   return (

@@ -16,6 +16,7 @@ export type SelectedBusiness = {
   booking_window_day?: number;
   booking_window_open_time?: string;
   booking_window_close_time?: string;
+  photos?: string[];
 };
 
 type BusinessContextType = {

@@ -18,6 +18,7 @@ type Profile = {
 export type Business = {
   id: string;
   name: string;
+  slug?: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   avatar_url?: string;
   description?: string;
@@ -27,6 +28,7 @@ export type Business = {
   closing_time?: string;
   category_id?: string;
   category_name?: string | null;
+  photos?: string[];
 };
 
 type AuthContextType = {

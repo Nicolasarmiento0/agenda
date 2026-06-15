@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
@@ -5,6 +6,8 @@ import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { appStyles } from '../styles/appStyles';
+
+const PENDING_BOOKING_KEY = 'pendingBooking';
 
 export default function Index() {
   const { session, profile, business, loading, profileLoaded, refreshProfile, signOut } = useAuth();
@@ -34,7 +37,20 @@ export default function Index() {
     } else if (profile.role === 'admin') {
       setTimeout(() => router.replace('/admin-dashboard'), 0);
     } else if (profile.role === 'client') {
-      setTimeout(() => router.replace('/client-dashboard'), 0);
+      // Redirect to pending booking if the user came from a public business landing
+      AsyncStorage.getItem(PENDING_BOOKING_KEY).then((raw) => {
+        if (raw) {
+          try {
+            const { businessId } = JSON.parse(raw);
+            AsyncStorage.removeItem(PENDING_BOOKING_KEY);
+            setTimeout(() => router.replace(`/calendar?businessId=${businessId}` as any), 0);
+          } catch {
+            setTimeout(() => router.replace('/client-dashboard'), 0);
+          }
+        } else {
+          setTimeout(() => router.replace('/client-dashboard'), 0);
+        }
+      });
     } else if (profile.role === 'company') {
       if (!business) {
         setTimeout(() => router.replace('/business-setup'), 0);

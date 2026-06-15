@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -13,12 +14,35 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { appColors } from '../../styles/appStyles';
 
+const PENDING_BOOKING_KEY = 'pendingBooking';
+
 export default function RoleSelectScreen() {
     const { user, updateProfileState } = useAuth();
     const { colors, isDarkMode } = useTheme();
     const { showAlert } = useAlert();
+    const { returnTo, forceRole } = useLocalSearchParams<{ returnTo?: string; forceRole?: string }>();
     const [selected, setSelected] = useState<'client' | 'company' | 'worker' | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Auto-assign client role and redirect when coming from public business landing
+    useEffect(() => {
+      if (forceRole !== 'client' || !user?.id) return;
+      (async () => {
+        setLoading(true);
+        try {
+          await supabase.from('profiles').update({ role: 'client' }).eq('id', user.id);
+          updateProfileState({ role: 'client' });
+          await AsyncStorage.removeItem(PENDING_BOOKING_KEY);
+          if (returnTo) {
+            router.replace(returnTo as any);
+          } else {
+            router.replace('/client-dashboard');
+          }
+        } catch {
+          setLoading(false);
+        }
+      })();
+    }, [forceRole, user?.id]);
 
     const handleConfirm = async () => {
         if (!selected) {

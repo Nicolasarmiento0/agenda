@@ -45,6 +45,15 @@ export default function ClientBusinessProfileScreen() {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Lightbox Gallery State
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+  const handleOpenLightbox = (index: number) => {
+    setActivePhotoIndex(index);
+    setLightboxVisible(true);
+  };
+
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -66,30 +75,26 @@ export default function ClientBusinessProfileScreen() {
       setReviewsData({ score: 0, total: 0 });
     }
 
-    if (!selectedBusiness) {
-      // Fetch Business Details if coming from a direct link or refresh
-      setFetchLoading(true);
-      const { data, error } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('id', businessId)
-        .single();
+    // Fetch Business Details
+    setFetchLoading(true);
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', businessId)
+      .single();
 
-      if (data) {
-        setFetchedBusiness(data);
-        setSelectedBusiness(data);
-      }
-      setFetchLoading(false);
-    } else {
-      setFetchedBusiness(selectedBusiness);
+    if (data) {
+      setFetchedBusiness(data);
+      setSelectedBusiness(data);
     }
+    setFetchLoading(false);
 
   };
 
   useEffect(() => {
-    const bizId = selectedBusiness?.id || id;
+    const bizId = id || selectedBusiness?.id;
     if (bizId) fetchBusinessData(bizId);
-  }, [id, selectedBusiness]);
+  }, [id]);
 
   useEffect(() => {
     if (!fetchedBusiness) return;
@@ -143,7 +148,7 @@ export default function ClientBusinessProfileScreen() {
     );
   }
 
-  const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url } = fetchedBusiness;
+  const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url, photos } = fetchedBusiness;
   const isPreviewMode = profile?.role === 'company';
 
   return (
@@ -185,6 +190,25 @@ export default function ClientBusinessProfileScreen() {
 
           {description ? (
             <Text style={[appStyles.clientProfileDescription, { color: colors.textSecondary }]}>{description}</Text>
+          ) : null}
+
+          {/* Gallery Showcase */}
+          {photos && photos.length > 0 ? (
+            <View style={styles.galleryContainer}>
+              <Text style={[styles.galleryTitle, { color: colors.textPrimary }]}>Nuestro Trabajo</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryScroll}>
+                {photos.map((url, index) => (
+                  <TouchableOpacity
+                    key={url}
+                    activeOpacity={0.9}
+                    onPress={() => handleOpenLightbox(index)}
+                    style={[styles.galleryItem, { borderColor: colors.border }]}
+                  >
+                    <Image source={{ uri: url }} style={styles.galleryImage} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           ) : null}
 
           <View style={appStyles.clientProfileDetailsContainer}>
@@ -314,6 +338,131 @@ export default function ClientBusinessProfileScreen() {
         onWriteReview={() => setShowReviewModal(true)}
       />
 
+      {/* LIGHTBOX MODAL */}
+      {photos && photos.length > 0 && (
+        <Modal visible={lightboxVisible} transparent animationType="fade" onRequestClose={() => setLightboxVisible(false)}>
+          <View style={styles.lightboxOverlay}>
+            <TouchableOpacity
+              style={styles.lightboxCloseBtn}
+              onPress={() => setLightboxVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            <View style={styles.lightboxContent}>
+              <Image
+                source={{ uri: photos[activePhotoIndex] }}
+                style={styles.lightboxImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            {photos.length > 1 && (
+              <View style={styles.lightboxNavContainer}>
+                <TouchableOpacity
+                  style={[styles.lightboxNavBtn, activePhotoIndex === 0 && { opacity: 0.4 }]}
+                  disabled={activePhotoIndex === 0}
+                  onPress={() => setActivePhotoIndex(idx => Math.max(0, idx - 1))}
+                >
+                  <Feather name="chevron-left" size={24} color="#fff" />
+                </TouchableOpacity>
+
+                <Text style={styles.lightboxNavText}>
+                  {activePhotoIndex + 1} / {photos.length}
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.lightboxNavBtn, activePhotoIndex === photos.length - 1 && { opacity: 0.4 }]}
+                  disabled={activePhotoIndex === photos.length - 1}
+                  onPress={() => setActivePhotoIndex(idx => Math.min(photos.length - 1, idx + 1))}
+                >
+                  <Feather name="chevron-right" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </Modal>
+      )}
+
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  galleryContainer: {
+    width: '100%',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  galleryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  galleryScroll: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  galleryItem: {
+    width: 150,
+    height: 110,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  lightboxContent: {
+    width: '100%',
+    height: '70%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxImage: {
+    width: '90%',
+    height: '100%',
+  },
+  lightboxNavContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '60%',
+    position: 'absolute',
+    bottom: 50,
+  },
+  lightboxNavBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxNavText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
