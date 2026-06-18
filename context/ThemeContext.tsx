@@ -1,4 +1,15 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, Platform, useColorScheme, View } from 'react-native';
+
+const isBrowser = typeof window !== 'undefined';
+
+const themeStorage = Platform.OS === 'web'
+  ? {
+      getItem: (key: string) => Promise.resolve(isBrowser ? localStorage.getItem(key) : null),
+      setItem: (key: string, value: string) => Promise.resolve(isBrowser ? localStorage.setItem(key, value) : undefined),
+    }
+  : AsyncStorage;
 
 type ThemeContextType = {
   isDarkMode: boolean;
@@ -61,10 +72,50 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const systemColorScheme = useColorScheme();
+  const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
+  const [loading, setLoading] = useState(true);
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  useEffect(() => {
+    async function loadTheme() {
+      try {
+        const storedTheme = await themeStorage.getItem('nucora.theme');
+        if (storedTheme !== null) {
+          setIsDarkMode(storedTheme === 'dark');
+        } else {
+          setIsDarkMode(systemColorScheme === 'dark');
+        }
+      } catch (err) {
+        console.error('Error loading theme:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTheme();
+  }, [systemColorScheme]);
+
+  const toggleTheme = async () => {
+    const nextMode = !isDarkMode;
+    setIsDarkMode(nextMode);
+    try {
+      await themeStorage.setItem('nucora.theme', nextMode ? 'dark' : 'light');
+    } catch (err) {
+      console.error('Error saving theme:', err);
+    }
+  };
+
   const colors = isDarkMode ? darkColors : lightColors;
+
+  if (loading) {
+    // Evita parpadeo mostrando un fondo acorde al tema inicial de carga
+    const bg = isDarkMode ? '#1A1A1A' : '#f4f5f7b8';
+    const indicatorColor = isDarkMode ? '#F9FAFB' : '#111827';
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
+        <ActivityIndicator size="large" color={indicatorColor} />
+      </View>
+    );
+  }
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme, colors }}>

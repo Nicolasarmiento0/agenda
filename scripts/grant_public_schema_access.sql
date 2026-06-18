@@ -42,8 +42,10 @@ GRANT SELECT ON TABLE public.business_services TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.business_services TO authenticated;
 GRANT ALL ON TABLE public.business_services TO service_role;
 
--- appointments (policy "allow_select_all TO public" → anon puede SELECT)
-GRANT SELECT ON TABLE public.appointments TO anon;
+-- appointments (El acceso directo a appointments fue revocado para anon para evitar fuga de PII)
+-- Se removió: GRANT SELECT ON TABLE public.appointments TO anon;
+-- Explicación: La tabla appointments contiene información personal identificable (PII) y financiera.
+-- El acceso a la disponibilidad de citas públicas ahora se canaliza a través de la vista segura 'availability_slots'.
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.appointments TO authenticated;
 GRANT ALL ON TABLE public.appointments TO service_role;
 
@@ -67,8 +69,11 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_
 -- ─── 4. Privilegios DEFAULT para tablas FUTURAS ──────────────────────────
 -- Cualquier tabla nueva creada en public heredará estos permisos
 -- sin necesidad de correr este script de nuevo.
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT ON TABLES TO anon;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA public
+--   GRANT SELECT ON TABLES TO anon;
+-- Explicación: Se removió la concesión de SELECT por defecto al rol anónimo para evitar exponer
+-- accidentalmente tablas de datos nuevas y confidenciales creadas en el futuro. Cualquier
+-- acceso del rol 'anon' a tablas o vistas específicas debe concederse de forma explícita.
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
