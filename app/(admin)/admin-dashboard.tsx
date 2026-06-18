@@ -122,13 +122,18 @@ export default function AdminDashboardScreen() {
     onPress?: () => void;
   };
 
-  const goBusinesses = () => router.push('/admin-businesses');
+  const goBusinesses = (filterVal?: 'all' | 'pending' | 'approved' | 'rejected') => {
+    router.push({
+      pathname: '/admin-businesses',
+      params: { initialFilter: filterVal || 'all' },
+    });
+  };
 
   const statCards: StatCard[] = [
-    { label: 'PENDIENTES', value: stats?.pending ?? 0, icon: 'clock', color: '#F59E0B', onPress: goBusinesses },
-    { label: 'APROBADAS', value: stats?.approved ?? 0, icon: 'check-circle', color: '#10B981', onPress: goBusinesses },
-    { label: 'RECHAZADAS', value: stats?.rejected ?? 0, icon: 'x-circle', color: '#EF4444', onPress: goBusinesses },
-    { label: 'CLIENTES', value: stats?.clients ?? 0, icon: 'users', color: appColors.primary },
+    { label: 'PENDIENTES', value: stats?.pending ?? 0, icon: 'clock', color: '#F59E0B', onPress: () => goBusinesses('pending') },
+    { label: 'APROBADAS', value: stats?.approved ?? 0, icon: 'check-circle', color: '#10B981', onPress: () => goBusinesses('approved') },
+    { label: 'RECHAZADAS', value: stats?.rejected ?? 0, icon: 'x-circle', color: '#EF4444', onPress: () => goBusinesses('rejected') },
+    { label: 'CLIENTES', value: stats?.clients ?? 0, icon: 'users', color: appColors.primary, onPress: () => router.push('/admin-users') },
   ];
 
   const approvalRate =
@@ -193,7 +198,7 @@ export default function AdminDashboardScreen() {
             <Text style={[appStyles.sectionTitle, { color: colors.textSecondary, marginTop: 24 }]}>MÉTRICAS</Text>
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={goBusinesses}
+              onPress={() => goBusinesses('all')}
               style={[appStyles.glassCard, { borderColor: glass.border }]}
             >
               <BlurView intensity={36} tint={glass.tint} style={[appStyles.glassInner, { backgroundColor: glass.fill, padding: 18 }]}>
@@ -254,7 +259,7 @@ export default function AdminDashboardScreen() {
               <TouchableOpacity
                 activeOpacity={0.75}
                 style={[styles.actionCard, { backgroundColor: '#F59E0B18', borderColor: '#F59E0B60' }]}
-                onPress={goBusinesses}
+                onPress={() => goBusinesses('pending')}
               >
                 <View style={[styles.actionIcon, { backgroundColor: '#F59E0B30' }]}>
                   <Feather name="alert-circle" size={22} color="#F59E0B" />
@@ -272,7 +277,7 @@ export default function AdminDashboardScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               style={[appStyles.glassCard, { borderColor: glass.border }]}
-              onPress={goBusinesses}
+              onPress={() => goBusinesses('all')}
             >
               <BlurView intensity={36} tint={glass.tint} style={[appStyles.glassInner, styles.actionGlass, { backgroundColor: glass.fill }]}>
                 <View style={[styles.actionIcon, { backgroundColor: `${appColors.primary}20` }]}>

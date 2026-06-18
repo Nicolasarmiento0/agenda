@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,6 +34,7 @@ type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected';
 
 export default function AdminBusinessesScreen() {
   const { colors } = useTheme();
+  const { initialFilter } = useLocalSearchParams<{ initialFilter?: FilterStatus }>();
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,12 @@ export default function AdminBusinessesScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     fetchBusinesses();
   }, []);
+
+  useEffect(() => {
+    if (initialFilter) {
+      setFilter(initialFilter);
+    }
+  }, [initialFilter]);
 
   const fetchBusinesses = async () => {
     setLoading(true);

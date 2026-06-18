@@ -293,6 +293,10 @@ export default function Sidebar({ visible, onClose }: Props) {
                   <Feather name="shield" size={20} color={colors.textSecondary} style={styles.iconWidth} />
                   <Text style={[styles.menuText, { color: colors.textPrimary }]}>EMPRESAS</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigate('/admin-users')}>
+                  <Feather name="users" size={20} color={colors.textSecondary} style={styles.iconWidth} />
+                  <Text style={[styles.menuText, { color: colors.textPrimary }]}>USUARIOS</Text>
+                </TouchableOpacity>
               </>
             )}
 
