@@ -15,10 +15,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from './context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 // 👉 Coloca logo.png en /assets/images
-const LOGO = require('./assets/images/logo.png');
+const LOGO = require('../assets/images/logo.png');
 
 interface Slide {
   key: string;

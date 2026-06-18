@@ -30,6 +30,7 @@ export default function AdminLayout() {
       <Stack.Screen name="admin-businesses" />
       <Stack.Screen name="admin-business-detail" />
       <Stack.Screen name="admin-business-employees" />
+      <Stack.Screen name="admin-users" />
     </Stack>
   );
 }

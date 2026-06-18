@@ -360,7 +360,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       if (!workerForQuery) return;
 
       let query = supabase
-        .from('appointments')
+        .from('availability_slots')
         .select('id, start_hour, duration_hours')
         .eq('date', date)
         .eq('worker_id', workerForQuery)
@@ -572,7 +572,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
 
       // 5. Double Booking Conflict Detection
       let query = supabase
-        .from('appointments')
+        .from('availability_slots')
         .select('id, start_hour, duration_hours')
         .eq('date', date)
         .eq('worker_id', workerForInsert)

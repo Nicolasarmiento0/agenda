@@ -117,7 +117,7 @@ export default function SupportScreen() {
         <LegalItem
           label="Política de Privacidad"
           colors={colors}
-          onPress={() => router.push('/privacy-policy' as any)}
+          onPress={() => router.push('/privacy')}
         />
 
         <View style={{ height: 40 }} />
