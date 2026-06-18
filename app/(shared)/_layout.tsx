@@ -18,7 +18,7 @@ export default function SharedLayout() {
   }
 
   // Rutas públicas que no requieren estar autenticado
-  const publicRoutes = ['/terms', '/privacy-policy'];
+  const publicRoutes = ['/terms', '/privacy'];
   const isPublic = publicRoutes.some(route => pathname.startsWith(route));
 
   if (!session && !isPublic) {
@@ -32,7 +32,6 @@ export default function SharedLayout() {
       <Stack.Screen name="profile" />
       <Stack.Screen name="support" />
       <Stack.Screen name="privacy" />
-      <Stack.Screen name="privacy-policy" />
       <Stack.Screen name="terms" />
     </Stack>
   );

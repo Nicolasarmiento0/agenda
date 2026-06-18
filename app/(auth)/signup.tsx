@@ -268,7 +268,7 @@ export default function SignupScreen() {
                   Acepto la{' '}
                   <Text
                     style={{ color: appColors.primary, textDecorationLine: 'underline' }}
-                    onPress={() => router.push('/privacy-policy' as any)}
+                    onPress={() => router.push('/privacy')}
                   >
                     Política de Privacidad
                   </Text>
