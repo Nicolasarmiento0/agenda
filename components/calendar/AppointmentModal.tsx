@@ -4,6 +4,7 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import React, {
   forwardRef,
   useCallback,
@@ -472,6 +473,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     };
 
     const handleSave = async () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       if (!isBlockedSlot && (!clientName.trim() || !service.trim())) {
         showAlert({
           title: 'Campos incompletos',
@@ -641,6 +643,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     };
 
     const handleStatusChange = async (newStatus: AppointmentStatus) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       if (!appointment) return;
 
       if (role === 'client' && appointment.client_id !== profile?.id) {
@@ -688,6 +691,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
     };
 
     const handleDelete = async () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       if (!appointment) return;
 
       if (role === 'client' && appointment.client_id !== profile?.id) {

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import GlassCard from '../../components/GlassCard';
+import Skeleton from '../../components/ui/Skeleton';
 import ScreenHeader from '../../components/ScreenHeader';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -586,7 +587,34 @@ export default function ClientDashboardScreen() {
                       <Text style={{ fontSize: 11, letterSpacing: 1.5, color: colors.textSecondary, fontWeight: '700', fontFamily: 'Inter_700Bold', marginBottom: 16 }}>ACTIVIDAD</Text>
                       
                       {activitiesLoading ? (
-                        <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Inter_400Regular' }}>Cargando actividad...</Text>
+                        <View style={{ gap: 12 }}>
+                          {[1, 2, 3].map((i) => (
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', minHeight: 50 }} key={i}>
+                              <View style={{ alignItems: 'center', marginRight: 12, width: 12 }}>
+                                <View style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: 4,
+                                  backgroundColor: colors.border,
+                                  marginTop: 6,
+                                }} />
+                                {i < 3 && (
+                                  <View style={{
+                                    width: 1,
+                                    flex: 1,
+                                    backgroundColor: colors.border,
+                                    marginVertical: 4,
+                                    minHeight: 30,
+                                  }} />
+                                )}
+                              </View>
+                              <View style={{ flex: 1, paddingBottom: 12, gap: 6 }}>
+                                <Skeleton width={180} height={14} />
+                                <Skeleton width={100} height={10} />
+                              </View>
+                            </View>
+                          ))}
+                        </View>
                       ) : activities.length > 0 ? (
                         <View>
                           {activities.map((act, idx) => {

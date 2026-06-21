@@ -18,10 +18,11 @@ Nucora automatiza la gestión de turnos eliminando la fricción de la coordinaci
 ### Cliente (`client`)
 - **Exploración:** Buscador para descubrir negocios en la plataforma ([explore.tsx](app/(client)/explore.tsx)).
 - **Perfil de negocio:** Catálogo de servicios, precios, duración, personal, galería de fotos y valoraciones ([client-business-profile.tsx](app/(client)/client-business-profile.tsx)).
-- **Reserva inteligente:** Agendamiento dinámico con selección de profesional, fecha y hora disponible en tiempo real con protección contra solapamientos.
+- **Reserva inteligente:** Agendamiento dinámico con selección de profesional, fecha y hora disponible en tiempo real con protección contra solapamientos a nivel de trigger en base de datos.
 - **Mis citas:** Gestión de citas activas, cancelaciones e historial ([my-appointments.tsx](app/(client)/my-appointments.tsx)).
 - **Reagendamiento con límite único:** Los clientes pueden reagendar una cita una sola vez; el sistema bloquea intentos adicionales mediante el campo `reschedule_count`.
 - **Acceso directo al calendario:** Al tocar una cita en el dashboard, navega directo al calendario con la fecha y la cita enfocada.
+- **Historial de actividades por cita:** Cada cita expone una línea de tiempo con los cambios de estado (`pending → confirmed → completed / cancelled / rescheduled`) generada automáticamente por un trigger en Supabase.
 
 ### Empresa (`company`)
 - **Onboarding guiado:** Configuración inicial del comercio: logo, descripción, ubicación GPS y redes sociales ([business-setup.tsx](app/(company)/business-setup.tsx)).
@@ -78,6 +79,31 @@ Disponibles para todos los roles autenticados:
 - En la landing pública incluye un lightbox con navegación entre imágenes.
 - Subida cross-platform: en web usa blob URL + XMLHttpRequest con fallback a base64 ([webUploadHelper.ts](utils/webUploadHelper.ts)); en móvil usa el flujo nativo de `expo-image-picker`.
 
+### Prevención de Doble Reserva con Row-Level Locking
+- Un trigger a nivel de base de datos (`trg_prevent_appointment_overlap`) bloquea con `SELECT ... FOR UPDATE` los registros en conflicto antes de insertar o actualizar.
+- Impide que dos citas simultáneas ocupen el mismo trabajador y horario, incluso bajo peticiones concurrentes.
+- La lógica de solapamiento vive en Postgres, no en el cliente, garantizando integridad independientemente del frontend.
+
+### Historial de Actividades por Cita
+- Tabla `appointment_activities` con trigger `trg_appointment_activity_log` que registra automáticamente cada transición de estado.
+- La línea de tiempo muestra: solicitud enviada → confirmación del profesional → completada / cancelada / reagendada.
+- Las actividades de citas pre-existentes se retroalimentan con un script SQL de setup ([setup_appointment_activities.sql](scripts/setup_appointment_activities.sql)).
+- La función trigger usa `SECURITY DEFINER` con `REVOKE EXECUTE FROM PUBLIC` para evitar invocaciones directas vía RPC.
+
+### Sistema de Toasts con Feedback Háptico
+- `ToastProvider` ([context/ToastContext.tsx](context/ToastContext.tsx)) expone `showToast({ type, message, duration })` globalmente.
+- Cada categoría dispara feedback háptico diferenciado: `success` → `NotificationFeedbackType.Success`, `error` → `Error`, `warning` → `Warning`, `info` → `ImpactFeedbackStyle.Light`.
+- Los toasts reemplazan a los `Alert.alert()` nativos para una UX más fluida y no bloqueante.
+
+### Skeleton Loaders Adaptativos
+- Componente `Skeleton` ([components/ui/Skeleton.tsx](components/ui/Skeleton.tsx)) con animación de pulso (opacidad 0.3 → 1 en loop).
+- Se adapta al modo oscuro/claro: `rgba(255,255,255,0.08)` en dark, `rgba(0,0,0,0.06)` en light.
+- Sustituye pantallas en blanco durante la carga inicial en calendarios, listas y dashboards.
+
+### Persistencia del Tema con AsyncStorage
+- El modo oscuro/claro se persiste entre sesiones mediante `AsyncStorage`.
+- Al relanzar la app, el tema se restaura antes del primer render evitando el flash de tema incorrecto.
+
 ### Reagendamiento con Límite Único
 - Los clientes pueden reagendar una cita activa (`confirmed` / `rescheduled`) una sola vez.
 - La columna `reschedule_count` en `appointments` lleva el conteo; al llegar a 1 el botón de reagendamiento desaparece.
@@ -101,6 +127,10 @@ Disponibles para todos los roles autenticados:
 - Formato local puro `YYYY-MM-DD` en todos los filtros y calendarios.
 - Elimina desfases UTC/ISO en dispositivos de América del Sur/Norte.
 
+### Hardenización de RLS
+- Vista segura `available_slots_secure` para consultar disponibilidad sin exponer datos de otras empresas.
+- Políticas RLS endurecidas en `appointments` asegurando que clientes, trabajadores y empresas solo accedan a sus propios registros.
+
 ---
 
 ## Sistema de Diseño
@@ -111,7 +141,7 @@ Nucora usa un sistema visual dark-first inspirado en Tesla y Liquid Glass:
 - **Acento primario:** `#E31937` (Rojo Nucora) — botones de acción y selecciones críticas.
 - **Textos:** `#F9FAFB` (primario) / `#9CA3AF` (secundario).
 - **Glassmorphism:** Componentes semi-transparentes con gradientes y bordes finos con canales alfa.
-- **Temas:** Light/Dark Mode mediante [ThemeContext](context/ThemeContext.tsx).
+- **Temas:** Light/Dark Mode persistido con AsyncStorage mediante [ThemeContext](context/ThemeContext.tsx).
 
 ### Componentes UI Reutilizables
 
@@ -125,6 +155,7 @@ Nucora usa un sistema visual dark-first inspirado en Tesla y Liquid Glass:
 | [TeslaAlert.tsx](components/TeslaAlert.tsx) | Alertas de sistema estilo Tesla |
 | [Sidebar.tsx](components/Sidebar.tsx) | Navegación lateral |
 | [StatusBadge.tsx](components/StatusBadge.tsx) | Badges de estado de citas |
+| [Skeleton.tsx](components/ui/Skeleton.tsx) | Placeholder animado de carga |
 
 ---
 
@@ -143,16 +174,18 @@ nucora/
 │   ├── (admin)/                # Supervisión global y moderación de negocios
 │   └── (shared)/               # Calendario, perfil, inbox, privacidad, soporte
 ├── components/                 # Componentes UI reutilizables
-│   ├── ui/                     # Primitivas básicas
+│   ├── ui/                     # Primitivas básicas (Skeleton, etc.)
 │   ├── calendar/               # Calendario, grid de turnos, formularios
 │   ├── client/                 # Modales y tarjetas del flujo de cliente
 │   └── company/                # Formularios y gráficos financieros
-├── context/                    # Estado global (Auth, Alertas, Tema)
+├── context/                    # Estado global (Auth, Alertas, Tema, Toast)
 ├── styles/                     # Tokens visuales y hojas de estilo
 ├── lib/                        # Cliente Supabase e integraciones
 ├── hooks/                      # Custom hooks de React
 ├── utils/                      # Formateadores de fecha, validadores y helpers
 │   └── webUploadHelper.ts      # Upload cross-platform: blob URL + base64 fallback
+├── scripts/                    # Scripts SQL de configuración y setup
+│   └── setup_appointment_activities.sql
 ├── supabase/migrations/        # Migraciones SQL versionadas
 └── assets/                     # Imágenes, fuentes e iconos
 ```
@@ -191,21 +224,19 @@ Presiona `a` para Android, `i` para iOS, o `w` para web.
 
 ---
 
-## Roadmap Post-MVP
+## Mejoras Potenciales
 
-- Notificaciones Push (recordatorios automáticos via Expo Notifications).
-- Skeleton loaders en calendarios y listas de carga.
-- Micro-interacciones hápticas con `expo-haptics`.
-- Swipe-to-action en tarjetas de cita (completar / no asistió).
-- Sistema de reseñas y valoraciones post-servicio (NucoraPoints / Stardust).
-- Deploy a App Store y Google Play via EAS Build.
+1. **Notificaciones push con segmentación por rol** — Enviar recordatorios automáticos al cliente 24h y 1h antes de su cita, y alertas al trabajador cuando llega una nueva reserva o cancelación. Reduciría los no-shows sin intervención manual.
 
----
+2. **Sistema de reseñas post-servicio con NucoraPoints** — Habilitar valoraciones (1-5 estrellas + comentario) desbloqueables solo cuando la cita pasa a `completed`. Acumular puntos canjeables por descuentos genera retención sin costo de adquisición.
 
-## Documentación Adicional
+3. **Panel de analytics para la empresa** — Gráficas de ocupación por trabajador, servicios más demandados y horas pico de reservas. Permite a los dueños tomar decisiones de staffing y pricing basadas en datos reales de su propio negocio.
 
-- [Estado del Proyecto](./estado_proyecto.md) — Progreso del MVP y funcionalidades completadas.
+4. **Modo offline con sincronización diferida** — Cache local de la agenda del trabajador para que pueda consultar y marcar citas sin conexión (frecuente en barberías con Wi-Fi inestable). Al reconectarse, sincroniza los cambios con Supabase automáticamente.
+
+5. **Widget de reserva embebible** — Iframe o snippet JavaScript que cualquier negocio pueda incrustar en su sitio web o bio de Instagram, redirigiendo al flujo de booking existente (`/{slug}`) sin desarrollo adicional por parte del dueño.
 
 ---
+
 
 Desarrollado por [@Nicolasarmiento0](https://github.com/Nicolasarmiento0).

@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import GlassCard from '../../components/GlassCard';
+import Skeleton from '../../components/ui/Skeleton';
 import Sidebar from '../../components/Sidebar';
 import { useAlert } from '../../context/AlertContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -131,6 +133,7 @@ export default function MyAppointmentsScreen() {
       <View style={localStyles.header}>
         <TouchableOpacity
           onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             if (router.canGoBack()) {
               router.back();
             } else {
@@ -143,7 +146,14 @@ export default function MyAppointmentsScreen() {
           <Feather name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[localStyles.headerLabel, { color: colors.textSecondary }]}>MIS CITAS</Text>
-        <TouchableOpacity onPress={toggleTheme} activeOpacity={0.7} style={{ width: 40, alignItems: 'flex-end' }}>
+        <TouchableOpacity 
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            toggleTheme();
+          }} 
+          activeOpacity={0.7} 
+          style={{ width: 40, alignItems: 'flex-end' }}
+        >
           <Feather name={isDarkMode ? 'moon' : 'sun'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -159,20 +169,57 @@ export default function MyAppointmentsScreen() {
           <View style={[localStyles.tabs, { borderColor: colors.border }]}>
             <TouchableOpacity
               style={[localStyles.tab, activeTab === 'upcoming' && localStyles.tabActive, activeTab === 'upcoming' && { borderBottomColor: appColors.primary }]}
-              onPress={() => setActiveTab('upcoming')}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setActiveTab('upcoming');
+              }}
             >
               <Text style={[localStyles.tabText, { color: activeTab === 'upcoming' ? appColors.primary : colors.textSecondary }]}>PRÓXIMAS</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[localStyles.tab, activeTab === 'history' && localStyles.tabActive, activeTab === 'history' && { borderBottomColor: appColors.primary }]}
-              onPress={() => setActiveTab('history')}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setActiveTab('history');
+              }}
             >
               <Text style={[localStyles.tabText, { color: activeTab === 'history' ? appColors.primary : colors.textSecondary }]}>HISTORIAL</Text>
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 40 }}>Cargando...</Text>
+            <View style={{ paddingHorizontal: 20, gap: 16 }}>
+              {[1, 2, 3].map((i) => (
+                <GlassCard key={i} style={localStyles.apptCard}>
+                  <View style={localStyles.apptHeader}>
+                    <View style={{ gap: 4 }}>
+                      <Skeleton width={140} height={16} />
+                      <Skeleton width={80} height={12} />
+                    </View>
+                    <Skeleton width={70} height={18} borderRadius={8} />
+                  </View>
+                  <View style={localStyles.apptDetails}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Feather name="calendar" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      <Skeleton width={70} height={13} />
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Feather name="clock" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      <Skeleton width={50} height={13} />
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                      <Feather name="user" size={14} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                      <Skeleton width={80} height={13} />
+                    </View>
+                  </View>
+                  <View style={[localStyles.actionsRow, { borderTopColor: colors.border, paddingTop: 12, gap: 12, justifyContent: 'space-around' }]}>
+                    <Skeleton width={90} height={14} />
+                    <View style={{ width: 1, height: 14, backgroundColor: colors.border }} />
+                    <Skeleton width={90} height={14} />
+                  </View>
+                </GlassCard>
+              ))}
+            </View>
           ) : displayedApps.length === 0 ? (
             <View style={localStyles.emptyContainer}>
               <View style={[localStyles.emptyIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>

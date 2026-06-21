@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import AlertToast from '../components/calendar/AlertToast';
 import { ToastOptions, ToastType } from '../hooks/useToast';
 
@@ -24,6 +25,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback(({ type, message, duration = 2600 }: ToastOptions) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+
+    // Play haptic feedback matching the toast category
+    switch (type) {
+      case 'success':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        break;
+      case 'error':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        break;
+      case 'warning':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        break;
+      case 'info':
+      default:
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        break;
+    }
+
     setState({ type, message, duration, visible: true });
     timerRef.current = setTimeout(hide, duration);
   }, [hide]);

@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -138,11 +139,13 @@ export default function Sidebar({ visible, onClose }: Props) {
   }, [visible]);
 
   const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onClose();
     await signOut();
   };
 
   const handleNavigate = (route: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const isSuspended = business?.status === 'suspended';
     const blockedRoutes = [
       '/calendar',

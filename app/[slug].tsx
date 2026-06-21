@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import Skeleton from '../components/ui/Skeleton';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { appColors, appStyles } from '../styles/appStyles';
@@ -118,8 +119,45 @@ export default function PublicBusinessScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.textPrimary} />
+      <View style={[styles.pageContainer, { backgroundColor: colors.background }]}>
+        <View style={[appStyles.clientProfileBackBtn, { backgroundColor: colors.surface, zIndex: 10 }]}>
+          <Feather name="arrow-left" size={20} color={colors.textSecondary} style={{ opacity: 0.4 }} />
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+          <View style={appStyles.clientProfileContent}>
+            <View style={[appStyles.clientProfileAvatarContainer, { borderColor: colors.background, backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center' }]}>
+              <Skeleton width={72} height={72} borderRadius={36} />
+            </View>
+            <Skeleton width={180} height={20} style={{ alignSelf: 'center', marginTop: 12 }} />
+            <Skeleton width={130} height={16} style={{ alignSelf: 'center', marginTop: 8 }} />
+            <View style={{ gap: 6, width: '100%', alignItems: 'center', marginTop: 12, marginBottom: 24 }}>
+              <Skeleton width="80%" height={12} />
+              <Skeleton width="55%" height={12} />
+            </View>
+            <View style={styles.galleryContainer}>
+              <Skeleton width={110} height={16} style={{ marginBottom: 12 }} />
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Skeleton width={150} height={110} borderRadius={12} />
+                <Skeleton width={150} height={110} borderRadius={12} />
+                <Skeleton width={50} height={110} borderRadius={12} />
+              </View>
+            </View>
+            <View style={[appStyles.clientProfileDetailsContainer, { gap: 16 }]}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Skeleton width={36} height={36} borderRadius={8} />
+                  <View style={{ gap: 6, flex: 1 }}>
+                    <Skeleton width={140} height={13} />
+                    <Skeleton width={80} height={10} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+        <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          <Skeleton width="100%" height={48} borderRadius={10} />
+        </View>
       </View>
     );
   }

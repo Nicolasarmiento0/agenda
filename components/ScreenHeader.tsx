@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, StyleSheet, Text, TextStyle, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -30,6 +31,16 @@ export default function ScreenHeader({
   const resolvedRightIcon = rightIcon ?? (isDarkMode ? 'moon' : 'sun');
   const handleRight = onRight ?? toggleTheme;
 
+  const handleLeftPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onLeft();
+  };
+
+  const handleRightPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    handleRight();
+  };
+
   return (
     <View
       style={[
@@ -38,7 +49,7 @@ export default function ScreenHeader({
         Platform.OS === 'android' && { paddingTop: paddingTop ?? 36 },
       ]}
     >
-      <TouchableOpacity onPress={onLeft} activeOpacity={0.7} style={styles.btn}>
+      <TouchableOpacity onPress={handleLeftPress} activeOpacity={0.7} style={styles.btn}>
         <Feather name={leftIcon} size={leftIcon === 'arrow-left' ? 22 : 24} color={colors.textPrimary} />
       </TouchableOpacity>
 
@@ -47,7 +58,7 @@ export default function ScreenHeader({
       {hideRight ? (
         <View style={styles.btn} />
       ) : (
-        <TouchableOpacity onPress={handleRight} activeOpacity={0.7} style={[styles.btn, styles.btnRight]}>
+        <TouchableOpacity onPress={handleRightPress} activeOpacity={0.7} style={[styles.btn, styles.btnRight]}>
           <Feather name={resolvedRightIcon} size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       )}

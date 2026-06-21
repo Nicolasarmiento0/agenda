@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import GlassCard from '../../components/GlassCard';
+import Skeleton from '../../components/ui/Skeleton';
 import Sidebar from '../../components/Sidebar';
 import { SelectedBusiness, useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -353,9 +354,28 @@ export default function ExploreScreen() {
 
           {/* ── Lista de negocios ─────────────────────────────────── */}
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={appColors.primary} />
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>CARGANDO</Text>
+            <View style={{ paddingHorizontal: H_PADDING, gap: 12 }}>
+              {[1, 2, 3].map((i) => (
+                <GlassCard key={i} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Skeleton width={72} height={72} borderRadius={36} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Skeleton width={160} height={16} />
+                      <Skeleton width={95} height={14} borderRadius={10} />
+                      <Skeleton width={110} height={14} borderRadius={12} />
+                      <Skeleton width={80} height={12} />
+                    </View>
+                  </View>
+                  <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+                  <View style={{ gap: 6 }}>
+                    <Skeleton width="95%" height={12} />
+                    <Skeleton width="70%" height={12} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <Skeleton width={120} height={12} />
+                  </View>
+                </GlassCard>
+              ))}
             </View>
           ) : filtered.length === 0 ? (
             <View style={[styles.emptyCard, { marginHorizontal: H_PADDING, borderColor: colors.border }]}>

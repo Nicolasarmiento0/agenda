@@ -16,11 +16,18 @@ CREATE TABLE IF NOT EXISTS public.appointment_activities (
 -- 2. Habilitar la seguridad de fila (Row Level Security - RLS)
 ALTER TABLE public.appointment_activities ENABLE ROW LEVEL SECURITY;
 
--- 3. Crear política de lectura general para la tabla de actividades
--- Permite que los clientes autenticados y negocios lean el historial
+-- 3. Crear política de lectura segura para la tabla de actividades
+-- Permite únicamente a usuarios autenticados leer las actividades de las citas a las que tienen acceso
 DROP POLICY IF EXISTS "allow_select_all_activities" ON public.appointment_activities;
 CREATE POLICY "allow_select_all_activities" ON public.appointment_activities
-    FOR SELECT TO public USING (true);
+    FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.appointments a
+            WHERE a.id = appointment_activities.appointment_id
+        )
+    );
 
 -- 4. Crear o reemplazar la función trigger para registrar logs de estado automáticamente
 CREATE OR REPLACE FUNCTION public.handle_appointment_activity_log()
