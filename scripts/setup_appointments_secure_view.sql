@@ -20,10 +20,10 @@ CREATE POLICY "client_select_own" ON public.appointments
 -- por lo que administradores y trabajadores seguirán teniendo acceso completo a sus datos respectivos.
 
 
--- 3. Crear la vista de disponibilidad segura (availability_slots) con security_barrier y security_invoker.
+-- 3. Crear la vista de disponibilidad segura (availability_slots) con security_barrier y security_invoker = false (definer).
 -- Esta vista NO expone columnas PII/financieras como: client_name, service, price, notes o client_id.
 -- Solo expone metadatos mínimos de fecha, hora y bloqueos para calcular la disponibilidad.
-CREATE OR REPLACE VIEW public.availability_slots WITH (security_barrier = true, security_invoker = true) AS
+CREATE OR REPLACE VIEW public.availability_slots WITH (security_barrier = true, security_invoker = false) AS
 SELECT 
   a.id,
   a.business_id,

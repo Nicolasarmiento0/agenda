@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════
--- MIGRACIÓN: Prevención de Doble Reserva (Control de Concurrencia)
--- Creado: 2026-06-18
--- Objetivo: Evitar reservas duplicadas / solapamiento para un mismo trabajador.
+-- MIGRACIÓN: Corrección de Solapamiento para Trabajador NULL
+-- Creado: 2026-06-24
+-- Objetivo: Permitir la detección de solapamiento de bloqueos globales (worker_id IS NULL).
 -- ═══════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.check_appointment_overlap()
@@ -12,7 +12,7 @@ BEGIN
     PERFORM id FROM public.workers WHERE id = NEW.worker_id FOR UPDATE;
   END IF;
 
-  -- 2. Verificar si hay solapamiento con otras citas activas del mismo trabajador en la misma fecha
+  -- 2. Verificar si hay solapamiento con otras citas activas del mismo trabajador (o sin trabajador asignado) en la misma fecha
   IF EXISTS (
     SELECT 1 
     FROM public.appointments
@@ -32,13 +32,3 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
--- Crear el trigger
-DROP TRIGGER IF EXISTS trg_check_appointment_overlap ON public.appointments;
-
-CREATE TRIGGER trg_check_appointment_overlap
-BEFORE INSERT OR UPDATE OF worker_id, date, start_hour, duration_hours, status
-ON public.appointments
-FOR EACH ROW
-WHEN (NEW.status != 'cancelled')
-EXECUTE FUNCTION public.check_appointment_overlap();

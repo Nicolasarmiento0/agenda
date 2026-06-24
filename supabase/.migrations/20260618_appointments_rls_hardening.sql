@@ -101,7 +101,7 @@ CREATE POLICY "admin_manage_all" ON public.appointments
 --    (Elimina cualquier versión previa y expone solo columnas no sensibles/PII)
 DROP VIEW IF EXISTS public.availability_slots;
 
-CREATE VIEW public.availability_slots WITH (security_barrier = true, security_invoker = true) AS
+CREATE VIEW public.availability_slots WITH (security_barrier = true, security_invoker = false) AS
 SELECT 
   a.id,
   a.business_id,
