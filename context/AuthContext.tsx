@@ -65,15 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    console.log('AUTH: fetchProfile START → userId:', userId);
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-
-      console.log('AUTH: profiles query → role:', data?.role ?? null, '| error:', error?.message ?? null);
 
       if (data) {
         let finalRole = data.role;
@@ -85,7 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           if (workerCheck) {
-            console.log('AUTH: User registered in workers table, auto-assigning role: worker');
             await supabase.from('profiles').update({ role: 'worker' }).eq('id', userId);
             data.role = 'worker';
             finalRole = 'worker';
@@ -95,26 +91,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(data);
 
         if (finalRole === 'company') {
-          console.log('AUTH: Fetching business for company user...');
-          const { data: bRaw, error: bError } = await supabase
+          const { data: bRaw } = await supabase
             .from('businesses')
             .select('*, service_categories(name)')
             .eq('owner_id', userId)
             .maybeSingle();
 
           if (bRaw) {
-            console.log('AUTH: Business found:', bRaw.id, '| Status:', bRaw.status);
             const { service_categories, ...bData } = bRaw as any;
             setBusiness({ ...bData, category_name: service_categories?.name ?? null });
           } else {
-            console.log('AUTH: No business found for this company user');
             setBusiness(null);
           }
-          if (bError) console.error('AUTH: Error fetching business:', bError);
         } else if (data.role === 'worker') {
-          console.log('AUTH: Fetching business for worker user...');
           // Suponemos que el worker tiene un registro en la tabla `workers` que vincula a un business
-          const { data: workerData, error: wError } = await supabase
+          const { data: workerData } = await supabase
             .from('workers')
             .select('business_id')
             .eq('user_id', userId)
@@ -130,19 +121,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setBusiness(null);
           }
-          if (wError) console.error('AUTH: Error fetching worker data:', wError);
         } else {
           setBusiness(null);
         }
       } else {
-        console.log('AUTH: No profile found for userId:', userId);
         setProfile(null);
         setBusiness(null);
       }
     } catch (error: any) {
-      console.error('AUTH: Critical error in fetchProfile:', error);
+      // Silent error handler
     } finally {
-      console.log('AUTH: fetchProfile FINALLY → loading=false, profileLoaded=true');
       setProfileLoaded(true);
       setLoading(false);
     }
@@ -169,7 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           if (workerCheck) {
-            console.log('AUTH: User registered in workers table, auto-assigning role: worker');
             await supabase.from('profiles').update({ role: 'worker' }).eq('id', data.user.id);
             profileData.role = 'worker';
             finalRole = 'worker';
@@ -274,7 +261,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
-      console.log('AUTH: onAuthStateChange event:', event);
 
       if (event === 'SIGNED_OUT') {
         setSession(null);

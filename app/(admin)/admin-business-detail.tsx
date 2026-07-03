@@ -391,8 +391,17 @@ export default function AdminBusinessDetailScreen() {
                   };
 
                   return (
-                    <View
+                    <TouchableOpacity
                       key={appt.id}
+                      activeOpacity={0.8}
+                      onPress={() => router.push({
+                        pathname: '/calendar',
+                        params: {
+                          businessId: id,
+                          selectedDate: appt.date,
+                          focusedApptId: appt.id
+                        }
+                      })}
                       style={[
                         styles.workerCard,
                         {
@@ -434,7 +443,7 @@ export default function AdminBusinessDetailScreen() {
                           </Text>
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })
               )}

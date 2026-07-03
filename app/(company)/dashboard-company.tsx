@@ -213,7 +213,7 @@ export default function DashboardCompanyScreen() {
     const todayStr = new Date().toISOString().split('T')[0];
     const { data: upcomingData } = await supabase
       .from('appointments')
-      .select('id, date, start_hour, status, service, client_name, workers(name)')
+      .select('id, date, start_hour, status, service, client_name, business_id, workers(name)')
       .eq('business_id', business.id)
       .in('status', ['confirmed', 'pending', 'rescheduled'])
       .gte('date', todayStr)
@@ -382,7 +382,20 @@ export default function DashboardCompanyScreen() {
                 <TouchableOpacity
                   key={appt.id}
                   activeOpacity={0.8}
-                  onPress={() => isSuspended ? handleSuspendedAction() : router.push('/calendar')}
+                  onPress={() => {
+                    if (isSuspended) {
+                      handleSuspendedAction();
+                    } else {
+                      router.push({
+                        pathname: '/calendar',
+                        params: {
+                          businessId: appt.business_id,
+                          selectedDate: appt.date,
+                          focusedApptId: appt.id
+                        }
+                      });
+                    }
+                  }}
                 >
                   <GlassCard style={[styles.card, { padding: 18, borderLeftWidth: 4, borderLeftColor: group.color }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
