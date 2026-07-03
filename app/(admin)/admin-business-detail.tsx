@@ -83,7 +83,7 @@ export default function AdminBusinessDetailScreen() {
       supabase
         .from('appointments')
         .select(`
-          id, date, start_hour, duration_hours, service, status, client_name,
+          id, date, start_hour, duration_hours, service, status, client_name, client_id,
           workers(name)
         `)
         .eq('business_id', id)
@@ -98,7 +98,28 @@ export default function AdminBusinessDetailScreen() {
       setBusiness(bizRes.data as any);
     }
     if (!apptRes.error && apptRes.data) {
-      setAppointments(apptRes.data as any);
+      let fetchedAppointments = apptRes.data || [];
+      if (fetchedAppointments.length > 0) {
+        const clientIds = fetchedAppointments
+          .map((a: any) => a.client_id)
+          .filter((cid: any) => cid !== null);
+
+        if (clientIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, nickname')
+            .in('id', clientIds);
+
+          if (profilesData) {
+            const profileMap = new Map(profilesData.map((p: any) => [p.id, p.nickname]));
+            fetchedAppointments = fetchedAppointments.map((appt: any) => ({
+              ...appt,
+              client_nickname: appt.client_id ? profileMap.get(appt.client_id) : null
+            }));
+          }
+        }
+      }
+      setAppointments(fetchedAppointments as any);
     }
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     setLoading(false);
@@ -390,6 +411,9 @@ export default function AdminBusinessDetailScreen() {
                           </Text>
                           <Text style={[styles.workerEmail, { color: colors.textSecondary }]}>
                             {appt.date} a las {formatHour(appt.start_hour)}
+                          </Text>
+                          <Text style={[styles.workerEmail, { color: colors.textSecondary, marginTop: 2 }]}>
+                            Creada por: {appt.client_id ? `Cliente (${appt.client_nickname || 'Sin apodo'})` : 'El negocio'}
                           </Text>
                         </View>
                         <View
