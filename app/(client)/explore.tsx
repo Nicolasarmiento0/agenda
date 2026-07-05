@@ -68,6 +68,7 @@ type Business = {
   status: string;
   opening_time?: string | null;
   closing_time?: string | null;
+  slug?: string | null;
 };
 
 
@@ -402,7 +403,7 @@ export default function ExploreScreen() {
                 const categoryName = categories[catIndex]?.name;
                 const rating = ratingsMap[b.id];
                 const status = getBusinessStatus(b.opening_time, b.closing_time);
-                const hasBody = b.description || b.maps_url || b.instagram_url || b.opening_time || b.closing_time;
+                const hasBody = b.description || b.maps_url || b.instagram_url || b.slug || b.opening_time || b.closing_time;
 
                 return (
                   <GlassCard key={b.id} style={styles.card}>
@@ -510,6 +511,21 @@ export default function ExploreScreen() {
                           <Feather name="instagram" size={12} color="#0095F6" />
                           <Text style={[styles.linkText, { color: '#0095F6' }]}>Instagram</Text>
                           <Feather name="external-link" size={11} color="#0095F6" />
+                        </TouchableOpacity>
+                      ) : null}
+
+                      {/* Link de reserva */}
+                      {b.slug ? (
+                        <TouchableOpacity
+                          style={styles.bodyRow}
+                          activeOpacity={0.7}
+                          onPress={e => { e.stopPropagation?.(); Linking.openURL(`https://nucoraapp.vercel.app/${b.slug}`); }}
+                        >
+                          <Feather name="link" size={12} color={appColors.primary} />
+                          <Text style={[styles.linkText, { color: appColors.primary }]} numberOfLines={1}>
+                            https://nucoraapp.vercel.app/{b.slug}
+                          </Text>
+                          <Feather name="external-link" size={11} color={appColors.primary} />
                         </TouchableOpacity>
                       ) : null}
 

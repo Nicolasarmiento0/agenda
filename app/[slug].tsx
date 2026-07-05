@@ -104,9 +104,7 @@ export default function PublicBusinessScreen() {
       PENDING_BOOKING_KEY,
       JSON.stringify({ slug: data.business.slug, businessId: data.business.id })
     );
-    router.push(
-      `/signup?returnTo=/${data.business.slug}&forceRole=client` as any
-    );
+    router.push('/login');
   };
 
   const handleBack = () => {
@@ -339,7 +337,7 @@ export default function PublicBusinessScreen() {
           </TouchableOpacity>
           {!session && (
             <Text style={[styles.ctaHint, { color: colors.textSecondary }]}>
-              Se te pedirá crear cuenta gratis para confirmar
+              Se te pedirá iniciar sesión para confirmar
             </Text>
           )}
         </View>

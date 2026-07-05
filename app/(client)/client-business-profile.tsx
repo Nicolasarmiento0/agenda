@@ -186,7 +186,7 @@ export default function ClientBusinessProfileScreen() {
     );
   }
 
-  const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url, photos } = fetchedBusiness;
+  const { name, description, avatar_url, opening_time, closing_time, instagram_url, maps_url, photos, slug } = fetchedBusiness;
   const isPreviewMode = profile?.role === 'company';
 
   return (
@@ -288,6 +288,21 @@ export default function ClientBusinessProfileScreen() {
                   <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Instagram</Text>
                   <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
                     Ver perfil
+                  </Text>
+                </View>
+                <Feather name="external-link" size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
+            {!!slug && (
+              <TouchableOpacity activeOpacity={0.7} onPress={() => Linking.openURL(`https://nucoraapp.vercel.app/${slug}`)} style={appStyles.clientProfileDetailRow}>
+                <View style={[appStyles.clientProfileIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Feather name="link" size={16} color={appColors.primary} />
+                </View>
+                <View style={appStyles.clientProfileDetailTextContainer}>
+                  <Text style={[appStyles.clientProfileDetailLabel, { color: colors.textSecondary }]}>Link de reservas</Text>
+                  <Text style={[appStyles.clientProfileDetailValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                    https://nucoraapp.vercel.app/{slug}
                   </Text>
                 </View>
                 <Feather name="external-link" size={14} color={colors.textSecondary} />
