@@ -222,6 +222,13 @@ npx expo start
 
 Presiona `a` para Android, `i` para iOS, o `w` para web.
 
+### Scripts locales de desarrollo (`.scratch/`)
+
+La carpeta `.scratch/` es para scripts throwaway de prueba/debug y está excluida de git
+(`.gitignore`). **Nunca commitees su contenido**: estos scripts suelen tener credenciales
+hardcodeadas. Cualquier script que valga la pena versionar debe moverse a una carpeta
+trackeada y leer sus credenciales desde variables de entorno, nunca hardcodeadas.
+
 ---
 
 ## Mejoras Potenciales

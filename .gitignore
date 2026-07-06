@@ -46,7 +46,7 @@ app-example
 /android
 
 # Dev-only scratch work — throwaway scripts, not versioned
-scratch/
+.scratch/
 
 # Sensitive local files
 .supabase/
