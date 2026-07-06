@@ -21,3 +21,9 @@ Ninguno.
 Sin reescritura de historia, las credenciales expuestas siguen visibles en commits pasados del
 repo aunque se remuevan del HEAD actual — se documenta esta limitación explícitamente para que el
 usuario decida con esa información si además quiere rotar el anon key o reescribir el historial.
+
+**Resolución (verificado durante implementación):** el key expuesto ES el anon key de producción
+actual (mismo proyecto, rol `anon`; no se filtró ningún `service_role`). El anon key es público
+por diseño en apps cliente, así que el riesgo real depende de que RLS esté bien configurado
+(feature 002); aun así, si el repo es o será público, se recomienda rotarlo desde el dashboard de
+Supabase. Rotación y reescritura de historia quedan como decisiones separadas del usuario.
