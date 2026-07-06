@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           if (workerCheck) {
-            await supabase.from('profiles').update({ role: 'worker' }).eq('id', userId);
+            await supabase.rpc('set_initial_role', { p_role: 'worker' });
             data.role = 'worker';
             finalRole = 'worker';
           }
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           if (workerCheck) {
-            await supabase.from('profiles').update({ role: 'worker' }).eq('id', data.user.id);
+            await supabase.rpc('set_initial_role', { p_role: 'worker' });
             profileData.role = 'worker';
             finalRole = 'worker';
           }

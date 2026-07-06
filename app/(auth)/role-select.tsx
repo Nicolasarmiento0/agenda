@@ -30,7 +30,8 @@ export default function RoleSelectScreen() {
       (async () => {
         setLoading(true);
         try {
-          await supabase.from('profiles').update({ role: 'client' }).eq('id', user.id);
+          const { error } = await supabase.rpc('set_initial_role', { p_role: 'client' });
+          if (error) throw error;
           updateProfileState({ role: 'client' });
           await AsyncStorage.removeItem(PENDING_BOOKING_KEY);
           if (returnTo) {
@@ -52,10 +53,7 @@ export default function RoleSelectScreen() {
 
         try {
             setLoading(true);
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role: selected })
-                .eq('id', user?.id);
+            const { error } = await supabase.rpc('set_initial_role', { p_role: selected });
 
             if (error) throw error;
 

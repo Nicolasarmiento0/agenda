@@ -153,18 +153,23 @@ export default function CompanyEmployeesScreen() {
 
       const newUserId = authData?.user?.id;
       if (newUserId) {
-        await supabase.from('profiles').upsert({
-          id: newUserId,
-          role: 'worker',
-          nickname: data.name || 'Trabajador',
-        });
         workerData.user_id = newUserId;
         workerData.email = data.email;
       }
 
       const { error } = await supabase.from('workers').insert([{ ...workerData, business_id: business.id }]);
-      if (!error) fetchEmployees();
-      else showAlert({ title: 'Error', message: 'No se pudo vincular el empleado a la base de datos.' });
+      if (!error) {
+        if (newUserId) {
+          // El perfil de otro usuario no es escribible desde el cliente (RLS +
+          // grants por columna); la RPC valida que el worker pertenezca a un
+          // negocio del caller y solo pisa el nickname por defecto.
+          await supabase.rpc('set_worker_nickname', {
+            p_user_id: newUserId,
+            p_nickname: data.name || 'Trabajador',
+          });
+        }
+        fetchEmployees();
+      } else showAlert({ title: 'Error', message: 'No se pudo vincular el empleado a la base de datos.' });
     }
   }, [editingEmp, business?.id, fetchEmployees]);
 

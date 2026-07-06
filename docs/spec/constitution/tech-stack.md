@@ -9,6 +9,7 @@
 - **Supabase**: PostgreSQL + RLS multi-tenant, Auth, Storage (fotos de perfil/portfolio), Edge Functions (`supabase/functions/`).
 - Sesión de Auth: en nativo se persiste cifrada vía `expo-secure-store` (Keychain/Keystore) usando `lib/secureStorageAdapter.ts` (con chunking por el límite de 2048 bytes); en web se mantiene `localStorage`. No usar `AsyncStorage` para tokens ni datos sensibles.
 - Migraciones SQL versionadas en `supabase/.migrations/`.
+- Policies RLS siempre versionadas en migraciones (nunca solo vía dashboard). Checks de rol vía helpers `public.is_admin()` / `public.get_my_role()` (SECURITY DEFINER) — no subconsultar `profiles` inline dentro de policies de `profiles` (recursión).
 - Lógica crítica (anti-solapamiento de citas, historial de actividades) vive en triggers de Postgres, no en el cliente.
 
 ## UI / Estado

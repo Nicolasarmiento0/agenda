@@ -176,17 +176,6 @@ export default function AdminBusinessEmployeesScreen() {
           return;
         }
 
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: newUserId,
-          role: 'worker',
-          nickname: data.name || 'Trabajador',
-        });
-
-        if (profileError) {
-          showAlert({ title: 'Error de perfil', message: profileError.message });
-          return;
-        }
-
         workerData.user_id = newUserId;
         workerData.email = data.email;
 
@@ -194,8 +183,16 @@ export default function AdminBusinessEmployeesScreen() {
           .from('workers')
           .insert([{ ...workerData, business_id: businessId }]);
 
-        if (!error) fetchEmployees();
-        else showAlert({ title: 'Error DB', message: error.message });
+        if (!error) {
+          // El perfil de otro usuario no es escribible desde el cliente (RLS +
+          // grants por columna); la RPC valida owner-del-negocio o admin y
+          // solo pisa el nickname por defecto.
+          await supabase.rpc('set_worker_nickname', {
+            p_user_id: newUserId,
+            p_nickname: data.name || 'Trabajador',
+          });
+          fetchEmployees();
+        } else showAlert({ title: 'Error DB', message: error.message });
       }
     },
     [editingEmp, businessId, fetchEmployees]

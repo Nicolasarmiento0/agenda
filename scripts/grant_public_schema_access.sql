@@ -14,12 +14,24 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 --   anon        → SELECT en tablas con política "allow_select_all" o datos
 --                 de catálogo público (negocios, servicios, categorías).
 --   authenticated → SELECT + INSERT + UPDATE + DELETE en todas las tablas.
---                 RLS ya restringe qué filas puede ver/modificar cada usuario.
+--                 RLS restringe qué filas puede ver/modificar cada usuario.
 --   service_role → ALL (usado por Edge Functions y operaciones admin).
+--
+-- ⚠ NOTA (2026-07-05): la premisa "RLS ya restringe" NO era cierta para
+--   profiles, businesses, workers, business_services, service_categories
+--   y reviews — sus policies reales se versionaron y endurecieron en
+--   supabase/.migrations/20260705_rls_core_tables.sql. Estos GRANTs solo
+--   exponen las tablas a la Data API; el aislamiento fila-por-fila lo
+--   garantizan las policies de esa migración. Cualquier tabla nueva DEBE
+--   nacer con sus policies versionadas antes de recibir GRANTs aquí.
 --
 
 -- profiles
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.profiles TO authenticated;
+-- UPDATE es por columna: 'role' NO es actualizable vía Data API — la
+-- asignación de rol pasa exclusivamente por la RPC set_initial_role
+-- (ver supabase/.migrations/20260705_role_escalation_fix.sql).
+GRANT SELECT, INSERT, DELETE ON TABLE public.profiles TO authenticated;
+GRANT UPDATE (nickname, avatar_url, notification_email) ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
 
 -- businesses (descubrimiento público + gestión autenticada)

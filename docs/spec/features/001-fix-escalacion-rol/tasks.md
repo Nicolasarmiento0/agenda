@@ -1,11 +1,12 @@
 # Tasks: Fix de escalación de privilegios vía profiles.role
 
-- [ ] Migración: agregar `CHECK constraint` sobre `profiles.role`
-- [ ] Migración: revocar `UPDATE` amplio sobre `profiles` para `authenticated`, otorgar `UPDATE` solo en columnas no sensibles
-- [ ] Migración: crear función `set_initial_role(p_role text)` `SECURITY DEFINER` con validación de transición (solo desde rol `NULL`, solo hacia `client/company/worker`)
-- [ ] (Si aplica) crear función `admin_set_user_role(p_user_id uuid, p_role text)` protegida por `is_admin()`
-- [ ] Actualizar `role-select.tsx:33` y `:57` para usar `supabase.rpc('set_initial_role', { p_role: selected })`
-- [ ] Grep del repo por otros `update` directos de `profiles.role` y migrarlos al mismo patrón
-- [ ] Actualizar `scripts/grant_public_schema_access.sql` para reflejar el nuevo grant column-level
-- [ ] Aplicar migración en desarrollo/staging
-- [ ] Probar flujo completo manualmente (onboarding normal de client/company/worker + intento de escalación vía request crudo con `role: 'admin'` que debe fallar)
+- [x] Migración: agregar `CHECK constraint` sobre `profiles.role` — `profiles_role_check` (client/company/worker/admin/NULL); datos existentes verificados limpios antes de aplicar
+- [x] Migración: revocar `UPDATE` amplio sobre `profiles` para `authenticated`, otorgar `UPDATE` solo en columnas no sensibles — quedaron `nickname, avatar_url, notification_email` (el plan decía `full_name/phone` pero esas columnas no existen en el schema real)
+- [x] Migración: crear función `set_initial_role(p_role text)` `SECURITY DEFINER` con validación de transición — desde `NULL` hacia `client/company/worker`, más dos casos que el plan no contemplaba (ver plan.md): `client→worker` con registro vinculado en `workers` (self-heal de AuthContext) y no-op idempotente si el rol ya es el solicitado
+- [x] (Si aplica) crear función `admin_set_user_role` — NO se creó (fuera de alcance según spec.md); en su lugar se creó `set_worker_nickname(p_user_id, p_nickname)` para el flujo de invitación de empleados que RLS (feature 002) + grants por columna bloquean (ver plan.md)
+- [x] Actualizar `role-select.tsx:33` y `:57` para usar `supabase.rpc('set_initial_role', ...)` — ambos call sites migrados
+- [x] Grep del repo por otros `update` directos de `profiles.role` y migrarlos — encontrados y migrados: `context/AuthContext.tsx:85` y `:160` (self-heal → RPC), `app/(company)/company-employees.tsx` y `app/(admin)/admin-business-employees.tsx` (upsert cross-user de perfil eliminado; ahora insertan el worker y llaman `set_worker_nickname`)
+- [x] Actualizar `scripts/grant_public_schema_access.sql` para reflejar el nuevo grant column-level
+- [x] Aplicar migración — **ejecutada manualmente por el usuario** en el SQL editor de Supabase el 2026-07-05 (único entorno; no hay staging); verificada vía SQL: constraint activo, `role` sin privilegio UPDATE para `authenticated`, RPCs creadas
+- [x] Smoke tests SQL: `update({role:'admin'})` directo falla con `42501 permission denied` ✓; re-invocar la RPC con rol ya asignado falla ✓; onboarding NULL→client vía RPC funciona ✓; update de nickname propio sigue funcionando ✓; `set_worker_nickname` sin autorización falla ✓
+- [ ] Probar flujo completo manualmente en la app (onboarding client/company, invitación de empleado desde company y desde admin, self-heal de worker al primer login) — pendiente de ejecución humana; requiere la app de este branch (la versión vieja ya no puede asignar rol, por diseño)
