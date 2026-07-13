@@ -456,7 +456,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         duration_hours: duration,
         worker_id: workerIdVal,
         client_id: (role === 'client' && !isBlockedSlot) ? profile?.id : null,
-        status: isBlockedSlot ? 'confirmed' : 'pending',
+        status: isBlockedSlot ? 'blocked' : 'pending',
         price: isBlockedSlot ? 0 : price,
       });
 
@@ -519,50 +519,53 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
       }
 
       // 3. Business hours constraint based on schedule blocks
-      const dayOfWeek = parseDateString(date).getDay();
-      const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
-      
-      const dayBlocks = businessSchedule ? businessSchedule[dayKey] : null;
-      
-      if (dayBlocks && Array.isArray(dayBlocks)) {
-        if (dayBlocks.length === 0) {
-          showAlert({
-            title: 'Negocio cerrado',
-            message: 'El negocio se encuentra cerrado el día seleccionado.',
-          });
-          return;
-        }
+      const isStaff = role === 'company' || role === 'worker';
+      if (!isStaff && !isBlockedSlot) {
+        const dayOfWeek = parseDateString(date).getDay();
+        const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
         
-        // Check if the appointment interval [startHour, startHour + duration] fits within any of the working blocks
-        const fitsInBlock = dayBlocks.some((block: any) => {
-          const [startH, startM] = block.start.split(':').map(Number);
-          const [endH, endM] = block.end.split(':').map(Number);
-          const blockStart = startH + (startM / 60);
-          const blockEnd = endH + (endM / 60);
+        const dayBlocks = businessSchedule ? businessSchedule[dayKey] : null;
+        
+        if (dayBlocks && Array.isArray(dayBlocks)) {
+          if (dayBlocks.length === 0) {
+            showAlert({
+              title: 'Negocio cerrado',
+              message: 'El negocio se encuentra cerrado el día seleccionado.',
+            });
+            return;
+          }
           
-          return startHour >= blockStart && (startHour + duration) <= blockEnd;
-        });
-        
-        if (!fitsInBlock) {
-          showAlert({
-            title: 'Fuera de horario laboral',
-            message: 'El horario seleccionado se encuentra fuera de los bloques de atención del negocio para este día.',
+          // Check if the appointment interval [startHour, startHour + duration] fits within any of the working blocks
+          const fitsInBlock = dayBlocks.some((block: any) => {
+            const [startH, startM] = block.start.split(':').map(Number);
+            const [endH, endM] = block.end.split(':').map(Number);
+            const blockStart = startH + (startM / 60);
+            const blockEnd = endH + (endM / 60);
+            
+            return startHour >= blockStart && (startHour + duration) <= blockEnd;
           });
-          return;
-        }
-      } else {
-        // Fallback to basic opening/closing hours
-        const [openH, openM] = businessOpening.split(':').map(Number);
-        const [closeH, closeM] = businessClosing.split(':').map(Number);
-        const openTime = openH + (openM / 60);
-        const closeTime = closeH + (closeM / 60);
-        
-        if (startHour < openTime || startHour + duration > closeTime) {
-          showAlert({
-            title: 'Fuera de horario laboral',
-            message: `El horario seleccionado se encuentra fuera de la jornada laboral establecida (${businessOpening} - ${businessClosing}).`,
-          });
-          return;
+          
+          if (!fitsInBlock) {
+            showAlert({
+              title: 'Fuera de horario laboral',
+              message: 'El horario seleccionado se encuentra fuera de los bloques de atención del negocio para este día.',
+            });
+            return;
+          }
+        } else {
+          // Fallback to basic opening/closing hours
+          const [openH, openM] = businessOpening.split(':').map(Number);
+          const [closeH, closeM] = businessClosing.split(':').map(Number);
+          const openTime = openH + (openM / 60);
+          const closeTime = closeH + (closeM / 60);
+          
+          if (startHour < openTime || startHour + duration > closeTime) {
+            showAlert({
+              title: 'Fuera de horario laboral',
+              message: `El horario seleccionado se encuentra fuera de la jornada laboral establecida (${businessOpening} - ${businessClosing}).`,
+            });
+            return;
+          }
         }
       }
 
@@ -749,6 +752,7 @@ const AppointmentModal = forwardRef<AppointmentModalHandle, Props>(
         duration_hours: duration,
         worker_id: workerIdVal,
         price: isBlockedSlot ? 0 : price,
+        status: isBlockedSlot ? 'blocked' : (appointment.status === 'blocked' ? 'confirmed' : appointment.status),
       };
 
       if (role === 'client') {

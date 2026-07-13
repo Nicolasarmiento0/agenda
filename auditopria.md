@@ -34,6 +34,7 @@ profiles, businesses, workers, business_services, service_categories, reviews no
 Sesión (incluye refresh token) persiste sin cifrar en AsyncStorage/localStorage (lib/supabase.ts:17), sin expo-secure-store	Medio	Usar expo-secure-store como storage adapter de supabase-js en nativo (Keychain/Keystore)
 No se puede confirmar desde el código si RLS está realmente activo en producción para las tablas del punto 2	Medio (incertidumbre)	Ejecutar auditoría con Advisors antes de operar con usuarios reales multi-tenant
 Logging revisado: no se encontraron tokens/contraseñas/objetos de sesión completos en console.log de producción	Bajo	Mantener como regla de code review a futuro (no loguear session/user completos)
+
 2. Arquitectura
 
 Punto Crítico	Riesgo	Acción de Mitigación
